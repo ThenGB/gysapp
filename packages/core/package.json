@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.15.21",
+    "js-synthesizer": "^1.13.0",
     "pdfjs-dist": "^6.2.108",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"

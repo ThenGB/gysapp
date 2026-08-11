@@ -5,6 +5,7 @@ import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import type { ChordedLine } from '@gysapp/core';
 import { buildChordedLines, extractLyricLines, extractPageNotes } from '@gysapp/core';
 import { parseChordDocument } from '@gysapp/contracts';
+import { MiniMidiPlayer } from './midi-player';
 import './song-viewer.css';
 
 GlobalWorkerOptions.workerSrc = workerUrl;
@@ -127,6 +128,8 @@ export function SongViewer() {
       )}
 
       {mode === 'text' && <ChordedTextLines lines={chordedLines} />}
+
+      <MiniMidiPlayer />
     </div>
   );
 }

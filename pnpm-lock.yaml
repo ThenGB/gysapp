@@ -51,6 +51,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.101.4
         version: 5.101.4(react@19.2.8)
+      js-synthesizer:
+        specifier: ^1.13.0
+        version: 1.13.0
       pdfjs-dist:
         specifier: ^6.2.108
         version: 6.2.108
@@ -117,6 +120,9 @@ importers:
       '@types/node':
         specifier: ^22.15.21
         version: 22.20.1
+      js-synthesizer:
+        specifier: ^1.13.0
+        version: 1.13.0
       pdfjs-dist:
         specifier: ^6.2.108
         version: 6.2.108
@@ -1001,6 +1007,10 @@ packages:
 
   is-potential-custom-element-name@1.0.1:
     resolution: {integrity: sha512-bCYeRA2rVibKZd+s2625gGnGF/t7DSqDs4dP7CrLA1m7jKWz6pps0LpYLJN8Q64HtmPKJ1hrN3nzPNKFEKOUiQ==}
+
+  js-synthesizer@1.13.0:
+    resolution: {integrity: sha512-KXhyJcY90mUvJwbfF1aBNurodm16w8R/wrZYRRc+SSlm58EtL88bspbs7ixtAmoV9QQvf/2EuPAwxj2ExdZSmQ==}
+    engines: {node: '>=22', npm: '>=11'}
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -2129,6 +2139,8 @@ snapshots:
   indent-string@4.0.0: {}
 
   is-potential-custom-element-name@1.0.1: {}
+
+  js-synthesizer@1.13.0: {}
 
   js-tokens@4.0.0: {}
 
