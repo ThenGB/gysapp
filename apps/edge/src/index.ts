@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { parseSauhResult, parseTrueVoiceFeed } from '@gysapp/contracts';
 import { createChordApp } from './chords';
 import { normalizeSauhPosts } from './content/sauh';
 import { extractAuthorFromHtml, parseSuaraSejatiPage } from './content/suara-sejati';
@@ -39,7 +40,8 @@ export function createApp(opts: { fetchImpl?: typeof fetch; now?: () => Date } =
       })) as unknown[];
       const result = normalizeSauhPosts(posts, now());
       c.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
-      return c.json({ ...result, fetchedAt: now().toISOString() });
+      const body = parseSauhResult({ ...result, fetchedAt: now().toISOString() });
+      return c.json(body);
     } catch (err) {
       c.status(502);
       return c.json({
@@ -59,7 +61,8 @@ export function createApp(opts: { fetchImpl?: typeof fetch; now?: () => Date } =
       });
       const items = parseSuaraSejatiPage(html);
       c.header('Cache-Control', 'public, max-age=600, stale-while-revalidate=3600');
-      return c.json({ items, fetchedAt: now().toISOString() });
+      const body = parseTrueVoiceFeed({ items, fetchedAt: now().toISOString() });
+      return c.json(body);
     } catch (err) {
       c.status(502);
       return c.json({

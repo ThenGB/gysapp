@@ -1,4 +1,4 @@
-import type { SauhItem, SauhResult } from './types';
+import type { SauhItem, SauhResult } from '@gysapp/contracts';
 
 export function expectedSauhSlugForDate(date: Date): string {
   const y = date.getFullYear().toString().slice(2);
@@ -40,8 +40,9 @@ export interface WpPost {
 /**
  * Normalisasi feed Sauh dari WP REST tjc.org (categories=229).
  * Kontrak: slug hari ini `sbjYYMMDD` diprioritaskan; fallback feed urut tanggal.
+ * `fetchedAt` ditambahkan oleh route (bukan parser).
  */
-export function normalizeSauhPosts(posts: unknown[], date: Date): SauhResult {
+export function normalizeSauhPosts(posts: unknown[], date: Date): Omit<SauhResult, 'fetchedAt'> {
   const base = 'https://tjc.org';
   const expectedSlug = expectedSauhSlugForDate(date);
   const items: SauhItem[] = [];

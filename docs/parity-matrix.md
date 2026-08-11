@@ -18,7 +18,7 @@ Status: `todo | in-progress | done | n/a`
 
 | Fitur                                     | Status      | Acceptance                                   |
 | ----------------------------------------- | ----------- | -------------------------------------------- |
-| Greeting + tanggal + nama akun            | todo        | Fallback bila offline                        |
+| Greeting + tanggal + nama akun            | in-progress | Fallback bila offline                        |
 | Sauh Bagi Jiwa (slug sbjYYMMDD + feed 6)  | in-progress | Cache per tanggal, invalidasi lintas hari    |
 | Suara Sejati (tampil kembali di UI)       | in-progress | Feed + detail author, stale-while-revalidate |
 | Ayat hari ini (OurManna -> Alkitab lokal) | todo        | Sanitasi HTML, cache per hari per versi      |

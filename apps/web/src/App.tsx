@@ -1,5 +1,8 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
+import { useState } from 'react';
 import { AppShell } from './ui/shell';
+import { HomePage } from './features/home/home-page';
 import { PlaceholderPage } from './ui/placeholder';
 
 const router = createBrowserRouter([
@@ -8,7 +11,7 @@ const router = createBrowserRouter([
     element: <AppShell />,
     children: [
       { index: true, element: <Navigate to="/home" replace /> },
-      { path: 'home', element: <PlaceholderPage title="Beranda" /> },
+      { path: 'home', element: <HomePage /> },
       { path: 'bible', element: <PlaceholderPage title="Alkitab" /> },
       { path: 'hymnal', element: <PlaceholderPage title="Pujian" /> },
       { path: 'faith', element: <PlaceholderPage title="Iman" /> },
@@ -18,5 +21,17 @@ const router = createBrowserRouter([
 ]);
 
 export function App() {
-  return <RouterProvider router={router} />;
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: { retry: 1, refetchOnWindowFocus: false },
+        },
+      }),
+  );
+  return (
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
+  );
 }

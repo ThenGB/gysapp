@@ -1,7 +1,7 @@
 import * as cheerio from 'cheerio';
 import type { AnyNode } from 'domhandler';
+import type { TrueVoiceItem } from '@gysapp/contracts';
 import { absolutizeUrl } from './sauh';
-import type { TrueVoiceItem } from './types';
 
 const TJC_BASE = 'https://tjc.org';
 
