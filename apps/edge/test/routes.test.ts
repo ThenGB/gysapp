@@ -33,7 +33,7 @@ describe('BFF routes', () => {
   it('GET /api/content/sauh returns normalized items with cache headers', async () => {
     const app = createApp({
       fetchImpl: fixtureFetch() as unknown as typeof fetch,
-      now: () => new Date(2026, 7, 11, 12, 0, 0),
+      now: () => new Date(Date.UTC(2026, 7, 11, 12, 0, 0)),
     });
     const res = await app.request('/api/content/sauh');
     expect(res.status).toBe(200);
@@ -43,7 +43,7 @@ describe('BFF routes', () => {
       fetchedAt: string;
     };
     expect(body.items.length).toBeGreaterThan(0);
-    expect(body.fetchedAt).toBe('2026-08-11T05:00:00.000Z');
+    expect(body.fetchedAt).toBe('2026-08-11T12:00:00.000Z');
   });
 
   it('GET /api/content/suara-sejati returns parsed articles', async () => {
