@@ -26,15 +26,15 @@ Status: `todo | in-progress | done | n/a`
 
 ## Alkitab
 
-| Fitur                                     | Status | Acceptance                       |
-| ----------------------------------------- | ------ | -------------------------------- |
-| Offline pack per versi                    | todo   | Checksum + install/delete/update |
-| Reader perikop + split view + scroll sync | todo   | Parity di 320px dan 1440px       |
-| Cari ayat (phrase, filter PL/PB/buku)     | todo   | Search warm <100ms p95           |
-| Ref silang, perikop paralel               | todo   | Golden fixtures                  |
-| Bookmark + catatan rich text + histori    | todo   | Ekspor/impor via backup          |
-| Bacaan hari ini + reminder                | todo   | Notifikasi saat app tidak aktif  |
-| TTS (system + cloud)                      | todo   | Range ayat, auto-next            |
+| Fitur                                     | Status      | Acceptance                                   |
+| ----------------------------------------- | ----------- | -------------------------------------------- |
+| Offline pack per versi                    | todo        | Checksum + install/delete/update (port siap) |
+| Reader perikop + split view + scroll sync | in-progress | Parity di 320px dan 1440px                   |
+| Cari ayat (phrase, filter PL/PB/buku)     | in-progress | Search warm <100ms p95                       |
+| Ref silang, perikop paralel               | todo        | Golden fixtures                              |
+| Bookmark + catatan rich text + histori    | todo        | Ekspor/impor via backup                      |
+| Bacaan hari ini + reminder                | todo        | Notifikasi saat app tidak aktif              |
+| TTS (system + cloud)                      | todo        | Range ayat, auto-next                        |
 
 ## Pujian
 

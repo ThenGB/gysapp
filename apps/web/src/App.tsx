@@ -3,6 +3,8 @@ import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import { useState } from 'react';
 import { AppShell } from './ui/shell';
 import { HomePage } from './features/home/home-page';
+import { BiblePage } from './features/bible/bible-page';
+import { BibleSearchPage } from './features/bible/bible-search';
 import { PlaceholderPage } from './ui/placeholder';
 
 const router = createBrowserRouter([
@@ -12,7 +14,14 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/home" replace /> },
       { path: 'home', element: <HomePage /> },
-      { path: 'bible', element: <PlaceholderPage title="Alkitab" /> },
+      {
+        path: 'bible',
+        children: [
+          { index: true, element: <Navigate to="/bible/1/1" replace /> },
+          { path: 'search', element: <BibleSearchPage /> },
+          { path: ':book/:chapter', element: <BiblePage /> },
+        ],
+      },
       { path: 'hymnal', element: <PlaceholderPage title="Pujian" /> },
       { path: 'faith', element: <PlaceholderPage title="Iman" /> },
       { path: 'more', element: <PlaceholderPage title="Lainnya" /> },
