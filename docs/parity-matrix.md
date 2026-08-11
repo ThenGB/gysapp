@@ -7,22 +7,22 @@ Status: `todo | in-progress | done | n/a`
 
 ## Shell & Navigasi
 
-| Fitur                                              | Status | Acceptance                      |
-| -------------------------------------------------- | ------ | ------------------------------- |
-| 5 menu utama (Beranda/Alkitab/Pujian/Iman/Lainnya) | todo   | Semua route dapat di-deep-link  |
-| Bottom nav <600px, rail 600-959, sidebar >=960     | todo   | Navigasi tidak pernah auto-hide |
-| Player global tidak menutupi konten                | todo   | E2E viewport matrix             |
-| i18n id/en/zh                                      | todo   | Switch bahasa tanpa reload data |
+| Fitur                                              | Status      | Acceptance                      |
+| -------------------------------------------------- | ----------- | ------------------------------- |
+| 5 menu utama (Beranda/Alkitab/Pujian/Iman/Lainnya) | in-progress | Semua route dapat di-deep-link  |
+| Bottom nav <600px, rail 600-959, sidebar >=960     | done        | Navigasi tidak pernah auto-hide |
+| Player global tidak menutupi konten                | todo        | E2E viewport matrix             |
+| i18n id/en/zh                                      | todo        | Switch bahasa tanpa reload data |
 
 ## Beranda
 
-| Fitur                                     | Status | Acceptance                                   |
-| ----------------------------------------- | ------ | -------------------------------------------- |
-| Greeting + tanggal + nama akun            | todo   | Fallback bila offline                        |
-| Sauh Bagi Jiwa (slug sbjYYMMDD + feed 6)  | todo   | Cache per tanggal, invalidasi lintas hari    |
-| Suara Sejati (tampil kembali di UI)       | todo   | Feed + detail author, stale-while-revalidate |
-| Ayat hari ini (OurManna -> Alkitab lokal) | todo   | Sanitasi HTML, cache per hari per versi      |
-| Lanjutkan membaca / lanjut pujian         | todo   | Restore posisi                               |
+| Fitur                                     | Status      | Acceptance                                   |
+| ----------------------------------------- | ----------- | -------------------------------------------- |
+| Greeting + tanggal + nama akun            | todo        | Fallback bila offline                        |
+| Sauh Bagi Jiwa (slug sbjYYMMDD + feed 6)  | in-progress | Cache per tanggal, invalidasi lintas hari    |
+| Suara Sejati (tampil kembali di UI)       | in-progress | Feed + detail author, stale-while-revalidate |
+| Ayat hari ini (OurManna -> Alkitab lokal) | todo        | Sanitasi HTML, cache per hari per versi      |
+| Lanjutkan membaca / lanjut pujian         | todo        | Restore posisi                               |
 
 ## Alkitab
 

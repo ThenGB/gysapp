@@ -1,0 +1,122 @@
+.app-shell {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: 1fr auto;
+}
+
+/* Mobile: bottom dock selalu terlihat, sidebar disembunyikan */
+.shell-sidebar {
+  display: none;
+}
+
+.shell-content {
+  min-height: 0;
+  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom));
+}
+
+.shell-dock {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  background: var(--surface-raised);
+  border-top: var(--border-thin);
+  padding-bottom: env(safe-area-inset-bottom);
+  height: calc(var(--nav-height) + env(safe-area-inset-bottom));
+  box-shadow: var(--shadow-raised);
+}
+
+.dock-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: var(--target-min);
+  color: var(--text-tertiary);
+  text-decoration: none;
+  font-size: var(--text-xs);
+  line-height: 1.2;
+}
+
+.dock-item-active {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Rail 600-959px */
+@media (min-width: 600px) {
+  .app-shell {
+    grid-template-columns: var(--rail-width) 1fr;
+    grid-template-rows: 1fr;
+  }
+
+  .shell-sidebar {
+    display: block;
+    border-inline-end: var(--border-thin);
+    background: var(--surface-muted);
+  }
+
+  .shell-nav {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-4) var(--space-2);
+  }
+
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: var(--space-3) var(--space-1);
+    min-height: var(--target-min);
+    border-radius: var(--radius-md);
+    color: var(--text-tertiary);
+    text-decoration: none;
+    font-size: var(--text-xs);
+  }
+
+  .nav-item:hover {
+    background: var(--surface-raised);
+    color: var(--text-primary);
+  }
+
+  .nav-item-active {
+    background: var(--surface-raised);
+    color: var(--accent);
+    font-weight: 700;
+    box-shadow: var(--shadow-raised);
+  }
+
+  .shell-dock {
+    display: none;
+  }
+
+  .shell-content {
+    padding-bottom: 0;
+  }
+}
+
+/* Sidebar penuh >=960px */
+@media (min-width: 960px) {
+  .app-shell {
+    grid-template-columns: var(--sidebar-width) 1fr;
+  }
+
+  .nav-item {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-sm);
+  }
+
+  .nav-item svg {
+    flex-shrink: 0;
+  }
+}
