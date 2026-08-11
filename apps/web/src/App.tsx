@@ -5,6 +5,8 @@ import { AppShell } from './ui/shell';
 import { HomePage } from './features/home/home-page';
 import { BiblePage } from './features/bible/bible-page';
 import { BibleSearchPage } from './features/bible/bible-search';
+import { HymnalListPage } from './features/hymnal/hymnal-list';
+import { SongViewer } from './features/hymnal/song-viewer';
 import { PlaceholderPage } from './ui/placeholder';
 
 const router = createBrowserRouter([
@@ -22,7 +24,13 @@ const router = createBrowserRouter([
           { path: ':book/:chapter', element: <BiblePage /> },
         ],
       },
-      { path: 'hymnal', element: <PlaceholderPage title="Pujian" /> },
+      {
+        path: 'hymnal',
+        children: [
+          { index: true, element: <HymnalListPage /> },
+          { path: ':book/:song', element: <SongViewer /> },
+        ],
+      },
       { path: 'faith', element: <PlaceholderPage title="Iman" /> },
       { path: 'more', element: <PlaceholderPage title="Lainnya" /> },
     ],

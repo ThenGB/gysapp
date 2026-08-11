@@ -1,0 +1,115 @@
+.song-page {
+  padding-top: var(--space-6);
+  padding-bottom: var(--space-8);
+}
+
+.song-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+
+.song-toolbar h1 {
+  font-size: var(--text-lg);
+  margin: 0;
+}
+
+.song-mode-tabs {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.song-pdf {
+  background: var(--surface-muted);
+  border: var(--border-thin);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  justify-content: center;
+  overflow: auto;
+}
+
+.song-canvas {
+  max-width: 100%;
+  height: auto;
+  box-shadow: var(--shadow-raised);
+  background: #fff;
+}
+
+.song-error {
+  color: var(--error);
+}
+
+.song-lyrics {
+  max-width: var(--reader-max);
+  margin-inline: auto;
+  background: var(--surface-raised);
+  border: var(--border-thin);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-raised);
+}
+
+.song-line {
+  margin-bottom: var(--space-4);
+}
+
+.song-chord-row {
+  position: relative;
+  height: 1.4em;
+  font-weight: 700;
+}
+
+.song-chord-badge {
+  position: absolute;
+  transform: translateX(-50%);
+  color: var(--accent);
+  font-size: 0.9em;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.song-line-text {
+  margin: 0;
+  font-family: var(--font-reader);
+  font-size: var(--reader-size);
+  line-height: var(--reader-line-height);
+}
+
+.song-empty {
+  text-align: center;
+  color: var(--text-tertiary);
+}
+
+.song-empty-sub {
+  font-size: var(--text-xs);
+}
+
+.hymnal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.hymnal-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--target-min);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-raised);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.hymnal-item:hover {
+  border-color: var(--accent);
+}

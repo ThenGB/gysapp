@@ -41,8 +41,8 @@ Status: `todo | in-progress | done | n/a`
 | Fitur                                                | Status      | Acceptance                       |
 | ---------------------------------------------------- | ----------- | -------------------------------- |
 | Katalog 6 buku kidung + search                       | todo        | Ordered-match nomor/judul/lirik  |
-| PDF viewer (1/2 halaman, vertikal, zoom)             | todo        | pdfjs-dist lokal, offline        |
-| Mode teks + wrap + autofit                           | todo        | Chord tetap sejajar saat wrap    |
+| PDF viewer (1/2 halaman, vertikal, zoom)             | in-progress | pdfjs-dist lokal, offline        |
+| Mode teks + wrap + autofit                           | in-progress | Chord tetap sejajar saat wrap    |
 | Chord v2 note-aligned + transpose + key              | in-progress | Golden fixtures, max 4px drift   |
 | MIDI player (tempo/transpose/instrumen/seek)         | todo        | Benchmark audio, no crackle      |
 | Playlist (create/rename/delete/reorder/loop/shuffle) | todo        | Persisten lintas sesi            |
