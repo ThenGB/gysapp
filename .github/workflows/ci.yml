@@ -1,0 +1,51 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Fixture integrity (chord fixtures harus sinkron dengan gyschordweb)
+        run: pnpm --filter @gysapp/core test:contract
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Secret scan (basic)
+        run: |
+          if rg -n -i "rjnsfeygekniyfil|56983466|hatiku\.app@gmail\.com|password\s*[=:]\s*['\"][^'\"]{8,}" --glob '!pnpm-lock.yaml' --glob '!docs/**' .; then
+            echo "Potential secret found"; exit 1
+          fi
+          echo "Secret scan clean"
