@@ -1,4 +1,5 @@
 :root {
+  --font-scale: 1;
   /* Palette "Ruang Ibadah Tenang" — quiet liturgical editorial */
   --color-ivory-50: #faf9f7;
   --color-ivory-100: #f4f1ec;
@@ -65,8 +66,12 @@
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
 }
 
+html {
+  font-size: calc(16px * var(--font-scale));
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --surface: #1a1713;
     --surface-raised: #211d18;
     --surface-muted: #262219;
@@ -79,6 +84,20 @@
     --focus-ring: #7aa7f8;
     --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.4);
   }
+}
+
+:root[data-theme='dark'] {
+  --surface: #1a1713;
+  --surface-raised: #211d18;
+  --surface-muted: #262219;
+  --surface-border: #37322a;
+  --text-primary: #f2ede4;
+  --text-secondary: #d8d1c4;
+  --text-tertiary: #a89f92;
+  --accent: #7aa7f8;
+  --accent-contrast: #10151f;
+  --focus-ring: #7aa7f8;
+  --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 @media (prefers-reduced-motion: reduce) {

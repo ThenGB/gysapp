@@ -92,10 +92,10 @@ export function MorePage() {
             </button>
           </li>
           <li>
-            <button type="button" className="more-card" disabled>
+            <Link to="/settings" className="more-card">
               <Gear size={26} aria-hidden="true" />
-              <span>Pengaturan (menyusul)</span>
-            </button>
+              <span>Pengaturan</span>
+            </Link>
           </li>
         </ul>
       </Section>

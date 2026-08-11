@@ -17,7 +17,8 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
-    "@gysapp/contracts": "workspace:*"
+    "@gysapp/contracts": "workspace:*",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^22.15.21",

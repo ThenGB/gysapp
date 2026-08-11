@@ -1,14 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { House, BookOpenText, MusicNotes, Sparkle, SquaresFour } from '@phosphor-icons/react';
+import { useT } from '../i18n';
 import './shell.css';
-
-const NAV_ITEMS = [
-  { to: '/home', label: 'Beranda', icon: House },
-  { to: '/bible', label: 'Alkitab', icon: BookOpenText },
-  { to: '/hymnal', label: 'Pujian', icon: MusicNotes },
-  { to: '/faith', label: 'Iman', icon: Sparkle },
-  { to: '/more', label: 'Lainnya', icon: SquaresFour },
-] as const;
 
 function useNavActive(pathname: string, to: string): boolean {
   if (to === '/home') return pathname === '/home';
@@ -21,6 +14,15 @@ function useNavActive(pathname: string, to: string): boolean {
  */
 export function AppShell() {
   const { pathname } = useLocation();
+  const { t } = useT();
+
+  const NAV_ITEMS = [
+    { to: '/home', label: t('home'), icon: House },
+    { to: '/bible', label: t('bible'), icon: BookOpenText },
+    { to: '/hymnal', label: t('hymnal'), icon: MusicNotes },
+    { to: '/faith', label: t('faith'), icon: Sparkle },
+    { to: '/more', label: t('more'), icon: SquaresFour },
+  ] as const;
 
   const renderNavItem = (item: (typeof NAV_ITEMS)[number], variant: 'nav' | 'dock') => {
     const isActive = useNavActive(pathname, item.to);

@@ -11,3 +11,12 @@ createRoot(rootEl).render(
     <App />
   </StrictMode>,
 );
+
+// PWA: register service worker hanya pada produksi (https).
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register('/sw.js').catch(() => {
+      // SW gagal (mis. storage penuh) — aplikasi tetap berjalan normal.
+    });
+  });
+}

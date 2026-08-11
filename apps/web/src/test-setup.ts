@@ -4,6 +4,21 @@ import '@testing-library/jest-dom/vitest';
 
 afterEach(() => cleanup());
 
+// matchMedia untuk jsdom (dipakai applySettings mode 'system').
+if (typeof window.matchMedia !== 'function') {
+  window.matchMedia = (query: string) =>
+    ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      dispatchEvent: () => false,
+    }) as MediaQueryList;
+}
+
 // Polyfill minimal untuk pdfjs-dist yang dirujuk saat import modul viewer
 // di environment test (jsdom). Matriks identitas cukup untuk import-time.
 if (typeof globalThis.DOMMatrix === 'undefined') {
