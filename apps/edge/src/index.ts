@@ -4,9 +4,17 @@ import { parseSauhResult, parseTrueVoiceFeed } from '@gysapp/contracts';
 import { createChordApp } from './chords';
 import { normalizeSauhPosts } from './content/sauh';
 import { extractAuthorFromHtml, parseSuaraSejatiPage } from './content/suara-sejati';
+import { parseTableLinks } from './content/literature';
 
 const TJC_WP_POSTS = 'https://tjc.org/id/wp-json/wp/v2/posts';
 const TJC_SUARA_SEJATI = 'https://tjc.org/id/suarasejati/';
+const TJC_LITERATUR = 'https://tjc.org/id/literatur/';
+const TJC_WARTA = 'https://tjc.org/id/literatur/warta-sejati/';
+
+// Selector dari config Flutter (config_literature) — tetap di BFF agar
+// perubahan markup terdeteksi oleh contract test, bukan oleh pengguna.
+const KESAKSIAN_SELECTOR = '#posts-table-1 > tbody > tr > td > a';
+const RENUNGAN_SELECTOR = '#posts-table-3 > tbody > tr > td > a';
 
 export function createApp(opts: { fetchImpl?: typeof fetch; now?: () => Date } = {}) {
   const app = new Hono();
@@ -92,6 +100,42 @@ export function createApp(opts: { fetchImpl?: typeof fetch; now?: () => Date } =
       return c.json({ error: 'author-unavailable' });
     }
   });
+
+  const literatureFeed = (
+    path: string,
+    upstream: string,
+    errorKey: string,
+    parse: (html: string) => ReturnType<typeof parseSuaraSejatiPage>,
+  ) => {
+    app.get(path, async (c) => {
+      try {
+        const html = await fetchImpl(upstream, {
+          headers: { 'user-agent': 'gysapp-bff/0.1' },
+        }).then(async (r) => {
+          if (!r.ok) throw new Error(`upstream ${r.status}`);
+          return r.text();
+        });
+        const items = parse(html);
+        c.header('Cache-Control', 'public, max-age=600, stale-while-revalidate=3600');
+        const body = parseTrueVoiceFeed({ items, fetchedAt: now().toISOString() });
+        return c.json(body);
+      } catch (err) {
+        c.status(502);
+        return c.json({
+          error: errorKey,
+          message: err instanceof Error ? err.message : String(err),
+        });
+      }
+    });
+  };
+
+  literatureFeed('/api/content/kesaksian', TJC_LITERATUR, 'kesaksian-unavailable', (html) =>
+    parseTableLinks(html, KESAKSIAN_SELECTOR),
+  );
+  literatureFeed('/api/content/warta', TJC_WARTA, 'warta-unavailable', parseSuaraSejatiPage);
+  literatureFeed('/api/content/renungan', TJC_LITERATUR, 'renungan-unavailable', (html) =>
+    parseTableLinks(html, RENUNGAN_SELECTOR),
+  );
 
   return app;
 }

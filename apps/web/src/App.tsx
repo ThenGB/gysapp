@@ -7,7 +7,9 @@ import { BiblePage } from './features/bible/bible-page';
 import { BibleSearchPage } from './features/bible/bible-search';
 import { HymnalListPage } from './features/hymnal/hymnal-list';
 import { SongViewer } from './features/hymnal/song-viewer';
-import { PlaceholderPage } from './ui/placeholder';
+import { FaithPage } from './features/faith/faith-page';
+import { MorePage } from './features/more/more-page';
+import { LiteratureFeedPage } from './features/more/literature-feed';
 
 const router = createBrowserRouter([
   {
@@ -31,8 +33,9 @@ const router = createBrowserRouter([
           { path: ':book/:song', element: <SongViewer /> },
         ],
       },
-      { path: 'faith', element: <PlaceholderPage title="Iman" /> },
-      { path: 'more', element: <PlaceholderPage title="Lainnya" /> },
+      { path: 'faith', element: <FaithPage /> },
+      { path: 'more', element: <MorePage /> },
+      { path: 'literature/:kind', element: <LiteratureFeedPage /> },
     ],
   },
 ]);
