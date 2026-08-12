@@ -6,7 +6,9 @@ import {
   Feather,
   DownloadSimple,
   Gear,
+  PaperPlaneTilt,
   PencilLine,
+  UserCircle,
 } from '@phosphor-icons/react';
 import './more.css';
 
@@ -95,6 +97,18 @@ export function MorePage() {
             <Link to="/settings" className="more-card">
               <Gear size={26} aria-hidden="true" />
               <span>Pengaturan</span>
+            </Link>
+          </li>
+          <li>
+            <Link to="/account" className="more-card">
+              <UserCircle size={26} aria-hidden="true" />
+              <span>Akun</span>
+            </Link>
+          </li>
+          <li>
+            <Link to="/report" className="more-card">
+              <PaperPlaneTilt size={26} aria-hidden="true" />
+              <span>Kirim Masukan</span>
             </Link>
           </li>
         </ul>

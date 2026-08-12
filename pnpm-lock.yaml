@@ -17,6 +17,9 @@ importers:
       '@gysapp/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@gysapp/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       cheerio:
         specifier: ^1.1.0
         version: 1.2.0

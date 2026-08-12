@@ -11,6 +11,8 @@ import { FaithPage } from './features/faith/faith-page';
 import { MorePage } from './features/more/more-page';
 import { LiteratureFeedPage } from './features/more/literature-feed';
 import { SettingsPage } from './features/settings/settings-page';
+import { AccountPage } from './features/account/account-page';
+import { ReportPage } from './features/account/report-page';
 import { applySettings, loadSettings } from './features/settings/settings-store';
 import { subscribeSettings } from './i18n';
 
@@ -41,6 +43,8 @@ const router = createBrowserRouter(
         { path: 'more', element: <MorePage /> },
         { path: 'literature/:kind', element: <LiteratureFeedPage /> },
         { path: 'settings', element: <SettingsPage /> },
+        { path: 'account', element: <AccountPage /> },
+        { path: 'report', element: <ReportPage /> },
       ],
     },
   ],

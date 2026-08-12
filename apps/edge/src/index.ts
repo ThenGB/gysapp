@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { parseSauhResult, parseTrueVoiceFeed } from '@gysapp/contracts';
 import { createChordApp } from './chords';
+import { createAuthApp } from './auth';
+import { createReportApp } from './report';
 import { normalizeSauhPosts } from './content/sauh';
 import { extractAuthorFromHtml, parseSuaraSejatiPage } from './content/suara-sejati';
 import { parseTableLinks } from './content/literature';
@@ -16,20 +18,46 @@ const TJC_WARTA = 'https://tjc.org/id/literatur/warta-sejati/';
 const KESAKSIAN_SELECTOR = '#posts-table-1 > tbody > tr > td > a';
 const RENUNGAN_SELECTOR = '#posts-table-3 > tbody > tr > td > a';
 
-export function createApp(opts: { fetchImpl?: typeof fetch; now?: () => Date } = {}) {
+export function createApp(
+  opts: {
+    fetchImpl?: typeof fetch;
+    now?: () => Date;
+    sessionSecret?: string;
+    googleClientId?: string;
+    googleClientSecret?: string;
+    secureCookie?: boolean;
+    reportWebhookUrl?: string;
+  } = {},
+) {
   const app = new Hono();
   const now = opts.now ?? (() => new Date());
   const fetchImpl = opts.fetchImpl ?? globalThis.fetch.bind(globalThis);
+  const sessionSecret = opts.sessionSecret ?? 'dev-session-secret-change-me';
+  const googleClientId = opts.googleClientId ?? process.env.GOOGLE_CLIENT_ID;
+  const googleClientSecret = opts.googleClientSecret ?? process.env.GOOGLE_CLIENT_SECRET;
+  const reportWebhookUrl = opts.reportWebhookUrl ?? process.env.REPORT_WEBHOOK_URL;
 
   app.use(
     '/api/*',
     cors({
-      origin: ['https://gysapp.pages.dev', 'http://localhost:5173'],
+      origin: ['https://gysapp.pages.dev', 'https://gyspnk.github.io', 'http://localhost:5173'],
+      credentials: true,
       maxAge: 86400,
     }),
   );
 
   app.route('/api/chords', createChordApp({ fetchImpl }));
+  app.route(
+    '/api/auth',
+    createAuthApp({
+      fetchImpl,
+      sessionSecret,
+      googleClientId,
+      googleClientSecret,
+      secureCookie: opts.secureCookie,
+    }),
+  );
+  app.route('/api/report', createReportApp({ fetchImpl, webhookUrl: reportWebhookUrl }));
 
   app.get('/health', (c) => c.json({ ok: true, ts: now().toISOString() }));
 

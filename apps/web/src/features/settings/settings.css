@@ -127,3 +127,31 @@
   justify-content: flex-end;
   gap: var(--space-3);
 }
+
+.account-profile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.account-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+}
+
+.account-name {
+  margin: 0;
+  font-weight: 800;
+}
+
+.account-email {
+  margin: 0;
+  color: var(--text-tertiary);
+}
+
+.report-message {
+  min-height: 140px;
+  resize: vertical;
+  font-family: var(--font-ui);
+}
