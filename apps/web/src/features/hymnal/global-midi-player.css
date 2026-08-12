@@ -1,0 +1,31 @@
+.global-midi-dock {
+  position: fixed;
+  z-index: 38;
+  inset-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right));
+  bottom: calc(var(--nav-height) + 16px + env(safe-area-inset-bottom));
+  pointer-events: none;
+}
+
+.global-midi-dock .midi-player {
+  width: min(760px, 100%);
+  margin: 0 auto;
+  pointer-events: auto;
+  box-shadow: 0 12px 36px rgba(20, 27, 36, 0.16);
+  backdrop-filter: blur(16px);
+  background: color-mix(in srgb, var(--surface-raised) 96%, transparent);
+}
+
+@media (min-width: 600px) {
+  .global-midi-dock {
+    inset-inline-start: calc(var(--rail-width) + var(--space-4));
+    inset-inline-end: var(--space-4);
+    bottom: var(--space-4);
+  }
+}
+
+@media (min-width: 960px) {
+  .global-midi-dock {
+    inset-inline-start: calc(var(--sidebar-width) + var(--space-5));
+    inset-inline-end: var(--space-5);
+  }
+}
