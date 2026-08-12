@@ -26,5 +26,13 @@ describe('i18n dictionaries', () => {
     expect(t('sendFeedback', 'id')).toBe('Kirim Masukan');
     expect(t('sendFeedback', 'en')).toBe('Send Feedback');
     expect(t('sendFeedback', 'zh')).toBe('发送反馈');
+
+    expect(t('notesTitle', 'id')).toBe('Catatan');
+    expect(t('notesTitle', 'en')).toBe('Notes');
+    expect(t('notesTitle', 'zh')).toBe('笔记');
+
+    expect(t('searchHymn', 'id')).toBe('Cari pujian');
+    expect(t('searchHymn', 'en')).toBe('Search hymns');
+    expect(t('searchHymn', 'zh')).toBe('搜索赞美诗');
   });
 });

@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Trash } from '@phosphor-icons/react';
+import { useT, type TranslationKey } from '../../i18n';
 import { addNote, deleteNote, loadNotes, type NoteKind } from './notes-store';
 import '../settings/settings.css';
 
-const KINDS: Array<{ value: NoteKind; label: string }> = [
-  { value: 'bible', label: 'Catatan Alkitab' },
-  { value: 'faith', label: 'Catatan Iman' },
-  { value: 'song', label: 'Catatan Pujian' },
+const KINDS: Array<{ value: NoteKind; labelKey: TranslationKey }> = [
+  { value: 'bible', labelKey: 'bibleNotes' },
+  { value: 'faith', labelKey: 'faithNotes' },
+  { value: 'song', labelKey: 'hymnNotes' },
 ];
 
 export function NotesPage() {
+  const { t } = useT();
   const { kind = 'bible' } = useParams();
   const active = (KINDS.some((k) => k.value === kind) ? kind : 'bible') as NoteKind;
   const [notes, setNotes] = useState(loadNotes);
@@ -25,7 +27,7 @@ export function NotesPage() {
     addNote({
       kind: active,
       target: target.trim(),
-      title: title.trim() || 'Tanpa judul',
+      title: title.trim() || t('untitled'),
       text: text.trim(),
     });
     setNotes(loadNotes());
@@ -36,20 +38,20 @@ export function NotesPage() {
   return (
     <div className="content-shell settings-page">
       <div className="bible-toolbar">
-        <Link to="/more" className="icon-btn" aria-label="Kembali">
+        <Link to="/more" className="icon-btn" aria-label={t('back')}>
           <ArrowLeft size={22} aria-hidden="true" />
         </Link>
-        <h1 className="bible-search-title">Catatan</h1>
+        <h1 className="bible-search-title">{t('notesTitle')}</h1>
       </div>
 
-      <div className="faith-lang-tabs" role="group" aria-label="Jenis catatan">
+      <div className="faith-lang-tabs" role="group" aria-label={t('noteKind')}>
         {KINDS.map((k) => (
           <Link
             key={k.value}
             to={`/notes/${k.value}`}
             className={`chip${active === k.value ? ' chip-active' : ''}`}
           >
-            {k.label}
+            {t(k.labelKey)}
           </Link>
         ))}
       </div>
@@ -63,28 +65,28 @@ export function NotesPage() {
       >
         <input
           className="faith-search"
-          placeholder="Rujukan (mis. Kejadian 1:1, KR 001)…"
-          aria-label="Rujukan"
+          placeholder={t('noteReferencePlaceholder')}
+          aria-label={t('noteReference')}
           value={target}
           onChange={(e) => setTarget(e.target.value)}
         />
         <input
           className="faith-search"
-          placeholder="Judul…"
-          aria-label="Judul catatan"
+          placeholder={t('noteTitlePlaceholder')}
+          aria-label={t('noteTitle')}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
         <textarea
           className="faith-search report-message"
           rows={4}
-          placeholder="Isi catatan…"
-          aria-label="Isi catatan"
+          placeholder={t('noteBodyPlaceholder')}
+          aria-label={t('noteBody')}
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
         <button type="submit" className="btn-primary">
-          Simpan catatan
+          {t('saveNote')}
         </button>
       </form>
 
@@ -97,7 +99,7 @@ export function NotesPage() {
               <button
                 type="button"
                 className="icon-btn playlist-remove"
-                aria-label={`Hapus catatan ${note.title}`}
+                aria-label={`${t('deleteNote')} ${note.title}`}
                 onClick={() => {
                   deleteNote(note.id);
                   setNotes(loadNotes());
@@ -110,7 +112,7 @@ export function NotesPage() {
           </li>
         ))}
       </ul>
-      {filtered.length === 0 && <p className="faith-empty">Belum ada catatan.</p>}
+      {filtered.length === 0 && <p className="faith-empty">{t('noNotes')}</p>}
     </div>
   );
 }

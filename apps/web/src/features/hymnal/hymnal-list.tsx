@@ -2,11 +2,13 @@ import { useDeferredValue, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MusicNotes, MagnifyingGlass } from '@phosphor-icons/react';
 import { useQuery } from '@tanstack/react-query';
+import { useT } from '../../i18n';
 import { hymnalCatalog } from '../../data/hymnal/hymnal-catalog';
 import { PlaylistBar } from './playlist-bar';
 import './song-viewer.css';
 
 export function HymnalListPage() {
+  const { t } = useT();
   const [book, setBook] = useState('KR');
   const [term, setTerm] = useState('');
   const deferredTerm = useDeferredValue(term);
@@ -35,9 +37,9 @@ export function HymnalListPage() {
 
   return (
     <div className="content-shell song-page">
-      <h1 className="section-title">Pujian</h1>
+      <h1 className="section-title">{t('hymnal')}</h1>
 
-      <div className="bible-testament-tabs" role="group" aria-label="Pilih buku kidung">
+      <div className="bible-testament-tabs" role="group" aria-label={t('selectHymnalBook')}>
         {booksQuery.data?.map((b) => (
           <button
             key={b.code}
@@ -57,8 +59,8 @@ export function HymnalListPage() {
           className="bible-search-input"
           type="search"
           value={term}
-          placeholder={`Cari di ${book} (nomor / judul / lirik)…`}
-          aria-label="Cari pujian"
+          placeholder={`${t('searchIn')} ${book} (${t('numberTitleLyrics')})…`}
+          aria-label={t('searchHymn')}
           onChange={(e) => setTerm(e.target.value)}
         />
       </div>
@@ -76,7 +78,7 @@ export function HymnalListPage() {
           </li>
         ))}
       </ul>
-      {songs.length === 0 && <p className="faith-empty">Tidak ditemukan pujian yang cocok.</p>}
+      {songs.length === 0 && <p className="faith-empty">{t('noMatchingHymns')}</p>}
 
       {booksQuery.data && (
         <PlaylistBar
