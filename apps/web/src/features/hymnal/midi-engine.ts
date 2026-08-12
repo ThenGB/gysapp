@@ -1,6 +1,7 @@
 import {
   applyInstrumentOverride,
   encodeSmf,
+  firstTempoMpqn,
   parseSmf,
   scaleTempo,
   transposeNotes,
@@ -14,6 +15,7 @@ export interface MidiLoadOptions {
   transpose?: number;
   instrument?: number;
   autoplay?: boolean;
+  tempoBpm?: number;
   onProgress?: (pct: number) => void;
 }
 
@@ -69,8 +71,52 @@ export class MidiEngine {
   private sfLoading: Promise<void> | null = null;
 
   private onStateChange: ((status: MidiStatus) => void) | null = null;
+  private currentUrl: string | null = null;
+  private transpose = 0;
+  private instrument = -1;
+  private baseBpm = 120;
+  private tempoBpm = 120;
 
   constructor(private readonly soundfontUrl: string) {}
+
+  getTranspose(): number {
+    return this.transpose;
+  }
+
+  getTempoBpm(): number {
+    return this.tempoBpm;
+  }
+
+  /** Transpose ulang lagu aktif tanpa mengubah posisi (render baru). */
+  async setTranspose(step: number): Promise<void> {
+    const url = this.currentUrl;
+    if (!url) return;
+    const wasPlaying = this.status === 'playing';
+    const position = this.getTime();
+    this.transpose = step;
+    await this.loadMidi({ url, transpose: step, instrument: this.instrument, autoplay: false });
+    this.seek(position);
+    if (wasPlaying) this.play();
+  }
+
+  /** Ubah tempo (BPM); rate != 1 memicu render tempo-scaled (tanpa cache). */
+  async setTempoBpm(bpm: number): Promise<void> {
+    const clamped = Math.max(30, Math.min(220, Math.round(bpm)));
+    const url = this.currentUrl;
+    this.tempoBpm = clamped;
+    if (!url || this.baseBpm <= 0) return;
+    const wasPlaying = this.status === 'playing';
+    const position = this.getTime();
+    await this.loadMidi({
+      url,
+      transpose: this.transpose,
+      instrument: this.instrument,
+      autoplay: false,
+      tempoBpm: clamped,
+    });
+    this.seek(position);
+    if (wasPlaying) this.play();
+  }
 
   setStateListener(fn: ((status: MidiStatus) => void) | null): void {
     this.onStateChange = fn;
@@ -185,18 +231,24 @@ export class MidiEngine {
   async loadMidi(options: MidiLoadOptions): Promise<{ duration: number }> {
     const transpose = options.transpose ?? 0;
     const instrument = options.instrument ?? -1;
+    const tempoBpm = options.tempoBpm ?? this.tempoBpm;
     const key = cacheKey(options.url, transpose, instrument);
 
     await this.loadSoundFont();
     this.ensureContext();
 
     const cached = this.cache.get(key);
-    let entry: CacheEntry;
-    if (cached) {
+    let entry: CacheEntry | null = null;
+    const tempoRate = this.baseBpm > 0 ? tempoBpm / this.baseBpm : 1;
+    const tempoNeutral = Math.abs(tempoRate - 1) < 1e-4;
+
+    // Cache hanya menyimpan render tempo-neutral (kontrak gyschordweb).
+    if (tempoNeutral && cached) {
       entry = cached;
       this.cache.delete(key);
       this.cache.set(key, entry); // LRU touch
-    } else {
+    }
+    if (!entry) {
       this.setStatus('loading');
       options.onProgress?.(5);
       const raw = await fetch(options.url).then(async (r) => {
@@ -205,8 +257,14 @@ export class MidiEngine {
       });
       options.onProgress?.(15);
       const doc = parseSmf(raw);
+      const detectedBpm = Math.round(60_000_000 / firstTempoMpqn(doc));
+      if (this.currentUrl !== options.url || tempoNeutral) {
+        this.baseBpm = detectedBpm;
+        this.tempoBpm = tempoNeutral ? detectedBpm : tempoBpm;
+      }
+      const scaled = scaleTempo(doc, this.baseBpm > 0 ? this.tempoBpm / this.baseBpm : 1);
       const prepared = applyInstrumentOverride(
-        transposeNotes(scaleTempo(doc, 1) ?? doc, transpose),
+        transposeNotes(scaled ?? doc, transpose),
         instrument >= 0 ? instrument : null,
       );
       const bytes = encodeSmf(prepared);
@@ -218,9 +276,14 @@ export class MidiEngine {
         [bytes.buffer.slice(0)],
       )) as { buffer: AudioBuffer; duration: number };
       const bytesCount = result.buffer.length * result.buffer.numberOfChannels * 4;
-      entry = { buffer: result.buffer, transpose, instrument, bytes: bytesCount };
-      this.putCache(key, entry);
+      const fresh: CacheEntry = { buffer: result.buffer, transpose, instrument, bytes: bytesCount };
+      if (tempoNeutral) this.putCache(key, fresh);
+      entry = fresh;
     }
+
+    this.currentUrl = options.url;
+    this.transpose = transpose;
+    this.instrument = instrument;
 
     const deck = this.startDeck(entry.buffer, 0, 0);
     this.deck = deck;

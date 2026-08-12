@@ -177,3 +177,30 @@
   display: flex;
   gap: var(--space-2);
 }
+
+.midi-param-row {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+.midi-param {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.midi-param-value {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 7ch;
+  text-align: center;
+}
+
+.icon-btn.mini {
+  width: 36px;
+  height: 36px;
+  font-size: var(--text-md);
+}

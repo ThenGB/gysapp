@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pause, Play, SkipBack, SkipForward } from '@phosphor-icons/react';
+import { MusicNotes, Pause, Play, SkipBack, SkipForward } from '@phosphor-icons/react';
 import { assetUrl } from '../../lib/asset-url';
 import { midiEngine, type MidiStatus } from './midi-engine';
 import './song-viewer.css';
@@ -21,6 +21,8 @@ export function MiniMidiPlayer() {
   const [duration, setDuration] = useState(0);
   const [loadingPct, setLoadingPct] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [transpose, setTranspose] = useState(0);
+  const [tempo, setTempo] = useState(120);
 
   useEffect(() => {
     midiEngine.setStateListener(setStatus);
@@ -48,9 +50,11 @@ export function MiniMidiPlayer() {
     }
     void midiEngine
       .loadMidi({ url: DEMO_MIDI, autoplay: true, onProgress: setLoadingPct })
-      .then(({ duration }) => {
-        setDuration(duration);
+      .then(({ duration: d }) => {
+        setDuration(d);
         setTime(0);
+        setTempo(midiEngine.getTempoBpm());
+        setTranspose(midiEngine.getTranspose());
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
   }, []);
@@ -60,8 +64,27 @@ export function MiniMidiPlayer() {
     setTime(value);
   }, []);
 
+  const bumpTranspose = useCallback(
+    (delta: number) => {
+      const next = Math.max(-11, Math.min(11, transpose + delta));
+      setTranspose(next);
+      void midiEngine.setTranspose(next).catch(() => undefined);
+    },
+    [transpose],
+  );
+
+  const bumpTempo = useCallback(
+    (delta: number) => {
+      const next = Math.max(30, Math.min(220, tempo + delta));
+      setTempo(next);
+      void midiEngine.setTempoBpm(next).catch(() => undefined);
+    },
+    [tempo],
+  );
+
   const loading = status === 'loading';
   const playing = status === 'playing';
+  const hasSong = duration > 0;
 
   return (
     <div className="midi-player" aria-label="Pemutar MIDI">
@@ -75,7 +98,9 @@ export function MiniMidiPlayer() {
         {playing ? <Pause size={22} aria-hidden="true" /> : <Play size={22} aria-hidden="true" />}
       </button>
       <div className="midi-info">
-        <span className="midi-title">KR 001 â€” demo</span>
+        <span className="midi-title">
+          <MusicNotes size={16} aria-hidden="true" /> KR 001 — demo
+        </span>
         <div className="midi-seek">
           <input
             type="range"
@@ -84,10 +109,10 @@ export function MiniMidiPlayer() {
             step={0.1}
             value={Math.min(time, duration || 0)}
             aria-label="Posisi pemutaran"
-            disabled={duration === 0}
+            disabled={!hasSong}
             onChange={(e) => onSeek(Number(e.target.value))}
           />
-          {loading && <span className="midi-loading">memuatâ€¦ {Math.round(loadingPct)}%</span>}
+          {loading && <span className="midi-loading">memuat… {Math.round(loadingPct)}%</span>}
           {error && (
             <span className="midi-error" role="alert">
               {error}
@@ -97,6 +122,48 @@ export function MiniMidiPlayer() {
         <span className="midi-time">
           {formatTime(time)} / {formatTime(duration)}
         </span>
+        <div className="midi-param-row">
+          <div className="midi-param">
+            <button
+              type="button"
+              className="icon-btn mini"
+              aria-label="Turunkan nada"
+              onClick={() => bumpTranspose(-1)}
+            >
+              −
+            </button>
+            <span className="midi-param-value">
+              Nada {transpose > 0 ? `+${transpose}` : transpose}
+            </span>
+            <button
+              type="button"
+              className="icon-btn mini"
+              aria-label="Naikkan nada"
+              onClick={() => bumpTranspose(1)}
+            >
+              +
+            </button>
+          </div>
+          <div className="midi-param">
+            <button
+              type="button"
+              className="icon-btn mini"
+              aria-label="Perlambat tempo"
+              onClick={() => bumpTempo(-5)}
+            >
+              −
+            </button>
+            <span className="midi-param-value">{tempo} BPM</span>
+            <button
+              type="button"
+              className="icon-btn mini"
+              aria-label="Percepat tempo"
+              onClick={() => bumpTempo(5)}
+            >
+              +
+            </button>
+          </div>
+        </div>
       </div>
       <div className="midi-aux" aria-hidden="true">
         <button type="button" className="icon-btn" aria-label="Lagu sebelumnya" disabled>

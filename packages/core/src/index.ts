@@ -12,6 +12,7 @@ export * from './midi/writer';
 export * from './midi/tempo';
 export * from './midi/transform';
 export * from './backup/encrypt';
+export * from './playlist/playlist';
 export * from './cache/blob-store';
 export * from './cache/chord-index';
 export * from './cache/chord-lazy-cache';

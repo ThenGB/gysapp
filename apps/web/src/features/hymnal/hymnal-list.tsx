@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { MusicNotes } from '@phosphor-icons/react';
+import { PlaylistBar } from './playlist-bar';
 import './song-viewer.css';
 
 /** Daftar pujian demo. Versi final: katalog dari index JSON + asset manager. */
@@ -24,6 +25,7 @@ export function HymnalListPage() {
       <p className="song-empty-sub">
         Paket demo: 1 lagu. Katalog penuh menyusul bersama asset manager.
       </p>
+      <PlaylistBar song={DEMO_SONGS[0]} />
     </div>
   );
 }
