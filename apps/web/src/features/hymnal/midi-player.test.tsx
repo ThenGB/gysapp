@@ -113,13 +113,7 @@ describe('MiniMidiPlayer', () => {
     const onPrevious = vi.fn(() => true);
     const onNext = vi.fn(() => true);
     render(
-      <MiniMidiPlayer
-        compact
-        url="/x.mid"
-        title="X"
-        onPrevious={onPrevious}
-        onNext={onNext}
-      />,
+      <MiniMidiPlayer compact url="/x.mid" title="X" onPrevious={onPrevious} onNext={onNext} />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Lagu sebelumnya' }));
@@ -148,9 +142,7 @@ describe('MiniMidiPlayer', () => {
   it('continues playback automatically when skipping while playing', async () => {
     mockEngine.getStatus.mockReturnValue('playing');
     const onNext = vi.fn(() => true);
-    const { rerender } = render(
-      <MiniMidiPlayer compact url="/a.mid" title="A" onNext={onNext} />,
-    );
+    const { rerender } = render(<MiniMidiPlayer compact url="/a.mid" title="A" onNext={onNext} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Lagu berikutnya' }));
     await act(async () => undefined);

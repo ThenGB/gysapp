@@ -78,13 +78,11 @@ export class HymnalCatalogPort {
             const songs = await this.loadSongs(book.code);
             return songs
               .filter((song) => Boolean(song.midiFile))
-              .map(
-                (song): SongRef => ({
-                  book: book.code,
-                  number: song.number,
-                  title: song.title,
-                }),
-              );
+              .map((song): SongRef => ({
+                book: book.code,
+                number: song.number,
+                title: song.title,
+              }));
           }),
         );
         return groups.flat();
