@@ -33,7 +33,7 @@ async function loadChordDoc(book: string, song: string): Promise<ChordDocument |
 
 export function SongViewer() {
   const { book = 'KR', song = '001' } = useParams();
-  const [mode, setMode] = useState<Mode>('pdf');
+  const [mode, setMode] = useState<Mode>(book === 'KR' ? 'pdf' : 'text');
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [chordedLines, setChordedLines] = useState<ChordedLine[]>([]);
   const [resolved, setResolved] = useState<ResolvedSong | null>(null);
@@ -149,9 +149,12 @@ export function SongViewer() {
       {mode === 'pdf' && (
         <div className="song-pdf">
           {pdfError ? (
-            <p className="song-error" role="alert">
-              Partitur gagal dimuat: {pdfError}
-            </p>
+            <div className="song-pdf-fallback">
+              <p className="song-error" role="alert">
+                Partitur belum tersedia untuk buku ini — menampilkan lirik.
+              </p>
+              <LyricsVerses verses={resolved?.entry.verses ?? []} />
+            </div>
           ) : (
             <canvas
               ref={canvasRef}
@@ -162,12 +165,37 @@ export function SongViewer() {
         </div>
       )}
 
-      {mode === 'text' && <ChordedTextLines lines={chordedLines} />}
+      {mode === 'text' &&
+        (chordedLines.length > 0 ? (
+          <ChordedTextLines lines={chordedLines} />
+        ) : (
+          <LyricsVerses verses={resolved?.entry.verses ?? []} />
+        ))}
 
       <MiniMidiPlayer
         url={resolved?.midiUrl ?? null}
         title={resolved ? `${book} ${resolved.entry.number} — ${resolved.entry.title}` : 'Pujian'}
       />
+    </div>
+  );
+}
+
+/** Baris lirik polos (fallback buku tanpa partitur / chord). */
+function LyricsVerses({ verses }: { verses: string[] }) {
+  if (verses.length === 0) {
+    return (
+      <div className="song-lyrics song-empty">
+        <p>Lirik belum tersedia.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="song-lyrics">
+      {verses.map((verse, i) => (
+        <div key={i} className="song-line">
+          <p className="song-line-text song-verse-block">{verse}</p>
+        </div>
+      ))}
     </div>
   );
 }

@@ -18,12 +18,15 @@ const toIndexName = (name) => name.replace(/ /g, '_');
 
 let pdfCount = 0;
 let midiCount = 0;
+// gyschordweb hanya menyediakan katalog KR; simpan per folder buku agar
+// cocok dengan index (pdfFile = 'pdf/kr/...'). Buku lain (HYMNE/MDR/ASM)
+// tidak punya partitur/MIDI di katalog ini -> mode teks dari index.
 for (const kind of [
-  ['pdf', pdfDir],
-  ['midi', midiDir],
+  ['pdf', pdfDir, 'kr'],
+  ['midi', midiDir, 'kr'],
 ]) {
-  const [folder, src] = kind;
-  const dest = join(out, folder);
+  const [folder, src, book] = kind;
+  const dest = join(out, folder, book);
   await mkdir(dest, { recursive: true });
   for (const file of await readdir(src)) {
     if (!file.endsWith('.pdf') && !file.endsWith('.mid')) continue;
