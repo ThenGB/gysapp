@@ -1,0 +1,183 @@
+name: Localize Hymnal Viewer
+
+on:
+  push:
+    branches:
+      - feature/bible-mobile-parity
+
+permissions:
+  contents: write
+
+jobs:
+  localize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feature/bible-mobile-parity
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Localize Hymnal viewer chrome
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          i18n = Path('apps/web/src/i18n/index.ts')
+          text = i18n.read_text()
+          inserts = {
+            "    deleteThisPlaylist: 'Hapus playlist ini',\n": """    deleteThisPlaylist: 'Hapus playlist ini',
+              hymnNotFound: 'Pujian tidak ditemukan',
+              score: 'Partitur',
+              textAndChord: 'Teks & Chord',
+              hymnViewControls: 'Kontrol tampilan pujian',
+              onePage: '1 halaman',
+              twoPages: '2 halaman',
+              fittingMode: 'Mode fitting',
+              fitPage: 'Fit halaman',
+              fitWidth: 'Fit lebar',
+              scoreZoom: 'Zoom partitur',
+              decreaseScore: 'Perkecil partitur',
+              increaseScore: 'Perbesar partitur',
+              sharp: 'Sharp',
+              flat: 'Mol',
+              transposeHymn: 'Transpose pujian',
+              lowerHymnKey: 'Turunkan nada pujian',
+              keyLabel: 'Nada',
+              raiseHymnKey: 'Naikkan nada pujian',
+              landscapeTwoPageHint: 'Untuk 2 halaman di layar kecil, gunakan posisi landscape agar partitur lebih nyaman dibaca.',
+              scoreUnavailableLyrics: 'Partitur belum tersedia untuk buku ini — menampilkan lirik.',
+              pageLabel: 'halaman',
+              lyricsUnavailable: 'Lirik belum tersedia.',
+              chordUnavailable: 'Belum ada data chord untuk lagu ini.',
+              chordLazyHint: 'Chord dimuat otomatis saat lagu dibuka (lazy cache).',
+          """,
+            "    deleteThisPlaylist: 'Delete this playlist',\n": """    deleteThisPlaylist: 'Delete this playlist',
+              hymnNotFound: 'Hymn not found',
+              score: 'Score',
+              textAndChord: 'Text & Chords',
+              hymnViewControls: 'Hymn display controls',
+              onePage: '1 page',
+              twoPages: '2 pages',
+              fittingMode: 'Fit mode',
+              fitPage: 'Fit page',
+              fitWidth: 'Fit width',
+              scoreZoom: 'Score zoom',
+              decreaseScore: 'Zoom score out',
+              increaseScore: 'Zoom score in',
+              sharp: 'Sharp',
+              flat: 'Flat',
+              transposeHymn: 'Transpose hymn',
+              lowerHymnKey: 'Lower hymn key',
+              keyLabel: 'Key',
+              raiseHymnKey: 'Raise hymn key',
+              landscapeTwoPageHint: 'For two pages on a small screen, use landscape orientation for more comfortable reading.',
+              scoreUnavailableLyrics: 'The score is not available for this book — showing lyrics instead.',
+              pageLabel: 'page',
+              lyricsUnavailable: 'Lyrics are not available yet.',
+              chordUnavailable: 'Chord data is not available for this hymn yet.',
+              chordLazyHint: 'Chords load automatically when the hymn is opened (lazy cache).',
+          """,
+            "    deleteThisPlaylist: '删除此播放列表',\n": """    deleteThisPlaylist: '删除此播放列表',
+              hymnNotFound: '未找到赞美诗',
+              score: '乐谱',
+              textAndChord: '歌词与和弦',
+              hymnViewControls: '赞美诗显示控制',
+              onePage: '1 页',
+              twoPages: '2 页',
+              fittingMode: '适配模式',
+              fitPage: '整页适配',
+              fitWidth: '宽度适配',
+              scoreZoom: '乐谱缩放',
+              decreaseScore: '缩小乐谱',
+              increaseScore: '放大乐谱',
+              sharp: '升号',
+              flat: '降号',
+              transposeHymn: '赞美诗移调',
+              lowerHymnKey: '降低赞美诗调性',
+              keyLabel: '调性',
+              raiseHymnKey: '提高赞美诗调性',
+              landscapeTwoPageHint: '小屏幕显示两页时，请使用横屏方向以便更舒适地阅读乐谱。',
+              scoreUnavailableLyrics: '此诗集暂时没有乐谱 — 改为显示歌词。',
+              pageLabel: '页',
+              lyricsUnavailable: '暂无歌词。',
+              chordUnavailable: '此赞美诗暂无和弦数据。',
+              chordLazyHint: '打开赞美诗时会自动加载和弦（延迟缓存）。',
+          """,
+          }
+          for old, new in inserts.items():
+              if old not in text:
+                  raise SystemExit(f'viewer i18n anchor missing: {old!r}')
+              text = text.replace(old, new, 1)
+          i18n.write_text(text)
+
+          viewer = Path('apps/web/src/features/hymnal/song-viewer.tsx')
+          text = viewer.read_text()
+          replacements = [
+            ("import { offlineMediaCache } from '../../platform/offline-media-cache';\n", "import { offlineMediaCache } from '../../platform/offline-media-cache';\nimport { useT } from '../../i18n';\n"),
+            ("export function SongViewer() {\n  const { book = 'KR', song = '001' } = useParams();", "export function SongViewer() {\n  const { t } = useT();\n  const { book = 'KR', song = '001' } = useParams();"),
+            ('<h1 className="section-title">Pujian tidak ditemukan</h1>', '<h1 className="section-title">{t(\'hymnNotFound\')}</h1>'),
+            ('            Partitur\n', "            {t('score')}\n"),
+            ('            Teks & Chord\n', "            {t('textAndChord')}\n"),
+            ('aria-label="Kontrol tampilan pujian"', "aria-label={t('hymnViewControls')}"),
+            ('                1 halaman\n', "                {t('onePage')}\n"),
+            ('                2 halaman\n', "                {t('twoPages')}\n"),
+            ('aria-label="Mode fitting"', "aria-label={t('fittingMode')}"),
+            ('                Fit halaman\n', "                {t('fitPage')}\n"),
+            ('                Fit lebar\n', "                {t('fitWidth')}\n"),
+            ('aria-label="Zoom partitur"', "aria-label={t('scoreZoom')}"),
+            ('aria-label="Perkecil partitur"', "aria-label={t('decreaseScore')}"),
+            ('aria-label="Perbesar partitur"', "aria-label={t('increaseScore')}"),
+            ('            ♯ Sharp\n', "            ♯ {t('sharp')}\n"),
+            ('            ♭ Mol\n', "            ♭ {t('flat')}\n"),
+            ('aria-label="Transpose pujian"', "aria-label={t('transposeHymn')}"),
+            ('aria-label="Turunkan nada pujian"', "aria-label={t('lowerHymnKey')}"),
+            ('          <span>Nada {transposeStep > 0 ? `+${transposeStep}` : transposeStep}</span>', "          <span>{t('keyLabel')} {transposeStep > 0 ? `+${transposeStep}` : transposeStep}</span>"),
+            ('aria-label="Naikkan nada pujian"', "aria-label={t('raiseHymnKey')}"),
+            ("          Untuk 2 halaman di layar kecil, gunakan posisi landscape agar partitur lebih nyaman\n          dibaca.\n", "          {t('landscapeTwoPageHint')}\n"),
+            ('                Partitur belum tersedia untuk buku ini — menampilkan lirik.\n', "                {t('scoreUnavailableLyrics')}\n"),
+            ('aria-label={`Partitur ${book} ${song} halaman 1`}', "aria-label={`${t('score')} ${book} ${song} ${t('pageLabel')} 1`}"),
+            ('aria-label={`Partitur ${book} ${song} halaman 2`}', "aria-label={`${t('score')} ${book} ${song} ${t('pageLabel')} 2`}"),
+          ]
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit(f'song viewer anchor missing: {old!r}')
+              text = text.replace(old, new, 1)
+          text = text.replace(
+              "function LyricsVerses({ verses }: { verses: string[] }) {\n  if (verses.length === 0) {",
+              "function LyricsVerses({ verses }: { verses: string[] }) {\n  const { t } = useT();\n  if (verses.length === 0) {",
+              1,
+          )
+          text = text.replace('<p>Lirik belum tersedia.</p>', "<p>{t('lyricsUnavailable')}</p>", 1)
+          text = text.replace(
+              "}) {\n  if (lines.length === 0) {\n    return (\n      <div className=\"song-lyrics song-empty\">\n        <p>Belum ada data chord untuk lagu ini.</p>\n        <p className=\"song-empty-sub\">Chord dimuat otomatis saat lagu dibuka (lazy cache).</p>",
+              "}) {\n  const { t } = useT();\n  if (lines.length === 0) {\n    return (\n      <div className=\"song-lyrics song-empty\">\n        <p>{t('chordUnavailable')}</p>\n        <p className=\"song-empty-sub\">{t('chordLazyHint')}</p>",
+              1,
+          )
+          if "<p>Belum ada data chord untuk lagu ini.</p>" in text or "<p>Lirik belum tersedia.</p>" in text:
+              raise SystemExit('viewer empty-state localization incomplete')
+          viewer.write_text(text)
+          PY
+
+          pnpm exec prettier --write apps/web/src/i18n/index.ts apps/web/src/features/hymnal/song-viewer.tsx
+          pnpm --filter @gysapp/web typecheck
+          pnpm --filter @gysapp/web test
+          pnpm format:check
+      - name: Commit localization
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/src/i18n/index.ts apps/web/src/features/hymnal/song-viewer.tsx
+          git commit -m "feat: localize Hymnal viewer chrome"
+          git push origin HEAD:feature/bible-mobile-parity
