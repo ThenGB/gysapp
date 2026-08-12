@@ -76,7 +76,8 @@ export function MiniMidiPlayer({
         transpose: transposeRef.current,
         onProgress: setLoadingPct,
       })
-      .then(({ duration: nextDuration }) => {
+      .then(({ duration: nextDuration, activated }) => {
+        if (activated === false) return;
         const nextTranspose = midiEngine.getTranspose();
         setDuration(nextDuration);
         setTime(0);
