@@ -44,6 +44,28 @@ test.describe('responsive release regressions', () => {
     await expectNoDocumentOverflow(page);
   });
 
+  test('Hymnal text stays readable and contained at 320px', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 720 });
+    await page.goto('/hymnal/ASM-I/019');
+
+    const lyrics = page.locator('.song-lyrics');
+    await expect(lyrics).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/Biarlah aku b'ritahumu/).first()).toBeVisible();
+
+    const metrics = await lyrics.evaluate((node) => {
+      const line = node.querySelector<HTMLElement>('.song-line-text');
+      if (!line) throw new Error('lyric line missing');
+      return {
+        clientWidth: node.clientWidth,
+        scrollWidth: node.scrollWidth,
+        fontSize: Number.parseFloat(getComputedStyle(line).fontSize),
+      };
+    });
+    expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
+    expect(metrics.fontSize).toBeGreaterThanOrEqual(16);
+    await expectNoDocumentOverflow(page);
+  });
+
   test('Hymnal two-page guidance follows portrait and landscape orientation', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/home');

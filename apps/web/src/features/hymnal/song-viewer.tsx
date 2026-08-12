@@ -725,7 +725,9 @@ export function ChordedTextLines({
               <span
                 key={chordIndex}
                 className="song-chord-badge"
-                style={{ left: `${(chord.pos * 100).toFixed(2)}%` }}
+                style={{
+                  left: `clamp(1.75rem, ${(chord.pos * 100).toFixed(2)}%, calc(100% - 1.75rem))`,
+                }}
               >
                 {formatChordForDisplay(chord.chord, {
                   transposeStep,
