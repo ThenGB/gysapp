@@ -3,6 +3,8 @@ import { MusicNotes, Pause, Play, SkipBack, SkipForward } from '@phosphor-icons/
 import { midiEngine, type MidiStatus } from './midi-engine';
 import './song-viewer.css';
 
+type AccidentalMode = 'sharp' | 'flat';
+
 function formatTime(s: number): string {
   if (!Number.isFinite(s) || s < 0) return '0:00';
   const m = Math.floor(s / 60);
@@ -12,7 +14,19 @@ function formatTime(s: number): string {
   return `${m}:${sec}`;
 }
 
-export function MiniMidiPlayer({ url, title }: { url: string | null; title: string }) {
+export function MiniMidiPlayer({
+  url,
+  title,
+  accidentalMode = 'sharp',
+  onAccidentalModeChange,
+  onTransposeChange,
+}: {
+  url: string | null;
+  title: string;
+  accidentalMode?: AccidentalMode;
+  onAccidentalModeChange?: (mode: AccidentalMode) => void;
+  onTransposeChange?: (step: number) => void;
+}) {
   const [status, setStatus] = useState<MidiStatus>('idle');
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -49,13 +63,15 @@ export function MiniMidiPlayer({ url, title }: { url: string | null; title: stri
     void midiEngine
       .loadMidi({ url, autoplay: true, onProgress: setLoadingPct })
       .then(({ duration: d }) => {
+        const nextTranspose = midiEngine.getTranspose();
         setDuration(d);
         setTime(0);
         setTempo(midiEngine.getTempoBpm());
-        setTranspose(midiEngine.getTranspose());
+        setTranspose(nextTranspose);
+        onTransposeChange?.(nextTranspose);
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
-  }, [url]);
+  }, [onTransposeChange, url]);
 
   const onSeek = useCallback((value: number) => {
     midiEngine.seek(value);
@@ -66,9 +82,10 @@ export function MiniMidiPlayer({ url, title }: { url: string | null; title: stri
     (delta: number) => {
       const next = Math.max(-11, Math.min(11, transpose + delta));
       setTranspose(next);
+      onTransposeChange?.(next);
       void midiEngine.setTranspose(next).catch(() => undefined);
     },
-    [transpose],
+    [onTransposeChange, transpose],
   );
 
   const bumpTempo = useCallback(
@@ -159,6 +176,24 @@ export function MiniMidiPlayer({ url, title }: { url: string | null; title: stri
               onClick={() => bumpTempo(5)}
             >
               +
+            </button>
+          </div>
+          <div className="midi-param midi-accidental-toggle" role="group" aria-label="Notasi chord MIDI">
+            <button
+              type="button"
+              className={`chip${accidentalMode === 'sharp' ? ' chip-active' : ''}`}
+              aria-pressed={accidentalMode === 'sharp'}
+              onClick={() => onAccidentalModeChange?.('sharp')}
+            >
+              ♯
+            </button>
+            <button
+              type="button"
+              className={`chip${accidentalMode === 'flat' ? ' chip-active' : ''}`}
+              aria-pressed={accidentalMode === 'flat'}
+              onClick={() => onAccidentalModeChange?.('flat')}
+            >
+              ♭
             </button>
           </div>
         </div>
