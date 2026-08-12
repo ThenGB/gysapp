@@ -5,3 +5,4 @@ export * from './bible';
 export * from './faith';
 export * from './faith-pdf';
 export * from './report';
+export * from './egys';
