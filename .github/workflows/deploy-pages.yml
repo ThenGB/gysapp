@@ -44,7 +44,7 @@ jobs:
           GYSAPP_BASE: /gysapp/
           # Optional. Jika kosong, fitur inti tetap build/berjalan dan konten remote
           # yang memerlukan gateway memakai fallback offline/bundled.
-          VITE_BFF_BASE: ${{ vars.VITE_BFF_BASE }}
+          VITE_CONTENT_GATEWAY_BASE: ${{ vars.VITE_CONTENT_GATEWAY_BASE }}
         run: pnpm --filter @gysapp/web build
 
       - uses: actions/configure-pages@v5
