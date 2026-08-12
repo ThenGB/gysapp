@@ -44,7 +44,7 @@ GYSApp menjadi satu codebase web-native yang dapat berjalan sebagai PWA serta di
    - Chord tidak melewati Worker; manifest/file publik diambil langsung dari `gyschordweb`.
    - e-GYS dibuka langsung ke `https://e.gys.or.id/login`; autentikasi sepenuhnya milik e-GYS.
    - Gateway yang tersisa hanya `/api/content/*` yang perlu normalisasi dan `/api/report` bila webhook rahasia dipakai.
-   - GitHub Pages memakai `VITE_BFF_BASE` hanya untuk feature gateway tersebut; fitur inti tidak boleh tergantung gateway.
+   - GitHub Pages memakai `VITE_CONTENT_GATEWAY_BASE` hanya untuk feature gateway tersebut; fitur inti tidak boleh tergantung gateway.
 
 2. **Android continuity**
    - Pertahankan application id Flutter lama: `id.sch.kanaan.egys`.
@@ -162,7 +162,7 @@ GitHub Actions deployment membutuhkan:
 
 Repository variable frontend bila gateway digunakan:
 
-- `VITE_BFF_BASE=https://<worker-domain>/api`
+- `VITE_CONTENT_GATEWAY_BASE=https://<worker-domain>/api`
 
 Tidak ada `SESSION_SECRET`, Google OAuth secret, Apple auth secret, atau e-GYS credential di GYSApp. Tidak ada secret yang boleh masuk `wrangler.jsonc`, `.env` ter-commit, frontend bundle, atau Tauri config.
 
