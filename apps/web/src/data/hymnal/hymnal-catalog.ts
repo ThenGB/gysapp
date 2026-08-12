@@ -1,3 +1,4 @@
+import type { SongRef } from '@gysapp/core';
 import { assetUrl } from '../../lib/asset-url';
 
 export interface HymnalBookMeta {
@@ -38,6 +39,7 @@ function indexFileFor(code: string): string {
  */
 export class HymnalCatalogPort {
   private booksPromise: Promise<HymnalBookMeta[]> | null = null;
+  private playableSongsPromise: Promise<SongRef[]> | null = null;
   private readonly songsCache = new Map<string, Promise<SongEntry[]>>();
 
   private fetchJson<T>(path: string): Promise<T> {
@@ -64,6 +66,31 @@ export class HymnalCatalogPort {
       this.songsCache.set(key, promise);
     }
     return promise;
+  }
+
+  /** Semua lagu yang benar-benar memiliki MIDI; cache untuk shuffle-all. */
+  loadPlayableSongs(): Promise<SongRef[]> {
+    if (!this.playableSongsPromise) {
+      this.playableSongsPromise = this.loadBooks().then(async (books) => {
+        const playableBooks = books.filter((book) => book.hasMidi);
+        const groups = await Promise.all(
+          playableBooks.map(async (book) => {
+            const songs = await this.loadSongs(book.code);
+            return songs
+              .filter((song) => Boolean(song.midiFile))
+              .map(
+                (song): SongRef => ({
+                  book: book.code,
+                  number: song.number,
+                  title: song.title,
+                }),
+              );
+          }),
+        );
+        return groups.flat();
+      });
+    }
+    return this.playableSongsPromise;
   }
 
   async resolveSong(code: string, number: string): Promise<ResolvedSong | null> {
