@@ -40,14 +40,17 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Initial JS gzip budget
+        run: node scripts/check-web-bundle-budget.mjs
+
       - name: Format check
         run: pnpm format:check
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: E2E smoke
-        run: pnpm test:e2e --project=chromium
+      - name: Production E2E + Web Vitals smoke
+        run: pnpm exec playwright test --config=playwright.production.config.ts --project=chromium
 
       - name: Secret scan (basic)
         run: |
