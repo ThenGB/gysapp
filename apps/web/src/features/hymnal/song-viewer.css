@@ -193,7 +193,7 @@
   border-color: var(--accent);
 }
 
-/* Mini MIDI player */
+/* MIDI player */
 .midi-player {
   display: flex;
   align-items: center;
@@ -204,6 +204,16 @@
   border: var(--border-thin);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-raised);
+}
+
+.midi-player-compact {
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+}
+
+.midi-player-details-open {
+  align-items: flex-start;
 }
 
 .midi-play {
@@ -222,8 +232,20 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
   font-weight: 700;
   margin-bottom: var(--space-1);
+}
+
+.midi-title svg {
+  flex: 0 0 auto;
+}
+
+.midi-title-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .midi-seek {
@@ -234,8 +256,13 @@
 
 .midi-seek input[type='range'] {
   flex: 1;
+  min-width: 70px;
   min-height: var(--target-min);
   accent-color: var(--accent);
+}
+
+.midi-player-compact .midi-seek input[type='range'] {
+  min-height: 32px;
 }
 
 .midi-time {
@@ -257,6 +284,7 @@
 .midi-aux {
   display: flex;
   gap: var(--space-2);
+  flex: 0 0 auto;
 }
 
 .midi-param-row {
@@ -265,6 +293,11 @@
   gap: var(--space-4);
   flex-wrap: wrap;
   margin-top: var(--space-2);
+}
+
+.midi-player-compact .midi-param-row {
+  padding-top: var(--space-2);
+  border-top: var(--border-thin);
 }
 
 .midi-param {
@@ -351,8 +384,24 @@
     padding: var(--space-3);
   }
 
-  .midi-aux {
+  .midi-player-compact {
+    padding: 9px 10px;
+  }
+
+  .midi-player:not(.midi-player-compact) .midi-aux {
     display: none;
+  }
+
+  .midi-player-compact .midi-aux {
+    display: flex;
+  }
+
+  .midi-player-compact .midi-title {
+    font-size: var(--text-xs);
+  }
+
+  .midi-player-compact .midi-time {
+    font-size: 0.72rem;
   }
 
   .midi-param-row {
