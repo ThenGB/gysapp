@@ -30,19 +30,20 @@ describe('e-GYS session adapter', () => {
   });
 
   it('loads and normalizes member type and branch', async () => {
-    const fetchImpl = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          data: {
-            id: 1,
-            name: 'Budi',
-            status: 'ACTIVE',
-            baptized: true,
-            branchname: 'Pontianak',
-          },
-        }),
-        { status: 200 },
-      ),
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            data: {
+              id: 1,
+              name: 'Budi',
+              status: 'ACTIVE',
+              baptized: true,
+              branchname: 'Pontianak',
+            },
+          }),
+          { status: 200 },
+        ),
     );
     const profile = await fetchEgysProfile('token', {
       fetchImpl: fetchImpl as unknown as typeof fetch,

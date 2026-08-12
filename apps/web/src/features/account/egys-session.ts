@@ -128,9 +128,7 @@ type TauriApi = {
 };
 
 function getTauriApi(): TauriApi | null {
-  return (
-    (window as unknown as { __TAURI__?: TauriApi }).__TAURI__ ?? null
-  );
+  return (window as unknown as { __TAURI__?: TauriApi }).__TAURI__ ?? null;
 }
 
 export function isTauriRuntime(): boolean {
@@ -190,7 +188,9 @@ export function loadGoogleIdentity(): Promise<GoogleIdentityApi> {
   if (googleScriptPromise) return googleScriptPromise;
 
   googleScriptPromise = new Promise<GoogleIdentityApi>((resolve, reject) => {
-    const already = document.querySelector<HTMLScriptElement>('script[data-gysapp-google-identity]');
+    const already = document.querySelector<HTMLScriptElement>(
+      'script[data-gysapp-google-identity]',
+    );
     const script = already ?? document.createElement('script');
     const finish = () => {
       const api = currentGoogleIdentity();

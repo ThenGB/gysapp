@@ -8,20 +8,21 @@ describe('AccountPage', () => {
     writeEgysToken('egys-test-token');
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify({
-            data: {
-              id: 22,
-              name: 'Budi',
-              email: 'budi@example.com',
-              status: 'ACTIVE',
-              baptized: 1,
-              branchname: 'Pontianak',
-            },
-          }),
-          { status: 200 },
-        ),
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              data: {
+                id: 22,
+                name: 'Budi',
+                email: 'budi@example.com',
+                status: 'ACTIVE',
+                baptized: 1,
+                branchname: 'Pontianak',
+              },
+            }),
+            { status: 200 },
+          ),
       ),
     );
   });

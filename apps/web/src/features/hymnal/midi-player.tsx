@@ -178,7 +178,11 @@ export function MiniMidiPlayer({
               +
             </button>
           </div>
-          <div className="midi-param midi-accidental-toggle" role="group" aria-label="Notasi chord MIDI">
+          <div
+            className="midi-param midi-accidental-toggle"
+            role="group"
+            aria-label="Notasi chord MIDI"
+          >
             <button
               type="button"
               className={`chip${accidentalMode === 'sharp' ? ' chip-active' : ''}`}

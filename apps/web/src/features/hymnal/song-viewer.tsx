@@ -324,7 +324,9 @@ export function SongViewer() {
       </div>
 
       {mode === 'pdf' && pageMode === 2 && (
-        <p className="song-landscape-hint">Untuk 2 halaman di layar kecil, gunakan posisi landscape.</p>
+        <p className="song-landscape-hint">
+          Untuk 2 halaman di layar kecil, gunakan posisi landscape.
+        </p>
       )}
 
       {mode === 'pdf' && (

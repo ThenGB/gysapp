@@ -6,24 +6,24 @@ Status: `todo | in-progress | done | n/a`.
 
 ## Shell & Navigasi
 
-| Fitur                                 | Status      | Catatan                                      |
-| ------------------------------------- | ----------- | -------------------------------------------- |
+| Fitur                                 | Status      | Catatan                                     |
+| ------------------------------------- | ----------- | ------------------------------------------- |
 | 5 menu utama                          | done        | Beranda / Alkitab / Pujian / Iman / Lainnya |
-| Bottom nav / rail / sidebar responsif | done        | Navigasi selalu tersedia                     |
-| i18n id/en/zh foundation              | done        | Perlu meluaskan copy semua feature           |
-| Global player tidak menutupi konten   | in-progress | Perlu viewport E2E matrix                    |
-| Floating/bubble dock + motion final   | in-progress | Redesign dimulai di PR parity hardening      |
+| Bottom nav / rail / sidebar responsif | done        | Navigasi selalu tersedia                    |
+| i18n id/en/zh foundation              | done        | Perlu meluaskan copy semua feature          |
+| Global player tidak menutupi konten   | in-progress | Perlu viewport E2E matrix                   |
+| Floating/bubble dock + motion final   | in-progress | Redesign dimulai di PR parity hardening     |
 
 ## Beranda
 
-| Fitur                          | Status      | Catatan                                               |
-| ------------------------------ | ----------- | ----------------------------------------------------- |
-| Greeting + tanggal             | done        | Tidak bergantung akun untuk cold start                |
-| Profile-aware greeting         | todo        | Gunakan profil e-GYS bila sesi tersedia               |
-| Sauh Bagi Jiwa                 | done        | Optional content gateway + static fallback            |
-| Suara Sejati                   | done        | Optional content gateway + static fallback            |
-| Ayat hari ini                  | todo        | Gunakan sumber remote -> mapping Alkitab lokal        |
-| Lanjut membaca / lanjut pujian | todo        | Restore posisi/history                                |
+| Fitur                          | Status | Catatan                                        |
+| ------------------------------ | ------ | ---------------------------------------------- |
+| Greeting + tanggal             | done   | Tidak bergantung akun untuk cold start         |
+| Profile-aware greeting         | todo   | Gunakan profil e-GYS bila sesi tersedia        |
+| Sauh Bagi Jiwa                 | done   | Optional content gateway + static fallback     |
+| Suara Sejati                   | done   | Optional content gateway + static fallback     |
+| Ayat hari ini                  | todo   | Gunakan sumber remote -> mapping Alkitab lokal |
+| Lanjut membaca / lanjut pujian | todo   | Restore posisi/history                         |
 
 ## Alkitab
 
@@ -42,23 +42,23 @@ Status: `todo | in-progress | done | n/a`.
 
 ## Pujian
 
-| Fitur                                | Status      | Catatan                                                                                         |
-| ------------------------------------ | ----------- | ----------------------------------------------------------------------------------------------- |
-| Katalog buku kidung                  | done        | Katalog penuh + fallback lirik                                                                  |
-| KR PDF 533                           | done        | Aset lengkap                                                                                    |
-| KR MIDI                              | done        | Engine WebAudio/WASM tersedia                                                                   |
-| MIDI seek/tempo/transpose/instrument | done        | Perlu stress/perf gate                                                                          |
-| Playlist + loop/shuffle              | done        | Persisten                                                                                       |
-| PDF viewer dasar                     | done        |                                                                                                |
-| 1/2 halaman, zoom, fit modes         | in-progress | UI + persistence sudah masuk; perlu visual regression lintas viewport                           |
-| Landscape hint 2 halaman             | done        | Muncul pada portrait layar kecil                                                                |
-| Mode teks + chord                    | in-progress | Centered horizontal/vertical + multi-page extraction masuk; autofit lanjutan masih perlu        |
-| Chord note-aligned                   | in-progress | Golden drift gate belum final                                                                   |
-| Sharp/flat toggle di viewer + player | done        | Satu state accidental; display chord menggunakan formatter `gyschordweb`                        |
-| Transpose MIDI -> chord text sync    | done        | Perubahan transpose player langsung mengubah display chord teks                                 |
-| Chord lazy cache                     | done        | Direct `gyschordweb`; install awal nol chord; check-on-open; SHA sama tidak download ulang      |
-| Chord melalui Cloudflare Worker      | n/a         | Sengaja dihapus; tidak ada alasan melakukan proxy untuk sumber publik                           |
-| Catatan/history pujian               | in-progress | Notes dasar tersedia                                                                            |
+| Fitur                                | Status      | Catatan                                                                                    |
+| ------------------------------------ | ----------- | ------------------------------------------------------------------------------------------ |
+| Katalog buku kidung                  | done        | Katalog penuh + fallback lirik                                                             |
+| KR PDF 533                           | done        | Aset lengkap                                                                               |
+| KR MIDI                              | done        | Engine WebAudio/WASM tersedia                                                              |
+| MIDI seek/tempo/transpose/instrument | done        | Perlu stress/perf gate                                                                     |
+| Playlist + loop/shuffle              | done        | Persisten                                                                                  |
+| PDF viewer dasar                     | done        |                                                                                            |
+| 1/2 halaman, zoom, fit modes         | in-progress | UI + persistence sudah masuk; perlu visual regression lintas viewport                      |
+| Landscape hint 2 halaman             | done        | Muncul pada portrait layar kecil                                                           |
+| Mode teks + chord                    | in-progress | Centered horizontal/vertical + multi-page extraction masuk; autofit lanjutan masih perlu   |
+| Chord note-aligned                   | in-progress | Golden drift gate belum final                                                              |
+| Sharp/flat toggle di viewer + player | done        | Satu state accidental; display chord menggunakan formatter `gyschordweb`                   |
+| Transpose MIDI -> chord text sync    | done        | Perubahan transpose player langsung mengubah display chord teks                            |
+| Chord lazy cache                     | done        | Direct `gyschordweb`; install awal nol chord; check-on-open; SHA sama tidak download ulang |
+| Chord melalui Cloudflare Worker      | n/a         | Sengaja dihapus; tidak ada alasan melakukan proxy untuk sumber publik                      |
+| Catatan/history pujian               | in-progress | Notes dasar tersedia                                                                       |
 
 ## Iman
 
@@ -71,30 +71,30 @@ Status: `todo | in-progress | done | n/a`.
 
 ## Literatur & e-GYS
 
-| Item                                               | Status      | Catatan                                                                                     |
-| -------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------- |
-| Kesaksian                                          | done        | Optional gateway + static fallback                                                          |
-| Warta/Manna Sejati                                 | done        | Optional gateway + static fallback                                                          |
-| Kumpulan Renungan                                  | done        | Optional gateway + static fallback                                                          |
-| Panduan Alkitab                                    | in-progress | Route ada; catalog remote/config masih perlu diperkaya                                      |
-| e-GYS integrated account                           | in-progress | Direct ke e-GYS; tidak ada akun/session backend GYSApp                                      |
-| Google -> e-GYS web exchange                       | in-progress | Adapter + tests masuk; perlu validasi origin OAuth pada deployment production               |
-| Native hosted e-GYS login                          | in-progress | Isolated Tauri auth webview + compatibility bridge; native CI menjadi gate                  |
-| Profil e-GYS                                       | done        | Kontrak canonical + `/api/v1/users/profile`                                                 |
-| Deteksi Jemaat / Simpatisan                        | done        | Alias member/baptism dinormalisasi; generic `ACTIVE` tidak dianggap membership              |
-| Deteksi Cabang / Wilayah                           | done        | `branchname/branch/wilayah/region/...` dinormalisasi                                        |
-| Secure persistence token web                       | done        | `sessionStorage` only; bukan localStorage/IndexedDB                                          |
-| Secure persistence token native                    | todo        | Tambahkan OS-backed secure store; jangan memakai general Tauri store                        |
-| Legacy HTML profile enrichment                     | todo        | Hanya jika API e-GYS deployment tertentu masih tidak mengembalikan branch/member semantics  |
-| Pujian/Paduan Suara                                | done        | Akses eksternal dipertahankan                                                               |
-| Buku                                               | done        | Akses eksternal dipertahankan                                                               |
-| Ibadah Online                                      | done        |                                                                                             |
-| Audio Khotbah                                      | done        |                                                                                             |
-| Video Khotbah                                      | done        |                                                                                             |
-| eRhema                                             | done        | Dipulihkan dari app_menu Flutter                                                            |
-| Pelita Kecil                                       | done        | Dipulihkan dari app_menu Flutter                                                            |
-| Podcast / Facebook / Instagram / YouTube / Spotify | done        | Dipulihkan dari app_menu Flutter                                                            |
-| Remote catalog/menu config                         | todo        | Saat ini daftar aman dibundel sebagai fallback                                              |
+| Item                                               | Status      | Catatan                                                                                    |
+| -------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------ |
+| Kesaksian                                          | done        | Optional gateway + static fallback                                                         |
+| Warta/Manna Sejati                                 | done        | Optional gateway + static fallback                                                         |
+| Kumpulan Renungan                                  | done        | Optional gateway + static fallback                                                         |
+| Panduan Alkitab                                    | in-progress | Route ada; catalog remote/config masih perlu diperkaya                                     |
+| e-GYS integrated account                           | in-progress | Direct ke e-GYS; tidak ada akun/session backend GYSApp                                     |
+| Google -> e-GYS web exchange                       | in-progress | Adapter + tests masuk; perlu validasi origin OAuth pada deployment production              |
+| Native hosted e-GYS login                          | in-progress | Isolated Tauri auth webview + compatibility bridge; native CI menjadi gate                 |
+| Profil e-GYS                                       | done        | Kontrak canonical + `/api/v1/users/profile`                                                |
+| Deteksi Jemaat / Simpatisan                        | done        | Alias member/baptism dinormalisasi; generic `ACTIVE` tidak dianggap membership             |
+| Deteksi Cabang / Wilayah                           | done        | `branchname/branch/wilayah/region/...` dinormalisasi                                       |
+| Secure persistence token web                       | done        | `sessionStorage` only; bukan localStorage/IndexedDB                                        |
+| Secure persistence token native                    | todo        | Tambahkan OS-backed secure store; jangan memakai general Tauri store                       |
+| Legacy HTML profile enrichment                     | todo        | Hanya jika API e-GYS deployment tertentu masih tidak mengembalikan branch/member semantics |
+| Pujian/Paduan Suara                                | done        | Akses eksternal dipertahankan                                                              |
+| Buku                                               | done        | Akses eksternal dipertahankan                                                              |
+| Ibadah Online                                      | done        |                                                                                            |
+| Audio Khotbah                                      | done        |                                                                                            |
+| Video Khotbah                                      | done        |                                                                                            |
+| eRhema                                             | done        | Dipulihkan dari app_menu Flutter                                                           |
+| Pelita Kecil                                       | done        | Dipulihkan dari app_menu Flutter                                                           |
+| Podcast / Facebook / Instagram / YouTube / Spotify | done        | Dipulihkan dari app_menu Flutter                                                           |
+| Remote catalog/menu config                         | todo        | Saat ini daftar aman dibundel sebagai fallback                                             |
 
 ## Backendless-first & optional gateway
 
@@ -123,29 +123,29 @@ Status: `todo | in-progress | done | n/a`.
 
 ## Native / Distribution
 
-| Target                     | Status      | Catatan                                                                                       |
-| -------------------------- | ----------- | --------------------------------------------------------------------------------------------- |
-| Tauri Windows              | in-progress | Wrapper + PR native CI gate                                                                   |
-| Tauri Android              | in-progress | Package id `id.sch.kanaan.egys`, versionCode 134; native login bridge memakai shared Rust     |
-| Android signing continuity | in-progress | Harus memakai keystore release Flutter lama; secret material perlu dipasang pada repo baru    |
-| Tauri iOS                  | todo        | Memerlukan runner macOS untuk build/signing release                                           |
-| Public release CI          | todo        | Setelah signing material/platform credential tersedia                                         |
+| Target                     | Status      | Catatan                                                                                    |
+| -------------------------- | ----------- | ------------------------------------------------------------------------------------------ |
+| Tauri Windows              | in-progress | Wrapper + PR native CI gate                                                                |
+| Tauri Android              | in-progress | Package id `id.sch.kanaan.egys`, versionCode 134; native login bridge memakai shared Rust  |
+| Android signing continuity | in-progress | Harus memakai keystore release Flutter lama; secret material perlu dipasang pada repo baru |
+| Tauri iOS                  | todo        | Memerlukan runner macOS untuk build/signing release                                        |
+| Public release CI          | todo        | Setelah signing material/platform credential tersedia                                      |
 
 ## Kualitas
 
-| Gate                                      | Status      | Catatan                                                     |
-| ----------------------------------------- | ----------- | ----------------------------------------------------------- |
-| TypeScript strict                         | done        |                                                             |
-| Unit/component tests                      | done        | CI menjadi source of truth                                  |
-| e-GYS normalization/session tests         | done        | Alias membership/branch + invalid-session path              |
-| Native Rust/Tauri PR build gate           | in-progress | `native-windows` sekarang berjalan pada PR                  |
-| Playwright desktop/mobile smoke           | done        | Perlu perluasan viewport matrix                             |
-| Secret scan                               | done        | Jangan migrasikan credential legacy Flutter                 |
+| Gate                                      | Status      | Catatan                                                          |
+| ----------------------------------------- | ----------- | ---------------------------------------------------------------- |
+| TypeScript strict                         | done        |                                                                  |
+| Unit/component tests                      | done        | CI menjadi source of truth                                       |
+| e-GYS normalization/session tests         | done        | Alias membership/branch + invalid-session path                   |
+| Native Rust/Tauri PR build gate           | in-progress | `native-windows` sekarang berjalan pada PR                       |
+| Playwright desktop/mobile smoke           | done        | Perlu perluasan viewport matrix                                  |
+| Secret scan                               | done        | Jangan migrasikan credential legacy Flutter                      |
 | Runtime executable third-party code       | in-progress | App logic lokal; Google Identity SDK menjadi auth-only exception |
-| Coverage target core >=85%, feature >=70% | in-progress |                                                             |
-| Bundle <250KB gzip initial shell          | in-progress | Code splitting sudah dimulai                                |
-| WCAG 2.2 AA journey utama                 | in-progress | Design system sudah mengarah ke target ini                  |
-| LCP/INP/CLS production budget             | todo        | Ukur setelah deploy frontend production stabil              |
+| Coverage target core >=85%, feature >=70% | in-progress |                                                                  |
+| Bundle <250KB gzip initial shell          | in-progress | Code splitting sudah dimulai                                     |
+| WCAG 2.2 AA journey utama                 | in-progress | Design system sudah mengarah ke target ini                       |
+| LCP/INP/CLS production budget             | todo        | Ukur setelah deploy frontend production stabil                   |
 
 ## Blocker eksternal tersisa
 

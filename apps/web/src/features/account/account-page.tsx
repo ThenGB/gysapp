@@ -164,8 +164,8 @@ export function AccountPage() {
           <p className="account-eyebrow">e-GYS</p>
           <h1 className="section-title">Akun & Keanggotaan</h1>
           <p className="account-lead">
-            Login langsung ke e-GYS. GYSApp hanya memakai sesi tersebut untuk membaca profil,
-            status jemaat, dan cabang/wilayah gereja.
+            Login langsung ke e-GYS. GYSApp hanya memakai sesi tersebut untuk membaca profil, status
+            jemaat, dan cabang/wilayah gereja.
           </p>
         </div>
         <IdentificationCard size={38} weight="duotone" aria-hidden="true" />
@@ -208,7 +208,9 @@ export function AccountPage() {
                 className="account-google-button"
                 aria-label="Masuk dengan Google"
               />
-              {!googleReady && !error && <span className="account-muted">Memuat Google Sign-In…</span>}
+              {!googleReady && !error && (
+                <span className="account-muted">Memuat Google Sign-In…</span>
+              )}
               {authBusy && <span className="account-muted">Menghubungkan ke e-GYS…</span>}
             </div>
           )}
@@ -222,7 +224,8 @@ export function AccountPage() {
           </button>
 
           <p className="account-security-note">
-            Pada web, token hanya disimpan selama sesi tab/browser dan tidak ditulis ke localStorage.
+            Pada web, token hanya disimpan selama sesi tab/browser dan tidak ditulis ke
+            localStorage.
           </p>
         </section>
       )}
@@ -235,7 +238,12 @@ function ProfileCard({ profile, onLogout }: { profile: EgysProfile; onLogout: ()
     <section className="account-profile-card">
       <div className="account-profile-top">
         {profile.profilePicture ? (
-          <img className="account-avatar" src={profile.profilePicture} alt="" referrerPolicy="no-referrer" />
+          <img
+            className="account-avatar"
+            src={profile.profilePicture}
+            alt=""
+            referrerPolicy="no-referrer"
+          />
         ) : (
           <div className="account-avatar account-avatar-fallback">
             <UserCircle size={42} weight="duotone" aria-hidden="true" />
@@ -276,7 +284,11 @@ function ProfileCard({ profile, onLogout }: { profile: EgysProfile; onLogout: ()
       )}
 
       <div className="account-actions">
-        <button type="button" className="btn-secondary" onClick={() => openExternal(EGYS_EXTERNAL_LOGIN_URL)}>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => openExternal(EGYS_EXTERNAL_LOGIN_URL)}
+        >
           <ArrowSquareOut size={19} aria-hidden="true" /> Buka e-GYS
         </button>
         <button type="button" className="btn-danger" onClick={onLogout}>
