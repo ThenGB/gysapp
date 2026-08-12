@@ -1,0 +1,353 @@
+name: Extend Notes Hymnal i18n
+
+on:
+  push:
+    branches:
+      - feature/bible-mobile-parity
+
+permissions:
+  contents: write
+
+jobs:
+  extend:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feature/bible-mobile-parity
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Localize Notes and Hymnal list
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/web/src/i18n/index.ts')
+          text = path.read_text()
+          inserts = {
+              "    blobUnit: 'blob',\n": """    blobUnit: 'blob',
+              notesTitle: 'Catatan',
+              noteKind: 'Jenis catatan',
+              noteReferencePlaceholder: 'Rujukan (mis. Kejadian 1:1, KR 001)…',
+              noteReference: 'Rujukan',
+              noteTitlePlaceholder: 'Judul…',
+              noteTitle: 'Judul catatan',
+              noteBodyPlaceholder: 'Isi catatan…',
+              noteBody: 'Isi catatan',
+              saveNote: 'Simpan catatan',
+              untitled: 'Tanpa judul',
+              deleteNote: 'Hapus catatan',
+              noNotes: 'Belum ada catatan.',
+              selectHymnalBook: 'Pilih buku kidung',
+              searchIn: 'Cari di',
+              numberTitleLyrics: 'nomor / judul / lirik',
+              searchHymn: 'Cari pujian',
+              noMatchingHymns: 'Tidak ditemukan pujian yang cocok.',
+          """,
+              "    blobUnit: 'blobs',\n": """    blobUnit: 'blobs',
+              notesTitle: 'Notes',
+              noteKind: 'Note type',
+              noteReferencePlaceholder: 'Reference (e.g. Genesis 1:1, KR 001)…',
+              noteReference: 'Reference',
+              noteTitlePlaceholder: 'Title…',
+              noteTitle: 'Note title',
+              noteBodyPlaceholder: 'Write your note…',
+              noteBody: 'Note content',
+              saveNote: 'Save note',
+              untitled: 'Untitled',
+              deleteNote: 'Delete note',
+              noNotes: 'No notes yet.',
+              selectHymnalBook: 'Choose hymn book',
+              searchIn: 'Search in',
+              numberTitleLyrics: 'number / title / lyrics',
+              searchHymn: 'Search hymns',
+              noMatchingHymns: 'No matching hymns found.',
+          """,
+              "    blobUnit: '个数据块',\n": """    blobUnit: '个数据块',
+              notesTitle: '笔记',
+              noteKind: '笔记类型',
+              noteReferencePlaceholder: '引用（例如：创世记 1:1、KR 001）…',
+              noteReference: '引用',
+              noteTitlePlaceholder: '标题…',
+              noteTitle: '笔记标题',
+              noteBodyPlaceholder: '输入笔记内容…',
+              noteBody: '笔记内容',
+              saveNote: '保存笔记',
+              untitled: '无标题',
+              deleteNote: '删除笔记',
+              noNotes: '暂无笔记。',
+              selectHymnalBook: '选择赞美诗集',
+              searchIn: '搜索',
+              numberTitleLyrics: '编号 / 标题 / 歌词',
+              searchHymn: '搜索赞美诗',
+              noMatchingHymns: '未找到相符的赞美诗。',
+          """,
+          }
+          for old, new in inserts.items():
+              if old not in text:
+                  raise SystemExit(f'i18n anchor missing: {old!r}')
+              text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
+
+          cat > apps/web/src/features/notes/notes-page.tsx <<'EOF'
+          import { useState } from 'react';
+          import { Link, useParams } from 'react-router-dom';
+          import { ArrowLeft, Trash } from '@phosphor-icons/react';
+          import { useT, type TranslationKey } from '../../i18n';
+          import { addNote, deleteNote, loadNotes, type NoteKind } from './notes-store';
+          import '../settings/settings.css';
+
+          const KINDS: Array<{ value: NoteKind; labelKey: TranslationKey }> = [
+            { value: 'bible', labelKey: 'bibleNotes' },
+            { value: 'faith', labelKey: 'faithNotes' },
+            { value: 'song', labelKey: 'hymnNotes' },
+          ];
+
+          export function NotesPage() {
+            const { t } = useT();
+            const { kind = 'bible' } = useParams();
+            const active = (KINDS.some((k) => k.value === kind) ? kind : 'bible') as NoteKind;
+            const [notes, setNotes] = useState(loadNotes);
+            const [target, setTarget] = useState('');
+            const [title, setTitle] = useState('');
+            const [text, setText] = useState('');
+
+            const filtered = notes.filter((n) => n.kind === active);
+
+            const submit = () => {
+              if (!title.trim() && !text.trim()) return;
+              addNote({
+                kind: active,
+                target: target.trim(),
+                title: title.trim() || t('untitled'),
+                text: text.trim(),
+              });
+              setNotes(loadNotes());
+              setTitle('');
+              setText('');
+            };
+
+            return (
+              <div className="content-shell settings-page">
+                <div className="bible-toolbar">
+                  <Link to="/more" className="icon-btn" aria-label={t('back')}>
+                    <ArrowLeft size={22} aria-hidden="true" />
+                  </Link>
+                  <h1 className="bible-search-title">{t('notesTitle')}</h1>
+                </div>
+
+                <div className="faith-lang-tabs" role="group" aria-label={t('noteKind')}>
+                  {KINDS.map((k) => (
+                    <Link
+                      key={k.value}
+                      to={`/notes/${k.value}`}
+                      className={`chip${active === k.value ? ' chip-active' : ''}`}
+                    >
+                      {t(k.labelKey)}
+                    </Link>
+                  ))}
+                </div>
+
+                <form
+                  className="notes-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    submit();
+                  }}
+                >
+                  <input
+                    className="faith-search"
+                    placeholder={t('noteReferencePlaceholder')}
+                    aria-label={t('noteReference')}
+                    value={target}
+                    onChange={(e) => setTarget(e.target.value)}
+                  />
+                  <input
+                    className="faith-search"
+                    placeholder={t('noteTitlePlaceholder')}
+                    aria-label={t('noteTitle')}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
+                  <textarea
+                    className="faith-search report-message"
+                    rows={4}
+                    placeholder={t('noteBodyPlaceholder')}
+                    aria-label={t('noteBody')}
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                  />
+                  <button type="submit" className="btn-primary">
+                    {t('saveNote')}
+                  </button>
+                </form>
+
+                <ul className="bible-results notes-list">
+                  {filtered.map((note) => (
+                    <li key={note.id} className="bible-result notes-item">
+                      <div className="notes-head">
+                        <strong>{note.title}</strong>
+                        {note.target && <span className="notes-target">{note.target}</span>}
+                        <button
+                          type="button"
+                          className="icon-btn playlist-remove"
+                          aria-label={`${t('deleteNote')} ${note.title}`}
+                          onClick={() => {
+                            deleteNote(note.id);
+                            setNotes(loadNotes());
+                          }}
+                        >
+                          <Trash size={18} aria-hidden="true" />
+                        </button>
+                      </div>
+                      <p>{note.text}</p>
+                    </li>
+                  ))}
+                </ul>
+                {filtered.length === 0 && <p className="faith-empty">{t('noNotes')}</p>}
+              </div>
+            );
+          }
+          EOF
+
+          cat > apps/web/src/features/hymnal/hymnal-list.tsx <<'EOF'
+          import { useDeferredValue, useMemo, useState } from 'react';
+          import { Link } from 'react-router-dom';
+          import { MusicNotes, MagnifyingGlass } from '@phosphor-icons/react';
+          import { useQuery } from '@tanstack/react-query';
+          import { useT } from '../../i18n';
+          import { hymnalCatalog } from '../../data/hymnal/hymnal-catalog';
+          import { PlaylistBar } from './playlist-bar';
+          import './song-viewer.css';
+
+          export function HymnalListPage() {
+            const { t } = useT();
+            const [book, setBook] = useState('KR');
+            const [term, setTerm] = useState('');
+            const deferredTerm = useDeferredValue(term);
+
+            const booksQuery = useQuery({
+              queryKey: ['hymnal-books'],
+              queryFn: () => hymnalCatalog.loadBooks(),
+            });
+            const songsQuery = useQuery({
+              queryKey: ['hymnal-songs', book],
+              queryFn: () => hymnalCatalog.loadSongs(book),
+              staleTime: Infinity,
+            });
+
+            const songs = useMemo(() => {
+              const query = deferredTerm.trim().toLowerCase();
+              if (!songsQuery.data) return [];
+              if (!query) return songsQuery.data;
+              return songsQuery.data.filter(
+                (s) =>
+                  s.number.includes(query) ||
+                  (s.number2 ?? '').includes(query) ||
+                  s.title.toLowerCase().includes(query),
+              );
+            }, [songsQuery.data, deferredTerm]);
+
+            return (
+              <div className="content-shell song-page">
+                <h1 className="section-title">{t('hymnal')}</h1>
+
+                <div className="bible-testament-tabs" role="group" aria-label={t('selectHymnalBook')}>
+                  {booksQuery.data?.map((b) => (
+                    <button
+                      key={b.code}
+                      type="button"
+                      className={`chip${book === b.code ? ' chip-active' : ''}`}
+                      aria-pressed={book === b.code}
+                      onClick={() => setBook(b.code)}
+                    >
+                      {b.code}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="bible-search-form" role="search">
+                  <MagnifyingGlass size={22} aria-hidden="true" />
+                  <input
+                    className="bible-search-input"
+                    type="search"
+                    value={term}
+                    placeholder={`${t('searchIn')} ${book} (${t('numberTitleLyrics')})…`}
+                    aria-label={t('searchHymn')}
+                    onChange={(e) => setTerm(e.target.value)}
+                  />
+                </div>
+
+                <ul className="hymnal-list">
+                  {songs.map((s) => (
+                    <li key={`${book}:${s.number}`}>
+                      <Link to={`/hymnal/${book}/${s.number}`} className="hymnal-item">
+                        <MusicNotes size={24} aria-hidden="true" />
+                        <span className="hymnal-item-title">
+                          {s.number}
+                          {s.number2 ? `/${s.number2}` : ''} — {s.title}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+                {songs.length === 0 && <p className="faith-empty">{t('noMatchingHymns')}</p>}
+
+                {booksQuery.data && (
+                  <PlaylistBar
+                    song={
+                      songs.length === 1
+                        ? { book, number: songs[0]?.number ?? '', title: songs[0]?.title ?? '' }
+                        : undefined
+                    }
+                  />
+                )}
+              </div>
+            );
+          }
+          EOF
+
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('apps/web/src/i18n/index.test.ts')
+          text = path.read_text()
+          anchor = "    expect(t('sendFeedback', 'zh')).toBe('发送反馈');\n"
+          addition = """
+
+              expect(t('notesTitle', 'id')).toBe('Catatan');
+              expect(t('notesTitle', 'en')).toBe('Notes');
+              expect(t('notesTitle', 'zh')).toBe('笔记');
+
+              expect(t('searchHymn', 'id')).toBe('Cari pujian');
+              expect(t('searchHymn', 'en')).toBe('Search hymns');
+              expect(t('searchHymn', 'zh')).toBe('搜索赞美诗');
+          """
+          if anchor not in text:
+              raise SystemExit('i18n test anchor missing')
+          path.write_text(text.replace(anchor, anchor + addition, 1))
+          PY
+
+          pnpm exec prettier --write apps/web/src/i18n/index.ts apps/web/src/i18n/index.test.ts apps/web/src/features/notes/notes-page.tsx apps/web/src/features/hymnal/hymnal-list.tsx
+          pnpm --filter @gysapp/web typecheck
+          pnpm --filter @gysapp/web test
+          pnpm format:check
+      - name: Commit localization
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/src/i18n/index.ts apps/web/src/i18n/index.test.ts apps/web/src/features/notes/notes-page.tsx apps/web/src/features/hymnal/hymnal-list.tsx
+          git commit -m "feat: localize notes and Hymnal list chrome"
+          git push origin HEAD:feature/bible-mobile-parity
