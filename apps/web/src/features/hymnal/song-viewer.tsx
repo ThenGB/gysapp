@@ -304,7 +304,7 @@ export function SongViewer() {
           loadingTask = pdfjs.getDocument({ url: resolved.pdfUrl });
           const loadedDoc = await loadingTask.promise;
           if (!isCurrent()) {
-            void loadedDoc.destroy().catch(() => undefined);
+            void loadingTask.destroy().catch(() => undefined);
             return;
           }
 
