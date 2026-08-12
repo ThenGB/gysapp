@@ -58,6 +58,11 @@
   font-size: 1.05rem;
 }
 
+.home-continue-list {
+  display: grid;
+  gap: 8px;
+}
+
 .continue-card {
   min-height: 92px;
   display: grid;

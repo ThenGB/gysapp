@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HomePage } from './home-page';
+import { rememberBibleLocation } from '../bible/bible-reading-store';
+import { clearHymnalRecent, rememberHymnalSong } from '../hymnal/hymnal-recent-store';
 import type { SauhResult, TrueVoiceFeed } from '@gysapp/contracts';
 
 const sauhResult: SauhResult = {
@@ -56,6 +58,8 @@ function renderHome() {
 
 describe('HomePage', () => {
   beforeEach(() => {
+    localStorage.clear();
+    clearHymnalRecent();
     mockUseSauh.mockReturnValue({
       data: undefined,
       isLoading: true,
@@ -119,5 +123,19 @@ describe('HomePage', () => {
     expect(screen.getByRole('alert')).toBeInTheDocument();
     fireEvent.click(retry);
     await waitFor(() => expect(refetch).toHaveBeenCalledTimes(1));
+  });
+
+  it('shows human-readable Bible resume and the persisted recent hymn', () => {
+    rememberBibleLocation({ version: 'b_tb', bookId: 43, chapter: 3, verse: 16 }, 'Yohanes 3');
+    rememberHymnalSong({ book: 'KR', song: '010', title: 'KR 010 — Sukacita' });
+
+    renderHome();
+
+    const bibleResume = screen.getByRole('link', { name: 'Lanjutkan bacaan: Yohanes 3' });
+    expect(bibleResume).toHaveAttribute('href', '/bible/43/3?v=16');
+    const hymnResume = screen.getByRole('link', {
+      name: 'Lanjutkan pujian: KR 010 — Sukacita',
+    });
+    expect(hymnResume).toHaveAttribute('href', '/hymnal/KR/010');
   });
 });

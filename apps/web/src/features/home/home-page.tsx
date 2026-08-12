@@ -12,6 +12,7 @@ import {
 import { useSauh, useSuaraSejati } from '../../api/content';
 import { assetUrl } from '../../lib/asset-url';
 import { getBibleReadingSnapshot, subscribeBibleReading } from '../bible/bible-reading-store';
+import { useHymnalRecent } from '../hymnal/hymnal-recent-store';
 import './home-page.css';
 
 function openExternal(url: string) {
@@ -44,27 +45,60 @@ function QuickStart() {
     getBibleReadingSnapshot,
     getBibleReadingSnapshot,
   );
+  const recentHymns = useHymnalRecent();
   const last = reading.last;
+  const matchingHistory = reading.history.find(
+    (entry) =>
+      entry.version === last.version &&
+      entry.bookId === last.bookId &&
+      entry.chapter === last.chapter,
+  );
+  const bibleLabel =
+    matchingHistory?.label ??
+    (last.bookId === 1
+      ? `Kejadian ${last.chapter}`
+      : `Kitab ${last.bookId} • Pasal ${last.chapter}`);
+  const bibleTarget = `/bible/${last.bookId}/${last.chapter}${last.verse ? `?v=${last.verse}` : ''}`;
+  const recentHymn = recentHymns[0] ?? null;
+
   return (
     <section className="home-start" aria-label="Akses cepat">
       <div className="home-section-head">
         <div>
           <span>Lanjutkan terakhir</span>
-          <h2>Alkitab</h2>
+          <h2>Bacaan &amp; Pujian</h2>
         </div>
       </div>
-      <Link className="continue-card" to={`/bible/${last.bookId}/${last.chapter}`}>
-        <BookOpenText size={30} aria-hidden="true" />
-        <span>
-          <strong>Lanjutkan bacaan</strong>
-          <small>
-            Kitab {last.bookId} • Pasal {last.chapter}
-          </small>
-        </span>
-        <CaretRight size={21} aria-hidden="true" />
-      </Link>
+      <div className="home-continue-list">
+        <Link
+          className="continue-card"
+          to={bibleTarget}
+          aria-label={`Lanjutkan bacaan: ${bibleLabel}`}
+        >
+          <BookOpenText size={30} aria-hidden="true" />
+          <span>
+            <strong>Lanjutkan bacaan</strong>
+            <small>{bibleLabel}</small>
+          </span>
+          <CaretRight size={21} aria-hidden="true" />
+        </Link>
+        {recentHymn && (
+          <Link
+            className="continue-card"
+            to={`/hymnal/${encodeURIComponent(recentHymn.book)}/${encodeURIComponent(recentHymn.song)}`}
+            aria-label={`Lanjutkan pujian: ${recentHymn.title}`}
+          >
+            <MusicNotes size={30} aria-hidden="true" />
+            <span>
+              <strong>Lanjutkan pujian</strong>
+              <small>{recentHymn.title}</small>
+            </span>
+            <CaretRight size={21} aria-hidden="true" />
+          </Link>
+        )}
+      </div>
       <div className="home-shortcuts">
-        <Link to={`/bible/${last.bookId}/${last.chapter}`}>
+        <Link to={bibleTarget}>
           <BookOpenText size={27} />
           <span>Alkitab</span>
         </Link>

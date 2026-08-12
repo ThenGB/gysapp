@@ -15,6 +15,7 @@ import {
   useHymnalPlayerState,
 } from './hymnal-player-store';
 import { chordCache } from './chord-cache';
+import { rememberHymnalSong } from './hymnal-recent-store';
 import { midiEngine } from './midi-engine';
 import { LatestRequestGuard } from '../../lib/latest-request';
 import { offlineMediaCache } from '../../platform/offline-media-cache';
@@ -248,6 +249,15 @@ export function SongViewer() {
       cancelled = true;
     };
   }, [book, song]);
+
+  useEffect(() => {
+    if (!resolved) return;
+    rememberHymnalSong({
+      book,
+      song,
+      title: `${book} ${resolved.entry.number} — ${resolved.entry.title}`,
+    });
+  }, [book, resolved, song]);
 
   useEffect(() => {
     if (!resolved?.midiUrl) return;
