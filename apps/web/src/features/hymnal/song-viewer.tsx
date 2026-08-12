@@ -18,6 +18,7 @@ import {
 } from './hymnal-player-store';
 import { midiEngine } from './midi-engine';
 import { LatestRequestGuard } from '../../lib/latest-request';
+import { offlineMediaCache } from '../../platform/offline-media-cache';
 import './song-viewer.css';
 
 type PdfJs = typeof import('pdfjs-dist');
@@ -284,6 +285,7 @@ export function SongViewer() {
     let cancelled = false;
     let loadingTask: PdfDocumentLoadingTask | null = null;
     let committedLoadingTask = false;
+    const mediaAbort = new AbortController();
     const loadToken = pdfLoadGuardRef.current.begin();
     const isCurrent = () => !cancelled && pdfLoadGuardRef.current.isCurrent(loadToken);
 
@@ -301,7 +303,11 @@ export function SongViewer() {
         if (pdfDocRef.current?.url === resolved.pdfUrl) {
           doc = pdfDocRef.current.doc;
         } else {
-          loadingTask = pdfjs.getDocument({ url: resolved.pdfUrl });
+          const pdfBytes = await offlineMediaCache.getOrFetch(resolved.pdfUrl, 'pdf', {
+            signal: mediaAbort.signal,
+          });
+          if (!isCurrent()) return;
+          loadingTask = pdfjs.getDocument({ data: new Uint8Array(pdfBytes) });
           const loadedDoc = await loadingTask.promise;
           if (!isCurrent()) {
             void loadingTask.destroy().catch(() => undefined);
@@ -367,6 +373,7 @@ export function SongViewer() {
     void load();
     return () => {
       cancelled = true;
+      mediaAbort.abort();
       if (pdfLoadGuardRef.current.isCurrent(loadToken)) {
         pdfLoadGuardRef.current.invalidate();
       }
