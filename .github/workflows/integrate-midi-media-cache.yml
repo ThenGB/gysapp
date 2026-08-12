@@ -35,36 +35,34 @@ jobs:
 
           old_import = "import { LatestRequestGuard } from '../../lib/latest-request';\n"
           new_import = old_import + "import { offlineMediaCache } from '../../platform/offline-media-cache';\n"
-          if "offlineMediaCache" not in text:
+          if "from '../../platform/offline-media-cache'" not in text:
               if old_import not in text:
                   raise SystemExit('LatestRequestGuard import anchor not found')
               text = text.replace(old_import, new_import, 1)
 
-          old_soundfont = '''    this.sfLoading = (async () => {
-              const res = await fetch(this.soundfontUrl);
-              if (!res.ok) throw new Error(`soundfont fetch failed: ${res.status}`);
-              const buffer = await res.arrayBuffer();
-              await this.request('loadSoundFont', { url: this.soundfontUrl, buffer }, 60_000, [buffer]);
-            })().catch((err) => {'''
-          new_soundfont = '''    this.sfLoading = (async () => {
-              const bytes = await offlineMediaCache.getOrFetch(this.soundfontUrl, 'soundfont');
-              const buffer = new Uint8Array(bytes).buffer;
-              await this.request('loadSoundFont', { url: this.soundfontUrl, buffer }, 60_000, [buffer]);
-            })().catch((err) => {'''
-          if old_soundfont in text:
-              text = text.replace(old_soundfont, new_soundfont, 1)
-          elif "offlineMediaCache.getOrFetch(this.soundfontUrl, 'soundfont')" not in text:
-              raise SystemExit('Soundfont fetch block not found')
+          if "offlineMediaCache.getOrFetch(this.soundfontUrl, 'soundfont')" not in text:
+              method = text.index('  private loadSoundFont(): Promise<void> {')
+              start = text.index('    this.sfLoading = (async () => {', method)
+              end_anchor = '    })().catch((err) => {'
+              end = text.index(end_anchor, start) + len(end_anchor)
+              text = (
+                  text[:start]
+                  + "    this.sfLoading = (async () => {\n"
+                  + "      const bytes = await offlineMediaCache.getOrFetch(this.soundfontUrl, 'soundfont');\n"
+                  + "      const buffer = new Uint8Array(bytes).buffer;\n"
+                  + "      await this.request('loadSoundFont', { url: this.soundfontUrl, buffer }, 60_000, [buffer]);\n"
+                  + end_anchor
+                  + text[end:]
+              )
 
-          old_midi = '''        const raw = await fetch(options.url).then(async (r) => {
-                  if (!r.ok) throw new Error(`midi fetch failed: ${r.status}`);
-                  return new Uint8Array(await r.arrayBuffer());
-                });'''
-          new_midi = "        const raw = await offlineMediaCache.getOrFetch(options.url, 'midi');"
-          if old_midi in text:
-              text = text.replace(old_midi, new_midi, 1)
-          elif "offlineMediaCache.getOrFetch(options.url, 'midi')" not in text:
-              raise SystemExit('MIDI fetch block not found')
+          if "offlineMediaCache.getOrFetch(options.url, 'midi')" not in text:
+              start = text.index('        const raw = await fetch(options.url)')
+              end = text.index('\n        if (!isCurrent())', start)
+              text = (
+                  text[:start]
+                  + "        const raw = await offlineMediaCache.getOrFetch(options.url, 'midi');"
+                  + text[end:]
+              )
 
           path.write_text(text)
           PY
