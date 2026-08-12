@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { MusicNotes, Pause, Play, SkipBack, SkipForward } from '@phosphor-icons/react';
+import {
+  MusicNotes,
+  Pause,
+  Play,
+  SkipBack,
+  SkipForward,
+  SlidersHorizontal,
+} from '@phosphor-icons/react';
 import { midiEngine, type MidiStatus } from './midi-engine';
 import './song-viewer.css';
 
@@ -19,6 +26,7 @@ export function MiniMidiPlayer({
   title,
   accidentalMode = 'sharp',
   transposeStep = 0,
+  compact = false,
   onAccidentalModeChange,
   onTransposeChange,
 }: {
@@ -26,6 +34,7 @@ export function MiniMidiPlayer({
   title: string;
   accidentalMode?: AccidentalMode;
   transposeStep?: number;
+  compact?: boolean;
   onAccidentalModeChange?: (mode: AccidentalMode) => void;
   onTransposeChange?: (step: number) => void;
 }) {
@@ -36,6 +45,7 @@ export function MiniMidiPlayer({
   const [error, setError] = useState<string | null>(null);
   const [transpose, setTranspose] = useState(transposeStep);
   const [tempo, setTempo] = useState(120);
+  const [detailsOpen, setDetailsOpen] = useState(!compact);
   const previousUrl = useRef(url);
 
   useEffect(() => {
@@ -52,7 +62,8 @@ export function MiniMidiPlayer({
     setLoadingPct(0);
     setError(null);
     setTempo(120);
-  }, [url]);
+    if (compact) setDetailsOpen(false);
+  }, [compact, url]);
 
   useEffect(() => {
     setTranspose(transposeStep);
@@ -118,9 +129,13 @@ export function MiniMidiPlayer({
   const loading = status === 'loading';
   const playing = status === 'playing';
   const hasSong = duration > 0 && url !== null;
+  const showDetails = !compact || detailsOpen;
 
   return (
-    <div className="midi-player" aria-label="Pemutar MIDI">
+    <div
+      className={`midi-player${compact ? ' midi-player-compact' : ''}${detailsOpen ? ' midi-player-details-open' : ''}`}
+      aria-label="Pemutar MIDI"
+    >
       <button
         type="button"
         className="icon-btn midi-play"
@@ -132,7 +147,7 @@ export function MiniMidiPlayer({
       </button>
       <div className="midi-info">
         <span className="midi-title">
-          <MusicNotes size={16} aria-hidden="true" /> {title}
+          <MusicNotes size={16} aria-hidden="true" /> <span className="midi-title-text">{title}</span>
         </span>
         <div className="midi-seek">
           <input
@@ -151,82 +166,98 @@ export function MiniMidiPlayer({
               {error}
             </span>
           )}
+          <span className="midi-time">
+            {formatTime(time)} / {formatTime(duration)}
+          </span>
         </div>
-        <span className="midi-time">
-          {formatTime(time)} / {formatTime(duration)}
-        </span>
-        <div className="midi-param-row">
-          <div className="midi-param">
-            <button
-              type="button"
-              className="icon-btn mini"
-              aria-label="Turunkan nada"
-              onClick={() => bumpTranspose(-1)}
+        {showDetails && (
+          <div className="midi-param-row">
+            <div className="midi-param">
+              <button
+                type="button"
+                className="icon-btn mini"
+                aria-label="Turunkan nada"
+                onClick={() => bumpTranspose(-1)}
+              >
+                −
+              </button>
+              <span className="midi-param-value">
+                Nada {transpose > 0 ? `+${transpose}` : transpose}
+              </span>
+              <button
+                type="button"
+                className="icon-btn mini"
+                aria-label="Naikkan nada"
+                onClick={() => bumpTranspose(1)}
+              >
+                +
+              </button>
+            </div>
+            <div className="midi-param">
+              <button
+                type="button"
+                className="icon-btn mini"
+                aria-label="Perlambat tempo"
+                onClick={() => bumpTempo(-5)}
+              >
+                −
+              </button>
+              <span className="midi-param-value">{tempo} BPM</span>
+              <button
+                type="button"
+                className="icon-btn mini"
+                aria-label="Percepat tempo"
+                onClick={() => bumpTempo(5)}
+              >
+                +
+              </button>
+            </div>
+            <div
+              className="midi-param midi-accidental-toggle"
+              role="group"
+              aria-label="Notasi chord MIDI"
             >
-              −
-            </button>
-            <span className="midi-param-value">
-              Nada {transpose > 0 ? `+${transpose}` : transpose}
-            </span>
-            <button
-              type="button"
-              className="icon-btn mini"
-              aria-label="Naikkan nada"
-              onClick={() => bumpTranspose(1)}
-            >
-              +
-            </button>
+              <button
+                type="button"
+                className={`chip${accidentalMode === 'sharp' ? ' chip-active' : ''}`}
+                aria-pressed={accidentalMode === 'sharp'}
+                onClick={() => onAccidentalModeChange?.('sharp')}
+              >
+                ♯
+              </button>
+              <button
+                type="button"
+                className={`chip${accidentalMode === 'flat' ? ' chip-active' : ''}`}
+                aria-pressed={accidentalMode === 'flat'}
+                onClick={() => onAccidentalModeChange?.('flat')}
+              >
+                ♭
+              </button>
+            </div>
           </div>
-          <div className="midi-param">
-            <button
-              type="button"
-              className="icon-btn mini"
-              aria-label="Perlambat tempo"
-              onClick={() => bumpTempo(-5)}
-            >
-              −
-            </button>
-            <span className="midi-param-value">{tempo} BPM</span>
-            <button
-              type="button"
-              className="icon-btn mini"
-              aria-label="Percepat tempo"
-              onClick={() => bumpTempo(5)}
-            >
-              +
-            </button>
-          </div>
-          <div
-            className="midi-param midi-accidental-toggle"
-            role="group"
-            aria-label="Notasi chord MIDI"
-          >
-            <button
-              type="button"
-              className={`chip${accidentalMode === 'sharp' ? ' chip-active' : ''}`}
-              aria-pressed={accidentalMode === 'sharp'}
-              onClick={() => onAccidentalModeChange?.('sharp')}
-            >
-              ♯
-            </button>
-            <button
-              type="button"
-              className={`chip${accidentalMode === 'flat' ? ' chip-active' : ''}`}
-              aria-pressed={accidentalMode === 'flat'}
-              onClick={() => onAccidentalModeChange?.('flat')}
-            >
-              ♭
-            </button>
-          </div>
-        </div>
+        )}
       </div>
-      <div className="midi-aux" aria-hidden="true">
-        <button type="button" className="icon-btn" aria-label="Lagu sebelumnya" disabled>
-          <SkipBack size={20} />
-        </button>
-        <button type="button" className="icon-btn" aria-label="Lagu berikutnya" disabled>
-          <SkipForward size={20} />
-        </button>
+      <div className="midi-aux">
+        {compact ? (
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label={detailsOpen ? 'Sembunyikan kontrol MIDI' : 'Tampilkan kontrol MIDI'}
+            aria-expanded={detailsOpen}
+            onClick={() => setDetailsOpen((value) => !value)}
+          >
+            <SlidersHorizontal size={20} aria-hidden="true" />
+          </button>
+        ) : (
+          <>
+            <button type="button" className="icon-btn" aria-label="Lagu sebelumnya" disabled>
+              <SkipBack size={20} aria-hidden="true" />
+            </button>
+            <button type="button" className="icon-btn" aria-label="Lagu berikutnya" disabled>
+              <SkipForward size={20} aria-hidden="true" />
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
