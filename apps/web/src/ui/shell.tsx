@@ -1,8 +1,16 @@
+import { lazy, Suspense } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { House, BookOpenText, MusicNotes, Sparkle, SquaresFour } from '@phosphor-icons/react';
+import { useHymnalPlayerState } from '../features/hymnal/hymnal-player-store';
 import { useT } from '../i18n';
 import { assetUrl } from '../lib/asset-url';
 import './shell.css';
+
+const GlobalMidiPlayerDock = lazy(() =>
+  import('../features/hymnal/global-midi-player').then((module) => ({
+    default: module.GlobalMidiPlayerDock,
+  })),
+);
 
 function useNavActive(pathname: string, to: string): boolean {
   if (to === '/home') return pathname === '/home';
@@ -12,6 +20,7 @@ function useNavActive(pathname: string, to: string): boolean {
 export function AppShell() {
   const { pathname } = useLocation();
   const { t } = useT();
+  const player = useHymnalPlayerState();
   const NAV_ITEMS = [
     { to: '/home', label: t('home'), icon: House },
     { to: '/bible', label: t('bible'), icon: BookOpenText },
@@ -49,9 +58,15 @@ export function AppShell() {
         <nav className="shell-nav">{NAV_ITEMS.map((item) => renderNavItem(item, 'nav'))}</nav>
       </aside>
 
-      <main className="shell-content">
+      <main className={`shell-content${player.track ? ' shell-content-with-player' : ''}`}>
         <Outlet />
       </main>
+
+      {player.track && (
+        <Suspense fallback={null}>
+          <GlobalMidiPlayerDock />
+        </Suspense>
+      )}
 
       <nav className="shell-dock" aria-label="Navigasi utama">
         {NAV_ITEMS.map((item) => renderNavItem(item, 'dock'))}
