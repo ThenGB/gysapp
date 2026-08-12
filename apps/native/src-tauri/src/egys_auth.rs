@@ -104,8 +104,10 @@ pub async fn open_egys_login(app: AppHandle, theme: Option<String>) -> Result<()
         .center()
         .initialization_script(AUTH_BRIDGE_SCRIPT)
         .on_page_load(|window, payload| {
+            let url = payload.url();
             if matches!(payload.event(), PageLoadEvent::Finished)
-                && payload.url().starts_with("https://e.gys.or.id")
+                && url.scheme() == "https"
+                && url.host_str() == Some("e.gys.or.id")
             {
                 // Android remote-document initialization can be late on older
                 // WebView versions; re-applying after load makes the bridge
