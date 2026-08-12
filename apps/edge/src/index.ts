@@ -40,7 +40,12 @@ export function createApp(
   app.use(
     '/api/*',
     cors({
-      origin: ['https://thengb.github.io', 'https://gyspnk.github.io', 'https://gysapp.pages.dev', 'http://localhost:5173'],
+      origin: [
+        'https://thengb.github.io',
+        'https://gyspnk.github.io',
+        'https://gysapp.pages.dev',
+        'http://localhost:5173',
+      ],
       credentials: true,
       maxAge: 86400,
     }),
