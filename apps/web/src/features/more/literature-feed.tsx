@@ -14,7 +14,7 @@ export function useLiterature(kind: LiteratureKind, enabled: boolean) {
     queryKey: ['literature', kind, contentSource()],
     queryFn: async ({ signal }) => {
       const raw =
-        contentSource() === 'bff'
+        contentSource() === 'gateway'
           ? await apiFetch<TrueVoiceFeed>(`/content/${kind}`, { signal })
           : await fetchStaticContent<TrueVoiceFeed>(kind);
       return parseTrueVoiceFeed(raw);
