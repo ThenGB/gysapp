@@ -9,11 +9,12 @@ GYSApp menjadi satu codebase web-native yang dapat berjalan sebagai PWA serta di
 ## Prinsip arsitektur
 
 1. **Web-first, wrapper-thin.** Semua feature utama berada di `apps/web` + `packages/core`; `apps/native` hanya bridge platform.
-2. **Pure core.** Parser, cache policy, search, transpose, playlist, backup, dan transformasi data harus berupa fungsi/port TypeScript yang dapat dites tanpa DOM.
-3. **Ports/adapters.** IndexedDB untuk web, filesystem/SQLite Tauri untuk native, tetapi kontrak sama.
-4. **Tidak ada secret di client.** OAuth, report webhook, dan integrasi yang membutuhkan credential hanya lewat BFF Cloudflare Worker.
-5. **Tidak ada runtime CDN untuk executable code.** Library/worker/font penting dibundel lokal; konten publik tetap dapat berasal dari tjc.org/e-GYS/GitHub.
-6. **Progressive data.** Instalasi awal ringan; aset besar dipasang atau dicache saat dibutuhkan.
+2. **Backendless-first.** Tidak ada backend GYSApp untuk fitur yang dapat bekerja langsung/local. Cloudflare hanya optional content gateway untuk parsing/CORS/report yang benar-benar memerlukan server.
+3. **Pure core.** Parser, cache policy, search, transpose, playlist, backup, dan transformasi data harus berupa fungsi/port TypeScript yang dapat dites tanpa DOM.
+4. **Ports/adapters.** IndexedDB untuk web, filesystem/SQLite Tauri untuk native, tetapi kontrak sama.
+5. **Tidak ada secret di client.** Hanya integrasi server-side yang benar-benar membutuhkan secret yang boleh memakai gateway.
+6. **Tidak ada runtime CDN untuk executable code.** Library/worker/font penting dibundel lokal; konten publik tetap dapat berasal dari tjc.org/e-GYS/GitHub.
+7. **Progressive data.** Instalasi awal ringan; aset besar dipasang atau dicache saat dibutuhkan.
 
 ## Status audit saat ini
 
@@ -25,24 +26,25 @@ GYSApp menjadi satu codebase web-native yang dapat berjalan sebagai PWA serta di
 - PWA + GitHub Pages.
 - Alkitab TB SQLite 1 file + pencarian seluruh Alkitab.
 - Katalog pujian penuh, PDF/MIDI KR, fallback lirik buku lain.
-- Chord lazy cache content-addressed dari `gyschordweb`.
+- Chord lazy cache content-addressed langsung dari `gyschordweb`.
 - Parser PDF/chord web-native dan mode teks/chord.
 - MIDI engine WebAudio/WASM, seek, tempo, transpose, instrument.
 - Playlist, loop, shuffle.
 - 10 Pokok Iman + PDF lanjutan.
 - Snapshot Sauh/Suara Sejati/konten literatur dengan fallback offline.
 - Settings, tema, skala font, i18n dasar, backup terenkripsi.
-- Account/report route + BFF foundation.
+- Report route + optional content gateway foundation.
 - Tauri Windows dan Android foundation.
 
 ### P0 — parity dan keamanan sebelum beta publik
 
-1. **BFF production**
-   - Cloudflare Worker via `apps/edge/wrangler.jsonc`.
-   - Secrets: Google OAuth, session secret, report webhook hanya di Cloudflare/GitHub secrets.
-   - OAuth state harus diverifikasi dan redirect harus allowlist.
-   - `id_token` harus diverifikasi terhadap Google sebelum membuat session.
-   - GitHub Pages wajib dibuild dengan `VITE_BFF_BASE` Worker production.
+1. **Backendless-first / content gateway minim**
+   - Audit tiap source online: direct browser fetch/open lebih dulu; Worker hanya jika CORS/parsing/secret memang memerlukan server.
+   - Worker tidak memiliki login, session, Google OAuth, Apple OAuth, atau token e-GYS.
+   - Chord tidak melewati Worker; manifest/file publik diambil langsung dari `gyschordweb`.
+   - e-GYS dibuka langsung ke `https://e.gys.or.id/login`; autentikasi sepenuhnya milik e-GYS.
+   - Gateway yang tersisa hanya `/api/content/*` yang perlu normalisasi dan `/api/report` bila webhook rahasia dipakai.
+   - GitHub Pages memakai `VITE_BFF_BASE` hanya untuk feature gateway tersebut; fitur inti tidak boleh tergantung gateway.
 
 2. **Android continuity**
    - Pertahankan application id Flutter lama: `id.sch.kanaan.egys`.
@@ -53,21 +55,23 @@ GYSApp menjadi satu codebase web-native yang dapat berjalan sebagai PWA serta di
 
 3. **Chord update policy**
    - Instalasi baru: nol file chord lokal.
-   - Saat lagu dibuka: conditional check manifest `gyschordweb`.
+   - Saat lagu dibuka: conditional check manifest `gyschordweb` langsung dari sumber publik.
    - Jika SHA sama: tidak download ulang.
    - Jika SHA berubah: download blob baru, validasi size/SHA/schema, baru pindahkan pointer aktif.
    - Blob lama tidak ditimpa; GC dilakukan idle/LRU setelah grace period.
    - Offline selalu memakai pointer aktif terakhir yang valid.
 
-4. **e-GYS parity**
-   - Jangan hanya mempertahankan feed Literatur.
+4. **e-GYS + media parity**
+   - e-GYS / Area Anggota adalah external service, bukan akun internal GYSApp.
+   - GYSApp tidak mengekstrak credential, cookie, session, atau token e-GYS.
    - Wajib ada akses eRhema, Pelita Kecil, Pujian/Paduan Suara, Buku, Ibadah Online, Audio Khotbah, Video Khotbah, Podcast, Facebook, Instagram, YouTube, Spotify.
-   - Link online dibuka via adapter platform; pada Tauri gunakan opener bila diperlukan.
+   - Link online dibuka via adapter platform; pada Tauri gunakan opener native bila diperlukan.
 
 5. **Security cleanup legacy**
    - Konfigurasi Flutter lama mengandung credential legacy yang pernah tersimpan di source.
    - Jangan menyalin nilainya ke GYSApp.
-   - Rotasi credential lama dan gunakan secret manager/BFF.
+   - Rotasi credential lama yang masih aktif.
+   - Jangan mempertahankan backend/auth hanya demi meniru implementasi Flutter bila web eksternal resmi sudah menangani autentikasi.
 
 ## P1 — reader dan worship parity
 
@@ -79,7 +83,7 @@ GYSApp menjadi satu codebase web-native yang dapat berjalan sebagai PWA serta di
 - Ref silang, perikop paralel, bookmark, history.
 - Notes rich text dengan backup/export.
 - Bacaan harian dan restore posisi terakhir.
-- TTS system/native terlebih dahulu; cloud TTS hanya melalui BFF bila benar-benar dibutuhkan.
+- TTS system/native terlebih dahulu; cloud TTS hanya melalui gateway bila benar-benar dibutuhkan.
 - Download manager dengan progress, cancel, retry, dan refresh library otomatis setelah selesai.
 
 ### Pujian
@@ -121,8 +125,9 @@ Arah: **minimal worship utility**, bukan dashboard SaaS generik.
 
 ### Web/PWA
 
-- GitHub Pages atau Cloudflare Pages untuk static frontend.
+- GitHub Pages atau static hosting lain untuk frontend.
 - Service Worker hanya cache shell/data yang sesuai; PDF/MIDI/soundfont besar dikelola IndexedDB/asset manager agar tidak dobel cache.
+- Content gateway boleh berada di Cloudflare Worker, tetapi tidak menjadi dependency shell/local feature.
 
 ### Windows
 
@@ -135,34 +140,31 @@ Arah: **minimal worship utility**, bukan dashboard SaaS generik.
 - Tauri Android dengan application id `id.sch.kanaan.egys`.
 - Release signing memakai keystore Flutter lama.
 - AAB untuk Play Store, APK universal/arm64 untuk sideload test.
-- Native notification/reminder dan opener melalui plugin Tauri.
+- Native notification/reminder dan external opener melalui plugin Tauri.
 
 ### iOS
 
 - Source dapat di-init/build dengan Tauri iOS, tetapi final IPA/App Store signing tetap memerlukan runner macOS + Apple signing identity/provisioning.
 - CI awal cukup compile/simulator gate; release workflow ditambahkan setelah credential Apple tersedia.
 
-## Cloudflare/BFF deployment contract
+## Optional content gateway deployment contract
 
-Worker name: `gysapp-bff`.
+Worker name: `gysapp-content-gateway`.
 
-Secrets minimum:
+Secret aplikasi minimum:
 
-- `SESSION_SECRET`
-- `GOOGLE_CLIENT_ID`
-- `GOOGLE_CLIENT_SECRET`
-- `REPORT_WEBHOOK_URL`
+- `REPORT_WEBHOOK_URL` — hanya diperlukan bila fitur Kirim Masukan meneruskan pesan ke webhook rahasia.
 
-GitHub Actions deployment additionally membutuhkan:
+GitHub Actions deployment membutuhkan:
 
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
 
-Repository variable frontend:
+Repository variable frontend bila gateway digunakan:
 
 - `VITE_BFF_BASE=https://<worker-domain>/api`
 
-Tidak ada secret yang boleh masuk `wrangler.jsonc`, `.env` ter-commit, frontend bundle, atau Tauri config.
+Tidak ada `SESSION_SECRET`, Google OAuth secret, Apple auth secret, atau e-GYS credential di GYSApp. Tidak ada secret yang boleh masuk `wrangler.jsonc`, `.env` ter-commit, frontend bundle, atau Tauri config.
 
 ## Testing gates
 
@@ -171,7 +173,8 @@ Tidak ada secret yang boleh masuk `wrangler.jsonc`, `.env` ter-commit, frontend 
 - TypeScript strict, nol `any` baru tanpa justifikasi.
 - Unit test core/cache/parser.
 - Component tests route yang berubah.
-- Edge tests untuk auth/report/content.
+- Edge tests hanya untuk report/content yang masih memerlukan gateway.
+- Direct-source contract tests untuk chord manifest/fixtures.
 - Playwright Chromium desktop + mobile.
 - Format/lint.
 
@@ -185,6 +188,7 @@ Tidak ada secret yang boleh masuk `wrangler.jsonc`, `.env` ter-commit, frontend 
 - Cache corruption + interrupted update fixtures.
 - MIDI long-song stress test.
 - PDF 1/2-page fit regression screenshots.
+- e-GYS external link flow pada web, Android, Windows, dan iOS wrapper tanpa token interception.
 
 ### Performance budgets
 
@@ -196,10 +200,10 @@ Tidak ada secret yang boleh masuk `wrangler.jsonc`, `.env` ter-commit, frontend 
 
 ## Urutan eksekusi
 
-1. Hardening BFF + Cloudflare deployment.
+1. Sederhanakan gateway: hapus auth/chord proxy dan audit direct-source vs gateway.
 2. Android identifier/version/signing continuity.
-3. Restore seluruh entry e-GYS/media.
-4. Chord manifest check-on-open + cache observability.
+3. Restore seluruh entry e-GYS/media dan external opener lintas platform.
+4. Chord manifest check-on-open + cache observability langsung dari `gyschordweb`.
 5. Redesign shell/dock/player berdasarkan design system baru.
 6. Hymnal viewer parity penuh.
 7. Bible reader/download/TTS parity.
@@ -209,4 +213,4 @@ Tidak ada secret yang boleh masuk `wrangler.jsonc`, `.env` ter-commit, frontend 
 
 ## Definition of done
 
-Migrasi dianggap selesai ketika seluruh menu utama Flutter lama mempunyai ekuivalen web/Tauri yang berfungsi atau keputusan `n/a` terdokumentasi; tidak ada credential legacy di client; chord/MIDI/PDF dapat bekerja offline setelah pernah dibuka/diunduh; web dan native memakai business logic yang sama; Android dapat mempertahankan upgrade path aplikasi lama; serta seluruh journey utama lolos test desktop/mobile dan aksesibilitas minimum WCAG 2.2 AA.
+Migrasi dianggap selesai ketika seluruh menu utama Flutter lama mempunyai ekuivalen web/Tauri yang berfungsi atau keputusan `n/a` terdokumentasi; fitur inti tidak membutuhkan backend GYSApp; tidak ada credential legacy di client; e-GYS login tetap sepenuhnya milik situs e-GYS; chord/MIDI/PDF dapat bekerja offline setelah pernah dibuka/diunduh; web dan native memakai business logic yang sama; Android dapat mempertahankan upgrade path aplikasi lama; serta seluruh journey utama lolos test desktop/mobile dan aksesibilitas minimum WCAG 2.2 AA.
