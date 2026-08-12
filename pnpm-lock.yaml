@@ -43,6 +43,12 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/node@22.20.1)(jsdom@30.0.1)
 
+  apps/native:
+    devDependencies:
+      '@tauri-apps/cli':
+        specifier: ^2.5.0
+        version: 2.11.4
+
   apps/web:
     dependencies:
       '@gysapp/contracts':
@@ -73,9 +79,6 @@ importers:
         specifier: ^7.18.2
         version: 7.18.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
     devDependencies:
-      '@tauri-apps/cli':
-        specifier: ^2.11.4
-        version: 2.11.4
       '@testing-library/jest-dom':
         specifier: ^7.0.1
         version: 7.0.1(@testing-library/dom@10.4.1)(vitest@3.2.7(@types/node@22.20.1)(jsdom@30.0.1))

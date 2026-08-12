@@ -1,0 +1,15 @@
+{
+  "name": "@gysapp/native",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "tauri": "tauri",
+    "build": "tauri build --no-bundle",
+    "android": "tauri android build --apk",
+    "windows": "tauri build",
+    "dev": "tauri dev"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.5.0"
+  }
+}

@@ -1,2 +1,5 @@
 /target
 /gen/schemas
+/gen/android/app/build
+/gen/android/gysapp-release.keystore
+/gen/android/gradlew.bat.bak

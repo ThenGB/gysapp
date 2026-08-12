@@ -7,7 +7,7 @@
     "beforeDevCommand": "pnpm --filter @gysapp/web dev",
     "devUrl": "http://localhost:5173",
     "beforeBuildCommand": "pnpm --filter @gysapp/web build",
-    "frontendDist": "../../apps/web/dist"
+    "frontendDist": "../../web/dist"
   },
   "app": {
     "windows": [

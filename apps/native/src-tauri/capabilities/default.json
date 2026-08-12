@@ -9,7 +9,6 @@
     "store:default",
     "sql:default",
     "fs:default",
-    "notification:default",
-    "stronghold:default"
+    "notification:default"
   ]
 }

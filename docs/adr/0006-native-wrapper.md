@@ -7,6 +7,17 @@ Status: Accepted (2026-08-12) — skeleton Windows terkompilasi (cargo check OK)
 Web-first selesai; GYSApp perlu diekspor ke Android, Windows, iOS dengan satu
 basis kode.
 
+## Hasil (2026-08-12)
+
+- Windows: `gysapp.exe` release 20.8 MB — cargo check + tauri build LULUS.
+- Android: `tauri android init` + build APK LULUS
+  (`GYSApp-0.1.0.apk` 24.5 MB, universal release) dan terverifikasi
+  apksigner (SHA-256 cert 7c8b70ba…). Keystore `gysapp-release.keystore`
+  TIDAK di-commit (digenerate ulang via CI secrets untuk rilis sungguhan).
+- stronghold DITANGGUHKAN: libsodium butuh cross-C compiler (zigbuild) untuk
+  Android; secret storage native dijadwalkan ulang (keystore/Keychain).
+- iOS: tetap butuh host macOS + signing (di luar mesin Windows).
+
 ## Keputusan
 
 - `apps/native/src-tauri` (Tauri 2 + Rust) memakai frontend build yang sama
