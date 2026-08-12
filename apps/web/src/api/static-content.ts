@@ -1,8 +1,8 @@
 import { assetUrl } from '../lib/asset-url';
 
-/** Sumber konten: BFF bila dikonfigurasi (VITE_BFF_BASE), else snapshot statis. */
-export function contentSource(): 'bff' | 'static' {
-  return import.meta.env.VITE_BFF_BASE ? 'bff' : 'static';
+/** Sumber konten: gateway bila dikonfigurasi, selain itu snapshot statis. */
+export function contentSource(): 'gateway' | 'static' {
+  return import.meta.env.VITE_CONTENT_GATEWAY_BASE ? 'gateway' : 'static';
 }
 
 export async function fetchStaticContent<T>(file: string): Promise<T> {

@@ -1,0 +1,113 @@
+name: native-android-release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-android-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK/NDK
+        shell: bash
+        run: |
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358'
+          echo "NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate legacy signing secrets
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD ANDROID_STORE_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "Missing required secret: $name" >&2
+              exit 1
+            fi
+          done
+
+      - name: Configure Android signing
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYSTORE="$RUNNER_TEMP/gysapp-release.keystore"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          cat > apps/native/src-tauri/gen/android/keystore.properties <<EOF
+          keyAlias=$ANDROID_KEY_ALIAS
+          keyPassword=$ANDROID_KEY_PASSWORD
+          storePassword=$ANDROID_STORE_PASSWORD
+          storeFile=$KEYSTORE
+          EOF
+
+      - name: Build signed AAB
+        run: pnpm --filter @gysapp/native tauri android build --aab
+
+      - name: Build signed APK
+        run: pnpm --filter @gysapp/native tauri android build --apk
+
+      - name: Verify Android signatures
+        shell: bash
+        run: |
+          set -euo pipefail
+          AAB="$(find apps/native/src-tauri/gen/android/app/build/outputs/bundle -type f -name '*.aab' | head -1)"
+          APK="$(find apps/native/src-tauri/gen/android/app/build/outputs/apk -type f -name '*.apk' | head -1)"
+          test -n "$AAB" && test -f "$AAB"
+          test -n "$APK" && test -f "$APK"
+          jarsigner -verify -verbose -certs "$AAB" >/dev/null
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
+          mkdir -p dist/android
+          cp "$AAB" dist/android/GYSApp-android-release.aab
+          cp "$APK" dist/android/GYSApp-android-release.apk
+          (cd dist/android && sha256sum *.aab *.apk > SHA256SUMS.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gysapp-android-release-${{ github.sha }}
+          path: dist/android/*
+          if-no-files-found: error
+          retention-days: 14

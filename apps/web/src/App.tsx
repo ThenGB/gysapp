@@ -6,20 +6,24 @@ import { HomePage } from './features/home/home-page';
 import { BiblePage } from './features/bible/bible-page';
 import { BibleSearchPage } from './features/bible/bible-search';
 import { HymnalListPage } from './features/hymnal/hymnal-list';
-import { SongViewer } from './features/hymnal/song-viewer';
 import { FaithPage } from './features/faith/faith-page';
 import { MorePage } from './features/more/more-page';
 import { LiteratureFeedPage } from './features/more/literature-feed';
 import { SettingsPage } from './features/settings/settings-page';
-import { AccountPage } from './features/account/account-page';
 import { ReportPage } from './features/account/report-page';
 import { NotesPage } from './features/notes/notes-page';
 import { applySettings, loadSettings } from './features/settings/settings-store';
 import { subscribeSettings } from './i18n';
 
-// Route yang memuat pdfjs/midi-engine di-split agar bundle awal kecil.
+// Route berat atau jarang dibuka di-split agar cold-start shell tetap ringan.
 const FaithPdfViewerPage = lazy(() =>
   import('./features/faith/faith-pdf-viewer').then((m) => ({ default: m.FaithPdfViewerPage })),
+);
+const SongViewer = lazy(() =>
+  import('./features/hymnal/song-viewer').then((m) => ({ default: m.SongViewer })),
+);
+const AccountPage = lazy(() =>
+  import('./features/account/account-page').then((m) => ({ default: m.AccountPage })),
 );
 
 function LazyPage({ element }: { element: React.ReactNode }) {
@@ -46,7 +50,7 @@ const router = createBrowserRouter(
           path: 'hymnal',
           children: [
             { index: true, element: <HymnalListPage /> },
-            { path: ':book/:song', element: <SongViewer /> },
+            { path: ':book/:song', element: <LazyPage element={<SongViewer />} /> },
           ],
         },
         { path: 'faith', element: <FaithPage /> },
@@ -54,7 +58,7 @@ const router = createBrowserRouter(
         { path: 'more', element: <MorePage /> },
         { path: 'literature/:kind', element: <LiteratureFeedPage /> },
         { path: 'settings', element: <SettingsPage /> },
-        { path: 'account', element: <AccountPage /> },
+        { path: 'account', element: <LazyPage element={<AccountPage />} /> },
         { path: 'report', element: <ReportPage /> },
         { path: 'notes/:kind', element: <NotesPage /> },
       ],

@@ -8,6 +8,13 @@ import {
   Gear,
   PaperPlaneTilt,
   PencilLine,
+  Broadcast,
+  Headphones,
+  InstagramLogo,
+  FacebookLogo,
+  YoutubeLogo,
+  SpotifyLogo,
+  GlobeHemisphereWest,
   UserCircle,
 } from '@phosphor-icons/react';
 import './more.css';
@@ -20,11 +27,34 @@ const LITERATURE = [
 ];
 
 const EXTERNAL = [
-  { href: 'https://tjc.org/id/pujian/pujian-padus', label: 'Pujian / Paduan Suara' },
-  { href: 'https://tjc.org/id/literatur/buku', label: 'Buku' },
-  { href: 'https://tjc.org/id/sabat/', label: 'Ibadah Online' },
-  { href: 'https://tjc.org/id/audio-khotbah/', label: 'Audio Khotbah' },
-  { href: 'https://tjc.org/id/video-khotbah/', label: 'Video Khotbah' },
+  { href: 'https://Bible.tjc.org', label: 'eRhema', icon: GlobeHemisphereWest },
+  { href: 'https://pelitakecil.com/', label: 'Pelita Kecil', icon: BookOpenText },
+  {
+    href: 'https://tjc.org/id/pujian/pujian-padus',
+    label: 'Pujian / Paduan Suara',
+    icon: Broadcast,
+  },
+  { href: 'https://tjc.org/id/literatur/buku', label: 'Buku', icon: BookOpenText },
+  { href: 'https://tjc.org/id/sabat/', label: 'Ibadah Online', icon: Broadcast },
+  { href: 'https://tjc.org/id/audio-khotbah/', label: 'Audio Khotbah', icon: Headphones },
+  { href: 'https://tjc.org/id/video-khotbah/', label: 'Video Khotbah', icon: YoutubeLogo },
+  {
+    href: 'https://www.youtube.com/channel/UCnKhYlQA5iJJvobPF4IYJFQ',
+    label: 'Podcast',
+    icon: YoutubeLogo,
+  },
+  { href: 'https://www.facebook.com/gerejayesussejati/', label: 'Facebook', icon: FacebookLogo },
+  { href: 'https://www.instagram.com/gerejayesussejati/', label: 'Instagram', icon: InstagramLogo },
+  {
+    href: 'https://www.youtube.com/channel/UCAHSLvPBcg2M-_N1VQfhxrg',
+    label: 'YouTube',
+    icon: YoutubeLogo,
+  },
+  {
+    href: 'https://open.spotify.com/show/4edDo52t3IlkgiWhBnk1GK',
+    label: 'Spotify',
+    icon: SpotifyLogo,
+  },
 ];
 
 function openExternal(url: string) {
@@ -45,6 +75,27 @@ export function MorePage() {
     <div className="content-shell more-page">
       <h1 className="section-title">Lainnya</h1>
 
+      <Section title="Akun e-GYS">
+        <ul className="more-grid">
+          <li>
+            <Link to="/account" className="more-card">
+              <UserCircle size={26} weight="duotone" aria-hidden="true" />
+              <span>Akun & Keanggotaan</span>
+            </Link>
+          </li>
+          <li>
+            <button
+              type="button"
+              className="more-card"
+              onClick={() => openExternal('https://e.gys.or.id')}
+            >
+              <GlobeHemisphereWest size={26} aria-hidden="true" />
+              <span>Buka situs e-GYS</span>
+            </button>
+          </li>
+        </ul>
+      </Section>
+
       <Section title="Literatur & Bacaan">
         <ul className="more-grid">
           {LITERATURE.map((item) => (
@@ -56,11 +107,14 @@ export function MorePage() {
             </li>
           ))}
         </ul>
+      </Section>
+
+      <Section title="Media & Tautan">
         <ul className="more-grid">
           {EXTERNAL.map((item) => (
             <li key={item.href}>
               <button type="button" className="more-card" onClick={() => openExternal(item.href)}>
-                <BookOpenText size={26} aria-hidden="true" />
+                <item.icon size={26} aria-hidden="true" />
                 <span>{item.label}</span>
               </button>
             </li>
@@ -97,12 +151,6 @@ export function MorePage() {
             <Link to="/settings" className="more-card">
               <Gear size={26} aria-hidden="true" />
               <span>Pengaturan</span>
-            </Link>
-          </li>
-          <li>
-            <Link to="/account" className="more-card">
-              <UserCircle size={26} aria-hidden="true" />
-              <span>Akun</span>
             </Link>
           </li>
           <li>

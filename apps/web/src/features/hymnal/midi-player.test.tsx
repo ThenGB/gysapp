@@ -69,4 +69,34 @@ describe('MiniMidiPlayer', () => {
     expect(mockEngine.loadMidi).not.toHaveBeenCalled();
     expect(mockEngine.play).toHaveBeenCalled();
   });
+
+  it('reports transpose changes so chord text stays synchronized', () => {
+    const onTransposeChange = vi.fn();
+    render(
+      <MiniMidiPlayer
+        url="/x.mid"
+        title="X"
+        onTransposeChange={onTransposeChange}
+        accidentalMode="sharp"
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Naikkan nada' }));
+    expect(mockEngine.setTranspose).toHaveBeenCalledWith(1);
+    expect(onTransposeChange).toHaveBeenCalledWith(1);
+  });
+
+  it('exposes sharp and mol switches inside the midi controls', () => {
+    const onAccidentalModeChange = vi.fn();
+    render(
+      <MiniMidiPlayer
+        url="/x.mid"
+        title="X"
+        accidentalMode="sharp"
+        onAccidentalModeChange={onAccidentalModeChange}
+      />,
+    );
+    const group = screen.getByRole('group', { name: 'Notasi chord MIDI' });
+    fireEvent.click(group.querySelectorAll('button')[1] as HTMLButtonElement);
+    expect(onAccidentalModeChange).toHaveBeenCalledWith('flat');
+  });
 });

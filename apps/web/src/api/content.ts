@@ -57,7 +57,7 @@ export function useSauh(date: Date, options?: Partial<UseQueryOptions<SauhResult
     queryFn: async ({ signal }) => {
       try {
         const raw =
-          contentSource() === 'bff'
+          contentSource() === 'gateway'
             ? await apiFetch<SauhResult>(`/content/sauh?date=${encodeURIComponent(dateKey)}`, {
                 signal,
               })
@@ -85,7 +85,7 @@ export function useSuaraSejati(options?: Partial<UseQueryOptions<TrueVoiceFeed>>
     queryFn: async ({ signal }) => {
       try {
         const raw =
-          contentSource() === 'bff'
+          contentSource() === 'gateway'
             ? await apiFetch<TrueVoiceFeed>('/content/suara-sejati', { signal })
             : await fetchStaticContent<TrueVoiceFeed>('suara-sejati');
         const result = parseTrueVoiceFeed(raw);

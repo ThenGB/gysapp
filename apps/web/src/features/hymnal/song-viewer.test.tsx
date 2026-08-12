@@ -31,6 +31,27 @@ describe('ChordedTextLines (mode teks)', () => {
     expect(lefts).toEqual(['5%', '30%', '55%']);
   });
 
+  it('renders enharmonic flat names when mol mode is selected', () => {
+    render(
+      <ChordedTextLines
+        lines={[{ text: 'Nada', chords: [{ chord: 'C#', pos: 0.2 }] }]}
+        accidentalMode="flat"
+      />,
+    );
+    expect(screen.getByText('D♭')).toBeInTheDocument();
+    expect(screen.queryByText('C♯')).not.toBeInTheDocument();
+  });
+
+  it('keeps text chord display synchronized with midi transpose', () => {
+    render(
+      <ChordedTextLines
+        lines={[{ text: 'Nada', chords: [{ chord: 'C', pos: 0.2 }] }]}
+        transposeStep={2}
+      />,
+    );
+    expect(screen.getByText('D')).toBeInTheDocument();
+  });
+
   it('shows empty state without lines', () => {
     render(<ChordedTextLines lines={[]} />);
     expect(screen.getByText(/Belum ada data chord/)).toBeInTheDocument();

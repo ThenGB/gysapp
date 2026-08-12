@@ -1,44 +1,42 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountPage } from './account-page';
+import { clearEgysToken, writeEgysToken } from './egys-session';
 
 describe('AccountPage', () => {
   beforeEach(() => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(
-        async () => new Response(JSON.stringify({ error: 'unauthenticated' }), { status: 401 }),
-      ),
-    );
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it('shows login button when unauthenticated', async () => {
-    render(<AccountPage />);
-    expect(await screen.findByRole('button', { name: 'Masuk dengan Google' })).toBeInTheDocument();
-  });
-
-  it('shows profile when session is valid', async () => {
+    writeEgysToken('egys-test-token');
     vi.stubGlobal(
       'fetch',
       vi.fn(
         async () =>
           new Response(
-            JSON.stringify({ sub: 'g-1', name: 'Budi', email: 'b@x.id', picture: null }),
-            {
-              status: 200,
-            },
+            JSON.stringify({
+              data: {
+                id: 22,
+                name: 'Budi',
+                email: 'budi@example.com',
+                status: 'ACTIVE',
+                baptized: 1,
+                branchname: 'Pontianak',
+              },
+            }),
+            { status: 200 },
           ),
       ),
     );
+  });
+
+  afterEach(() => {
+    clearEgysToken();
+    vi.unstubAllGlobals();
+  });
+
+  it('shows canonical membership and church branch from e-GYS', async () => {
     render(<AccountPage />);
-    await waitFor(() => {
-      expect(screen.getByText('Budi')).toBeInTheDocument();
-    });
-    expect(screen.getByText('b@x.id')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Keluar/ })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Budi' })).toBeInTheDocument();
+    expect(screen.getAllByText('Jemaat').length).toBeGreaterThan(0);
+    expect(screen.getByText('Pontianak')).toBeInTheDocument();
+    expect(screen.getByText('budi@example.com')).toBeInTheDocument();
   });
 });

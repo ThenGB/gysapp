@@ -2,10 +2,9 @@ export async function apiFetch<T>(
   path: string,
   options: { signal?: AbortSignal; baseUrl?: string; method?: string; body?: unknown } = {},
 ): Promise<T> {
-  const base = options.baseUrl ?? import.meta.env.VITE_BFF_BASE ?? '/api';
+  const base = options.baseUrl ?? import.meta.env.VITE_CONTENT_GATEWAY_BASE ?? '/api';
   const res = await fetch(`${base}${path}`, {
     method: options.method ?? 'GET',
-    credentials: 'include',
     signal: options.signal,
     headers: options.body !== undefined ? { 'content-type': 'application/json' } : undefined,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
