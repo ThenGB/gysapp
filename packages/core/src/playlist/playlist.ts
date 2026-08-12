@@ -1,4 +1,5 @@
 export type LoopMode = 'off' | 'playlist' | 'shuffle-all' | 'shuffle-playlist';
+export type PlaylistDirection = 'previous' | 'next';
 
 export interface SongRef {
   book: string;
@@ -129,6 +130,42 @@ export function moveSong(
       return { ...p, songs };
     }),
   };
+}
+
+/**
+ * Cari lagu tetangga dalam urutan yang sudah ditentukan.
+ * `wrap=true` hanya dipakai untuk loop playlist; mode off berhenti di ujung.
+ */
+export function adjacentSong(
+  songs: readonly SongRef[],
+  currentKey: string,
+  direction: PlaylistDirection,
+  wrap = false,
+): SongRef | null {
+  if (songs.length === 0) return null;
+  const index = songs.findIndex((song) => songKey(song) === currentKey);
+  if (index < 0) return null;
+  const delta = direction === 'next' ? 1 : -1;
+  const target = index + delta;
+  if (target >= 0 && target < songs.length) return songs[target] ?? null;
+  if (!wrap || songs.length < 2) return null;
+  return direction === 'next' ? (songs[0] ?? null) : (songs[songs.length - 1] ?? null);
+}
+
+/**
+ * Pilih lagu lain secara acak. Random dapat diinjeksi agar test deterministik.
+ * Tidak pernah mengembalikan lagu aktif jika ada kandidat lain.
+ */
+export function randomOtherSong(
+  songs: readonly SongRef[],
+  currentKey: string,
+  random: () => number = Math.random,
+): SongRef | null {
+  const candidates = songs.filter((song) => songKey(song) !== currentKey);
+  if (candidates.length === 0) return null;
+  const sample = Number.isFinite(random()) ? random() : 0;
+  const normalized = Math.max(0, Math.min(0.999999999, sample));
+  return candidates[Math.floor(normalized * candidates.length)] ?? null;
 }
 
 export function cycleLoopMode(mode: LoopMode): LoopMode {
