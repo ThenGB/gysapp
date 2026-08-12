@@ -3,25 +3,26 @@ import { Link } from 'react-router-dom';
 import { BookOpenText, Check, CopySimple, ShareNetwork, X } from '@phosphor-icons/react';
 import { parseFaithData, type FaithLanguage } from '@gysapp/contracts';
 import { searchFaith } from '@gysapp/core';
+import { useT } from '../../i18n';
 import faithRaw from '../../data/faith.json';
 import './faith.css';
 
 const DATA = parseFaithData(faithRaw);
 
-function CopyButton({ text }: { text: string }) {
+function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
       type="button"
       className="icon-btn faith-copy"
-      aria-label="Salin pokok iman"
+      aria-label={label}
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(text);
           setCopied(true);
           setTimeout(() => setCopied(false), 1600);
         } catch {
-          // clipboard tidak tersedia (http): fallback seleksi manual
+          // Clipboard tidak selalu tersedia (mis. non-secure context); seleksi manual tetap mungkin.
         }
       }}
     >
@@ -35,6 +36,7 @@ function CopyButton({ text }: { text: string }) {
 }
 
 export function FaithPage() {
+  const { t } = useT();
   const [lang, setLang] = useState('ID');
   const [term, setTerm] = useState('');
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
@@ -89,19 +91,19 @@ export function FaithPage() {
     if (!selectionText) return;
     try {
       await navigator.clipboard.writeText(selectionText);
-      setSelectionStatus(`${selectedPoints.length} pokok iman disalin.`);
+      setSelectionStatus(`${selectedPoints.length} ${t('faithPointsCopied')}`);
     } catch {
-      setSelectionStatus('Clipboard tidak tersedia.');
+      setSelectionStatus(t('clipboardUnavailable'));
     }
   };
 
   const shareSelection = async () => {
     if (!selectionText) return;
-    const title = language?.title ?? 'Dasar Kepercayaan';
+    const title = language?.title ?? t('faith');
     if (typeof navigator.share === 'function') {
       try {
         await navigator.share({ title, text: selectionText });
-        setSelectionStatus(`${selectedPoints.length} pokok iman dibagikan.`);
+        setSelectionStatus(`${selectedPoints.length} ${t('faithPointsShared')}`);
         return;
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return;
@@ -115,7 +117,7 @@ export function FaithPage() {
       <h1 className="section-title">{language?.title}</h1>
 
       <div className="faith-toolbar">
-        <div className="faith-lang-tabs" role="group" aria-label="Bahasa">
+        <div className="faith-lang-tabs" role="group" aria-label={t('language')}>
           {DATA.faith.map((f) => (
             <button
               key={f.language}
@@ -136,34 +138,36 @@ export function FaithPage() {
           className="faith-search"
           type="search"
           value={term}
-          placeholder="Cari pokok iman…"
-          aria-label="Cari pokok iman"
+          placeholder={`${t('searchFaith')}…`}
+          aria-label={t('searchFaith')}
           onChange={(e) => setTerm(e.target.value)}
         />
       </div>
 
-      <div className="faith-selection-toolbar" aria-label="Pilihan pokok iman">
+      <div className="faith-selection-toolbar" aria-label={t('faithSelection')}>
         <button
           type="button"
           className="btn-text"
           onClick={toggleVisible}
           disabled={points.length === 0}
         >
-          {allVisibleSelected ? 'Batal pilih hasil' : 'Pilih semua hasil'}
+          {allVisibleSelected ? t('clearResultSelection') : t('selectAllResults')}
         </button>
         {selectedPoints.length > 0 && (
           <div className="faith-selection-actions">
-            <strong>{selectedPoints.length} dipilih</strong>
+            <strong>
+              {selectedPoints.length} {t('selected')}
+            </strong>
             <button type="button" className="btn-text" onClick={() => void copySelection()}>
-              <CopySimple size={18} aria-hidden="true" /> Salin pilihan
+              <CopySimple size={18} aria-hidden="true" /> {t('copySelection')}
             </button>
             <button type="button" className="btn-text" onClick={() => void shareSelection()}>
-              <ShareNetwork size={18} aria-hidden="true" /> Bagikan
+              <ShareNetwork size={18} aria-hidden="true" /> {t('share')}
             </button>
             <button
               type="button"
               className="icon-btn"
-              aria-label="Batal semua pilihan"
+              aria-label={t('clearAllSelection')}
               onClick={() => {
                 setSelected(new Set());
                 setSelectionStatus(null);
@@ -192,7 +196,7 @@ export function FaithPage() {
                 <input
                   type="checkbox"
                   checked={isSelected}
-                  aria-label={`Pilih pokok iman ${point.number}`}
+                  aria-label={`${t('faithSelection')} ${point.number}`}
                   onChange={() => togglePoint(point.number)}
                 />
               </label>
@@ -200,16 +204,16 @@ export function FaithPage() {
               <div className="faith-body">
                 <p className="faith-text">{point.text}</p>
                 <Link to={`/faith/${point.number}/pdf`} className="btn-text">
-                  <BookOpenText size={18} aria-hidden="true" /> Baca Lebih Lanjut
+                  <BookOpenText size={18} aria-hidden="true" /> {t('readMoreFaith')}
                 </Link>
               </div>
-              <CopyButton text={`${point.number}. ${point.text}`} />
+              <CopyButton text={`${point.number}. ${point.text}`} label={t('copyFaith')} />
             </li>
           );
         })}
       </ol>
       {points.length === 0 && deferredTerm.trim() !== '' && (
-        <p className="faith-empty">Tidak ditemukan pokok iman yang cocok.</p>
+        <p className="faith-empty">{t('noFaithResults')}</p>
       )}
     </div>
   );

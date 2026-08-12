@@ -10,17 +10,25 @@ import {
   Newspaper,
 } from '@phosphor-icons/react';
 import { useSauh, useSuaraSejati } from '../../api/content';
+import { useT } from '../../i18n';
 import { assetUrl } from '../../lib/asset-url';
 import { getBibleReadingSnapshot, subscribeBibleReading } from '../bible/bible-reading-store';
 import { useHymnalRecent } from '../hymnal/hymnal-recent-store';
 import './home-page.css';
+
+const DATE_LOCALE = {
+  id: 'id-ID',
+  en: 'en-US',
+  zh: 'zh-CN',
+} as const;
 
 function openExternal(url: string) {
   window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 function Greeting({ date }: { date: Date }) {
-  const formatted = new Intl.DateTimeFormat('id-ID', {
+  const { locale, t } = useT();
+  const formatted = new Intl.DateTimeFormat(DATE_LOCALE[locale], {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -32,7 +40,7 @@ function Greeting({ date }: { date: Date }) {
         <img src={assetUrl('/brand/tjc-logo-indonesia-color.png')} alt="" />
       </div>
       <div>
-        <h1>Shalom</h1>
+        <h1>{t('shalom')}</h1>
         <p>{formatted}</p>
       </div>
     </header>
@@ -40,6 +48,7 @@ function Greeting({ date }: { date: Date }) {
 }
 
 function QuickStart() {
+  const { t } = useT();
   const reading = useSyncExternalStore(
     subscribeBibleReading,
     getBibleReadingSnapshot,
@@ -57,27 +66,27 @@ function QuickStart() {
     matchingHistory?.label ??
     (last.bookId === 1
       ? `Kejadian ${last.chapter}`
-      : `Kitab ${last.bookId} • Pasal ${last.chapter}`);
+      : `${t('book')} ${last.bookId} • ${t('chapter')} ${last.chapter}`);
   const bibleTarget = `/bible/${last.bookId}/${last.chapter}${last.verse ? `?v=${last.verse}` : ''}`;
   const recentHymn = recentHymns[0] ?? null;
 
   return (
-    <section className="home-start" aria-label="Akses cepat">
+    <section className="home-start" aria-label={t('quickAccess')}>
       <div className="home-section-head">
         <div>
-          <span>Lanjutkan terakhir</span>
-          <h2>Bacaan &amp; Pujian</h2>
+          <span>{t('continueLast')}</span>
+          <h2>{t('readingAndHymns')}</h2>
         </div>
       </div>
       <div className="home-continue-list">
         <Link
           className="continue-card"
           to={bibleTarget}
-          aria-label={`Lanjutkan bacaan: ${bibleLabel}`}
+          aria-label={`${t('continueReading')}: ${bibleLabel}`}
         >
           <BookOpenText size={30} aria-hidden="true" />
           <span>
-            <strong>Lanjutkan bacaan</strong>
+            <strong>{t('continueReading')}</strong>
             <small>{bibleLabel}</small>
           </span>
           <CaretRight size={21} aria-hidden="true" />
@@ -86,11 +95,11 @@ function QuickStart() {
           <Link
             className="continue-card"
             to={`/hymnal/${encodeURIComponent(recentHymn.book)}/${encodeURIComponent(recentHymn.song)}`}
-            aria-label={`Lanjutkan pujian: ${recentHymn.title}`}
+            aria-label={`${t('continueHymn')}: ${recentHymn.title}`}
           >
             <MusicNotes size={30} aria-hidden="true" />
             <span>
-              <strong>Lanjutkan pujian</strong>
+              <strong>{t('continueHymn')}</strong>
               <small>{recentHymn.title}</small>
             </span>
             <CaretRight size={21} aria-hidden="true" />
@@ -100,11 +109,11 @@ function QuickStart() {
       <div className="home-shortcuts">
         <Link to={bibleTarget}>
           <BookOpenText size={27} />
-          <span>Alkitab</span>
+          <span>{t('bible')}</span>
         </Link>
         <Link to="/hymnal">
           <MusicNotes size={27} />
-          <span>Pujian</span>
+          <span>{t('hymnal')}</span>
         </Link>
         <Link to="/account">
           <GlobeHemisphereWest size={27} />
@@ -116,6 +125,7 @@ function QuickStart() {
 }
 
 function SauhCard({ date }: { date: Date }) {
+  const { t } = useT();
   const { data, isLoading, isError, isFetching, refetch } = useSauh(date);
   const { reset } = useQueryErrorResetBoundary();
   if (isLoading)
@@ -130,7 +140,7 @@ function SauhCard({ date }: { date: Date }) {
     return (
       <section className="sauh-card sauh-error" role="alert">
         <CloudSlash size={28} />
-        <p>Sauh Bagi Jiwa belum dapat dimuat.</p>
+        <p>{t('sauhUnavailable')}</p>
         <button
           type="button"
           className="btn-primary"
@@ -139,21 +149,21 @@ function SauhCard({ date }: { date: Date }) {
             void refetch();
           }}
         >
-          Coba lagi
+          {t('retry')}
         </button>
       </section>
     );
   const today = data.items[0];
   return (
     <section className="sauh-card" aria-label="Sauh Bagi Jiwa">
-      {isFetching && <span className="refreshing-badge">memperbarui…</span>}
+      {isFetching && <span className="refreshing-badge">{t('refreshing')}</span>}
       <p className="sauh-kicker">SAUH BAGI JIWA</p>
       {today?.imageUrl && <img className="sauh-image" src={today.imageUrl} alt="" loading="lazy" />}
       <h2 className="sauh-title">{today?.title}</h2>
       <p className="sauh-excerpt">{today?.excerpt}</p>
       {today && (
         <button type="button" className="btn-text" onClick={() => openExternal(today.url)}>
-          Baca selengkapnya <CaretRight size={18} />
+          {t('readMore')} <CaretRight size={18} />
         </button>
       )}
     </section>
@@ -161,6 +171,7 @@ function SauhCard({ date }: { date: Date }) {
 }
 
 function SuaraSejatiSection() {
+  const { t } = useT();
   const { data, isLoading, isError, isFetching, refetch } = useSuaraSejati();
   const { reset } = useQueryErrorResetBoundary();
   return (
@@ -181,7 +192,7 @@ function SuaraSejatiSection() {
       )}
       {isError && !data && (
         <div className="feed-error" role="alert">
-          <p>Suara Sejati belum dapat dimuat.</p>
+          <p>{t('trueVoiceUnavailable')}</p>
           <button
             type="button"
             className="btn-primary"
@@ -190,13 +201,13 @@ function SuaraSejatiSection() {
               void refetch();
             }}
           >
-            Coba lagi
+            {t('retry')}
           </button>
         </div>
       )}
       {data && (
         <>
-          {isFetching && <span className="refreshing-badge">memperbarui…</span>}
+          {isFetching && <span className="refreshing-badge">{t('refreshing')}</span>}
           <ul className="truevoice-list">
             {data.items.map((item) => (
               <li key={item.url} className="truevoice-item">
@@ -207,7 +218,7 @@ function SuaraSejatiSection() {
                   <h3 className="truevoice-title">{item.title}</h3>
                   {item.description && <p className="truevoice-desc">{item.description}</p>}
                   <button type="button" className="btn-text" onClick={() => openExternal(item.url)}>
-                    Buka <CaretRight size={18} />
+                    {t('open')} <CaretRight size={18} />
                   </button>
                 </div>
               </li>
@@ -220,17 +231,18 @@ function SuaraSejatiSection() {
 }
 
 export function HomePage() {
+  const { t } = useT();
   const today = new Date();
   return (
     <div className="content-shell home-page">
       <Greeting date={today} />
       <QuickStart />
-      <h2 className="section-title">Renungan hari ini</h2>
+      <h2 className="section-title">{t('todayDevotion')}</h2>
       <SauhCard date={today} />
       <SuaraSejatiSection />
       <p className="home-offline-note">
         <Newspaper size={16} />
-        Konten terbaru otomatis disimpan untuk dibaca saat offline.
+        {t('offlineContentNote')}
       </p>
     </div>
   );

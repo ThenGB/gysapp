@@ -23,6 +23,60 @@ function durationToMs(value: string): number {
   return Number.parseFloat(first);
 }
 
+function parseRgb(value: string): [number, number, number] {
+  const match = value.match(/rgba?\((\d+(?:\.\d+)?)[, ]+(\d+(?:\.\d+)?)[, ]+(\d+(?:\.\d+)?)/);
+  if (!match) throw new Error(`Unsupported computed color: ${value}`);
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+
+function relativeLuminance(value: string): number {
+  const channels = parseRgb(value).map((channel) => {
+    const normalized = channel / 255;
+    return normalized <= 0.04045
+      ? normalized / 12.92
+      : ((normalized + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * channels[0]! + 0.7152 * channels[1]! + 0.0722 * channels[2]!;
+}
+
+function contrastRatio(foreground: string, background: string): number {
+  const first = relativeLuminance(foreground);
+  const second = relativeLuminance(background);
+  const lighter = Math.max(first, second);
+  const darker = Math.min(first, second);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+async function resolvedThemeColors(page: Page, theme: 'light' | 'dark') {
+  return page.evaluate((selectedTheme) => {
+    document.documentElement.dataset.theme = selectedTheme;
+    const probe = document.createElement('span');
+    probe.style.position = 'fixed';
+    probe.style.pointerEvents = 'none';
+    probe.style.opacity = '0';
+    document.body.append(probe);
+
+    const resolve = (token: string) => {
+      probe.style.color = `var(${token})`;
+      return getComputedStyle(probe).color;
+    };
+
+    const result = {
+      surface: resolve('--surface'),
+      raised: resolve('--surface-raised'),
+      primary: resolve('--text-primary'),
+      secondary: resolve('--text-secondary'),
+      tertiary: resolve('--text-tertiary'),
+      accentText: resolve('--accent-text'),
+      accent: resolve('--accent'),
+      accentContrast: resolve('--accent-contrast'),
+      focusRing: resolve('--focus-ring'),
+    };
+    probe.remove();
+    return result;
+  }, theme);
+}
+
 test.describe('accessibility release regressions', () => {
   test('main shell does not horizontally overflow across the release viewport matrix', async ({
     page,
@@ -82,6 +136,28 @@ test.describe('accessibility release regressions', () => {
     await expect(page.getByRole('heading', { name: 'Kejadian 1' }).first()).toBeVisible({
       timeout: 10_000,
     });
+  });
+
+  test('light and dark theme text tokens retain WCAG AA contrast', async ({ page }) => {
+    await page.goto('/home');
+
+    for (const theme of ['light', 'dark'] as const) {
+      const colors = await resolvedThemeColors(page, theme);
+      for (const foreground of [
+        colors.primary,
+        colors.secondary,
+        colors.tertiary,
+        colors.accentText,
+      ]) {
+        expect(
+          contrastRatio(foreground, colors.surface),
+          `${theme} text ${foreground} on ${colors.surface}`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+      expect(contrastRatio(colors.primary, colors.raised)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(colors.accentContrast, colors.accent)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(colors.focusRing, colors.surface)).toBeGreaterThanOrEqual(3);
+    }
   });
 
   test('reduced-motion preference collapses transition and animation durations', async ({
