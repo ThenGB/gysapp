@@ -153,4 +153,24 @@ describe('MiniMidiPlayer', () => {
       expect.objectContaining({ url: '/b.mid', autoplay: true }),
     );
   });
+
+  it('auto-advances once when the MIDI engine reports ended', async () => {
+    const onEnded = vi.fn(() => true);
+    const { rerender } = render(
+      <MiniMidiPlayer compact url="/a.mid" title="A" onEnded={onEnded} />,
+    );
+
+    emitStatus('ended');
+    await act(async () => undefined);
+    expect(onEnded).toHaveBeenCalledTimes(1);
+
+    emitStatus('ended');
+    await act(async () => undefined);
+    expect(onEnded).toHaveBeenCalledTimes(1);
+
+    rerender(<MiniMidiPlayer compact url="/b.mid" title="B" onEnded={onEnded} />);
+    expect(mockEngine.loadMidi).toHaveBeenCalledWith(
+      expect.objectContaining({ url: '/b.mid', autoplay: true }),
+    );
+  });
 });
