@@ -41,12 +41,17 @@ export function AppShell() {
       <aside className="shell-sidebar" aria-label="Navigasi utama">
         <Link to="/home" className="shell-brand" aria-label="GYSApp Beranda">
           <img src={assetUrl('/brand/tjc-logo-indonesia-color.png')} alt="" />
-          <span><strong>GYSApp</strong><small>Gereja Yesus Sejati</small></span>
+          <span>
+            <strong>GYSApp</strong>
+            <small>Gereja Yesus Sejati</small>
+          </span>
         </Link>
         <nav className="shell-nav">{NAV_ITEMS.map((item) => renderNavItem(item, 'nav'))}</nav>
       </aside>
 
-      <main className="shell-content"><Outlet /></main>
+      <main className="shell-content">
+        <Outlet />
+      </main>
 
       <nav className="shell-dock" aria-label="Navigasi utama">
         {NAV_ITEMS.map((item) => renderNavItem(item, 'dock'))}

@@ -28,7 +28,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   reduceMotion: false,
 };
 
-export const COMFORT_PRESETS: Record<ComfortPreset, Pick<AppSettings, 'uiScale' | 'readerScale' | 'readerLineHeight' | 'largeTargets'>> = {
+export const COMFORT_PRESETS: Record<
+  ComfortPreset,
+  Pick<AppSettings, 'uiScale' | 'readerScale' | 'readerLineHeight' | 'largeTargets'>
+> = {
   standard: { uiScale: 1, readerScale: 1, readerLineHeight: 1.7, largeTargets: false },
   comfortable: { uiScale: 1.05, readerScale: 1.15, readerLineHeight: 1.78, largeTargets: true },
   large: { uiScale: 1.12, readerScale: 1.35, readerLineHeight: 1.85, largeTargets: true },

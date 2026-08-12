@@ -44,12 +44,7 @@ export interface BiblePackStatus {
 }
 
 export type BibleDownloadPhase =
-  | 'downloading'
-  | 'verifying'
-  | 'installing'
-  | 'complete'
-  | 'cancelled'
-  | 'error';
+  'downloading' | 'verifying' | 'installing' | 'complete' | 'cancelled' | 'error';
 
 export interface BibleDownloadTask {
   code: BiblePackCode;
@@ -264,8 +259,7 @@ export class BiblePackManager {
     return () => this.listeners.delete(listener);
   };
 
-  getTaskSnapshot = (code: BiblePackCode): BibleDownloadTask | null =>
-    this.tasks.get(code) ?? null;
+  getTaskSnapshot = (code: BiblePackCode): BibleDownloadTask | null => this.tasks.get(code) ?? null;
 
   private emit(): void {
     for (const listener of this.listeners) listener();
@@ -381,7 +375,10 @@ export class BiblePackManager {
         resumable: false,
       });
       const database = await decodeBiblePackage(packageBytes);
-      if (database.byteLength < 16 || new TextDecoder().decode(database.slice(0, 15)) !== 'SQLite format 3') {
+      if (
+        database.byteLength < 16 ||
+        new TextDecoder().decode(database.slice(0, 15)) !== 'SQLite format 3'
+      ) {
         throw new Error('Isi paket Alkitab bukan database SQLite yang valid.');
       }
 

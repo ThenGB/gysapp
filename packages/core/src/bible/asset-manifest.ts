@@ -17,11 +17,7 @@ export interface BiblePackManifest {
   packages: BiblePackPackage[];
 }
 
-export type BiblePackAvailability =
-  | 'built-in'
-  | 'not-installed'
-  | 'installed'
-  | 'update-available';
+export type BiblePackAvailability = 'built-in' | 'not-installed' | 'installed' | 'update-available';
 
 const SUPPORTED_CODES = new Set<BiblePackCode>(['b_tb', 'b_kjv', 'b_cuv']);
 const SHA256_RE = /^[a-f0-9]{64}$/i;

@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowsOutLineHorizontal,
@@ -23,21 +16,13 @@ import {
   X,
 } from '@phosphor-icons/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  chapterKey,
-  decodeVerseId,
-  stripBibleTags,
-  type BiblePackCode,
-} from '@gysapp/core';
+import { chapterKey, decodeVerseId, stripBibleTags, type BiblePackCode } from '@gysapp/core';
 import {
   biblePackManager,
   type BibleDownloadTask,
   type BiblePackStatus,
 } from '../../data/bible/bible-pack-manager';
-import {
-  getBiblePortForVersion,
-  invalidateBiblePort,
-} from '../../data/bible/sqlite-bible-port';
+import { getBiblePortForVersion, invalidateBiblePort } from '../../data/bible/sqlite-bible-port';
 import {
   getBibleReadingSnapshot,
   isBibleBookmarked,
@@ -109,7 +94,9 @@ function PackCard({
               ? `Terpasang ${status.installed.version}`
               : 'Belum terpasang'}
         </span>
-        {status.remote && <small>{formatBytes(status.remote.sizeBytes)} • SHA-256 terverifikasi</small>}
+        {status.remote && (
+          <small>{formatBytes(status.remote.sizeBytes)} • SHA-256 terverifikasi</small>
+        )}
       </div>
 
       {busy && (
@@ -125,7 +112,11 @@ function PackCard({
                 : 'Memasang…'}
           </span>
           {task.phase === 'downloading' && (
-            <button type="button" className="btn-text" onClick={() => biblePackManager.cancel(status.code)}>
+            <button
+              type="button"
+              className="btn-text"
+              onClick={() => biblePackManager.cancel(status.code)}
+            >
               Stop
             </button>
           )}
@@ -259,7 +250,11 @@ function ReaderPane({
   if (chapterQuery.isError) {
     return (
       <article className="bible-reader bible-reader-error">
-        <p>{chapterQuery.error instanceof Error ? chapterQuery.error.message : 'Versi belum tersedia.'}</p>
+        <p>
+          {chapterQuery.error instanceof Error
+            ? chapterQuery.error.message
+            : 'Versi belum tersedia.'}
+        </p>
       </article>
     );
   }
@@ -312,7 +307,13 @@ function ReaderPane({
             >
               <sup className="bible-verse-num">{verse.v}</sup>
               {stripBibleTags(verse.t)}
-              {bookmarked && <BookmarkSimple className="bible-bookmark-mark" weight="fill" aria-label="Ditandai" />}
+              {bookmarked && (
+                <BookmarkSimple
+                  className="bible-bookmark-mark"
+                  weight="fill"
+                  aria-label="Ditandai"
+                />
+              )}
             </button>
           </div>
         );
@@ -354,7 +355,10 @@ function ReaderPane({
                 {related.map((reference, index) => {
                   const target = decodeVerseId(reference.id);
                   return (
-                    <Link key={`${reference.id}-${index}`} to={`/bible/${target.bookId}/${target.chapterId}`}>
+                    <Link
+                      key={`${reference.id}-${index}`}
+                      to={`/bible/${target.bookId}/${target.chapterId}`}
+                    >
                       {target.bookId}:{target.chapterId}:{target.verseId}
                     </Link>
                   );
@@ -407,10 +411,7 @@ export function BiblePage() {
   const book = primaryCatalog.data?.books.find((item) => item.id === bookId);
   const chapterCount = book?.c ?? 0;
   const availableVersions = useMemo(
-    () =>
-      (statuses.data ?? []).filter(
-        (status) => status.builtIn || Boolean(status.installed),
-      ),
+    () => (statuses.data ?? []).filter((status) => status.builtIn || Boolean(status.installed)),
     [statuses.data],
   );
 
@@ -461,7 +462,12 @@ export function BiblePage() {
           <Link to="/bible/search" className="icon-btn" aria-label="Cari ayat">
             <MagnifyingGlass size={21} aria-hidden="true" />
           </Link>
-          <button type="button" className="icon-btn" aria-label="Kelola versi Alkitab" onClick={() => setLibraryOpen(true)}>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Kelola versi Alkitab"
+            onClick={() => setLibraryOpen(true)}
+          >
             <Books size={21} aria-hidden="true" />
           </button>
         </div>
@@ -528,7 +534,9 @@ export function BiblePage() {
             <select
               value={reading.settings.secondaryVersion}
               onChange={(event) =>
-                updateBibleReadingSettings({ secondaryVersion: event.target.value as BiblePackCode })
+                updateBibleReadingSettings({
+                  secondaryVersion: event.target.value as BiblePackCode,
+                })
               }
             >
               {availableVersions.map((status) => (
@@ -556,7 +564,10 @@ export function BiblePage() {
             disabled={reading.settings.readerScale <= 0.9}
             onClick={() =>
               updateBibleReadingSettings({
-                readerScale: Math.max(0.9, Math.round((reading.settings.readerScale - 0.1) * 10) / 10),
+                readerScale: Math.max(
+                  0.9,
+                  Math.round((reading.settings.readerScale - 0.1) * 10) / 10,
+                ),
               })
             }
           >
@@ -568,7 +579,10 @@ export function BiblePage() {
             disabled={reading.settings.readerScale >= 1.6}
             onClick={() =>
               updateBibleReadingSettings({
-                readerScale: Math.min(1.6, Math.round((reading.settings.readerScale + 0.1) * 10) / 10),
+                readerScale: Math.min(
+                  1.6,
+                  Math.round((reading.settings.readerScale + 0.1) * 10) / 10,
+                ),
               })
             }
           >
@@ -577,8 +591,14 @@ export function BiblePage() {
         </div>
       </div>
 
-      <div className={`bible-reader-grid${reading.settings.split ? ' bible-reader-grid-split' : ''}`}>
-        <div ref={(node) => { primaryRef.current = node?.querySelector('[data-pane="primary"]') ?? null; }}>
+      <div
+        className={`bible-reader-grid${reading.settings.split ? ' bible-reader-grid-split' : ''}`}
+      >
+        <div
+          ref={(node) => {
+            primaryRef.current = node?.querySelector('[data-pane="primary"]') ?? null;
+          }}
+        >
           <ReaderPane
             paneId="primary"
             version={version}
@@ -589,7 +609,11 @@ export function BiblePage() {
           />
         </div>
         {reading.settings.split && (
-          <div ref={(node) => { secondaryRef.current = node?.querySelector('[data-pane="secondary"]') ?? null; }}>
+          <div
+            ref={(node) => {
+              secondaryRef.current = node?.querySelector('[data-pane="secondary"]') ?? null;
+            }}
+          >
             <ReaderPane
               paneId="secondary"
               version={reading.settings.secondaryVersion}
@@ -610,7 +634,9 @@ export function BiblePage() {
         >
           <CaretLeft size={20} aria-hidden="true" /> Sebelumnya
         </button>
-        <span>{book?.bl} {chapterId}</span>
+        <span>
+          {book?.bl} {chapterId}
+        </span>
         <button
           type="button"
           disabled={chapterId >= chapterCount}
@@ -624,10 +650,20 @@ export function BiblePage() {
         <div className="bible-tts-bar" role="status">
           <SpeakerHigh size={20} aria-hidden="true" />
           <span>Alkitab sedang dibacakan</span>
-          <button type="button" className="icon-btn" aria-label={tts.paused ? 'Lanjutkan' : 'Jeda'} onClick={() => bibleTts.togglePause()}>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label={tts.paused ? 'Lanjutkan' : 'Jeda'}
+            onClick={() => bibleTts.togglePause()}
+          >
             {tts.paused ? <Play size={19} /> : <Pause size={19} />}
           </button>
-          <button type="button" className="icon-btn" aria-label="Stop pembacaan" onClick={() => bibleTts.stop()}>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Stop pembacaan"
+            onClick={() => bibleTts.stop()}
+          >
             <Stop size={18} />
           </button>
         </div>

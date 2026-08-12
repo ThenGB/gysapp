@@ -64,10 +64,17 @@ function normalizeLocation(value: unknown, fallback = DEFAULT_STATE.last): Bible
   const item = value as Partial<BibleLocation>;
   return {
     version: isVersion(item.version) ? item.version : fallback.version,
-    bookId: Number.isInteger(item.bookId) && Number(item.bookId) > 0 ? Number(item.bookId) : fallback.bookId,
+    bookId:
+      Number.isInteger(item.bookId) && Number(item.bookId) > 0
+        ? Number(item.bookId)
+        : fallback.bookId,
     chapter:
-      Number.isInteger(item.chapter) && Number(item.chapter) > 0 ? Number(item.chapter) : fallback.chapter,
-    ...(Number.isInteger(item.verse) && Number(item.verse) > 0 ? { verse: Number(item.verse) } : {}),
+      Number.isInteger(item.chapter) && Number(item.chapter) > 0
+        ? Number(item.chapter)
+        : fallback.chapter,
+    ...(Number.isInteger(item.verse) && Number(item.verse) > 0
+      ? { verse: Number(item.verse) }
+      : {}),
   };
 }
 

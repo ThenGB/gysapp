@@ -120,7 +120,9 @@ html {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
@@ -134,8 +136,14 @@ html {
   scroll-behavior: auto !important;
 }
 
-* { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
 
 body {
   background: var(--surface);
@@ -152,8 +160,12 @@ body {
   border-radius: 2px;
 }
 
-a { color: var(--accent-text); }
-button { font-family: inherit; }
+a {
+  color: var(--accent-text);
+}
+button {
+  font-family: inherit;
+}
 
 .content-shell {
   max-width: var(--content-max);
