@@ -119,17 +119,26 @@ export function BibleSearchPage() {
         </ul>
       ) : (
         !searching &&
-        deferredTerm.trim() !== '' && <p className="bible-empty">Tidak ditemukan ayat yang cocok.</p>
+        deferredTerm.trim() !== '' && (
+          <p className="bible-empty">Tidak ditemukan ayat yang cocok.</p>
+        )
       )}
     </div>
   );
 }
 
-function HighlightedText({ text, ranges }: { text: string; ranges: Array<{ start: number; end: number }> }) {
+function HighlightedText({
+  text,
+  ranges,
+}: {
+  text: string;
+  ranges: Array<{ start: number; end: number }>;
+}) {
   const parts: Array<{ text: string; highlight: boolean }> = [];
   let cursor = 0;
   for (const range of ranges) {
-    if (range.start > cursor) parts.push({ text: text.slice(cursor, range.start), highlight: false });
+    if (range.start > cursor)
+      parts.push({ text: text.slice(cursor, range.start), highlight: false });
     parts.push({ text: text.slice(range.start, range.end), highlight: true });
     cursor = range.end;
   }

@@ -10,15 +10,22 @@ function fixtureFetch() {
     const url = String(input);
     const chapter = url.match(/chapters\/(\d+_\d+)\.json$/);
     if (chapter) {
-      return new Response(await readFile(`${FIXTURES}/chapters/${chapter[1]}.json`), { status: 200 });
+      return new Response(await readFile(`${FIXTURES}/chapters/${chapter[1]}.json`), {
+        status: 200,
+      });
     }
     const pericope = url.match(/pericopes\/(\d+_\d+)\.json$/);
     if (pericope) {
-      return new Response(await readFile(`${FIXTURES}/pericopes/${pericope[1]}.json`), { status: 200 });
+      return new Response(await readFile(`${FIXTURES}/pericopes/${pericope[1]}.json`), {
+        status: 200,
+      });
     }
-    const file = ['books.json', 'chapter_counts.json', 'refs_by_bc.json', 'pericope_paralels_by_bc.json'].find((f) =>
-      url.endsWith(`/${f}`),
-    );
+    const file = [
+      'books.json',
+      'chapter_counts.json',
+      'refs_by_bc.json',
+      'pericope_paralels_by_bc.json',
+    ].find((f) => url.endsWith(`/${f}`));
     if (file) {
       return new Response(await readFile(`${FIXTURES}/${file}`), { status: 200 });
     }

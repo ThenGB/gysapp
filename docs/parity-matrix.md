@@ -51,10 +51,10 @@ Status: `todo | in-progress | done | n/a`
 
 ## Iman
 
-| Fitur                            | Status | Acceptance              |
-| -------------------------------- | ------ | ----------------------- |
-| 10 pokok id/en/zh + search       | todo   |                         |
-| Multi-select + copy/share + note | todo   |                         |
+| Fitur                            | Status | Acceptance                              |
+| -------------------------------- | ------ | --------------------------------------- |
+| 10 pokok id/en/zh + search       | todo   |                                         |
+| Multi-select + copy/share + note | todo   |                                         |
 | PDF lanjutan per topik + resume  | done   | Manifest GitHub release, sha256, resume |
 
 ## Literatur & Media Online

@@ -14,15 +14,22 @@ function fixtureFetch() {
     const url = String(input);
     const chapter = url.match(/bible\/b_tb\/chapters\/(\d+_\d+)\.json$/);
     if (chapter) {
-      return new Response(await readFile(`${FIXTURES}/chapters/${chapter[1]}.json`), { status: 200 });
+      return new Response(await readFile(`${FIXTURES}/chapters/${chapter[1]}.json`), {
+        status: 200,
+      });
     }
     const pericope = url.match(/bible\/b_tb\/pericopes\/(\d+_\d+)\.json$/);
     if (pericope) {
-      return new Response(await readFile(`${FIXTURES}/pericopes/${pericope[1]}.json`), { status: 200 });
+      return new Response(await readFile(`${FIXTURES}/pericopes/${pericope[1]}.json`), {
+        status: 200,
+      });
     }
-    const file = ['books.json', 'chapter_counts.json', 'refs_by_bc.json', 'pericope_paralels_by_bc.json'].find((f) =>
-      url.endsWith(`/${f}`),
-    );
+    const file = [
+      'books.json',
+      'chapter_counts.json',
+      'refs_by_bc.json',
+      'pericope_paralels_by_bc.json',
+    ].find((f) => url.endsWith(`/${f}`));
     if (file) {
       return new Response(await readFile(`${FIXTURES}/${file}`), { status: 200 });
     }
@@ -30,7 +37,9 @@ function fixtureFetch() {
       const chapters = ['1_1', '1_2', '43_1', '43_3'];
       const entries: Array<{ id: number; t: string }> = [];
       for (const ch of chapters) {
-        const verses = JSON.parse(await readFile(`${FIXTURES}/chapters/${ch}.json`, 'utf8')) as Array<{
+        const verses = JSON.parse(
+          await readFile(`${FIXTURES}/chapters/${ch}.json`, 'utf8'),
+        ) as Array<{
           id: number;
           t: string;
         }>;
@@ -75,7 +84,9 @@ describe('BiblePage (data lengkap via fetch)', () => {
     );
     expect(await screen.findByRole('heading', { name: 'Kejadian 1' })).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByText(/Pada mulanya Allah menciptakan langit dan bumi/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Pada mulanya Allah menciptakan langit dan bumi/),
+      ).toBeInTheDocument();
     });
     expect(screen.getByText('Allah menciptakan langit dan bumi serta isinya')).toBeInTheDocument();
     expect(screen.queryByText(/catatan kaki/i)).not.toBeInTheDocument();

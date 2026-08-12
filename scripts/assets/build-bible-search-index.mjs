@@ -30,4 +30,6 @@ for (const file of files) {
 entries.sort((a, b) => a.id - b.id);
 await mkdir(outDir, { recursive: true });
 await writeFile(outFile, JSON.stringify(entries), 'utf8');
-console.log(`[bible-index] ${entries.length} ayat -> ${outFile} (${(entries.length * 60 / 1024 / 1024).toFixed(2)} MB est.)`);
+console.log(
+  `[bible-index] ${entries.length} ayat -> ${outFile} (${((entries.length * 60) / 1024 / 1024).toFixed(2)} MB est.)`,
+);

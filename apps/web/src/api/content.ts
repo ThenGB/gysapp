@@ -1,4 +1,9 @@
-import { parseSauhResult, parseTrueVoiceFeed, type SauhResult, type TrueVoiceFeed } from '@gysapp/contracts';
+import {
+  parseSauhResult,
+  parseTrueVoiceFeed,
+  type SauhResult,
+  type TrueVoiceFeed,
+} from '@gysapp/contracts';
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
 import { apiFetch } from './client';
 import { contentSource, fetchStaticContent } from './static-content';
@@ -51,9 +56,12 @@ export function useSauh(date: Date, options?: Partial<UseQueryOptions<SauhResult
     queryKey: ['sauh', dateKey, contentSource()],
     queryFn: async ({ signal }) => {
       try {
-        const raw = contentSource() === 'bff'
-          ? await apiFetch<SauhResult>(`/content/sauh?date=${encodeURIComponent(dateKey)}`, { signal })
-          : await fetchStaticContent<SauhResult>('sauh');
+        const raw =
+          contentSource() === 'bff'
+            ? await apiFetch<SauhResult>(`/content/sauh?date=${encodeURIComponent(dateKey)}`, {
+                signal,
+              })
+            : await fetchStaticContent<SauhResult>('sauh');
         const result = parseSauhResult(raw);
         writeCache((cache) => {
           cache.sauh[dateKey] = result;
@@ -76,9 +84,10 @@ export function useSuaraSejati(options?: Partial<UseQueryOptions<TrueVoiceFeed>>
     queryKey: ['suara-sejati', contentSource()],
     queryFn: async ({ signal }) => {
       try {
-        const raw = contentSource() === 'bff'
-          ? await apiFetch<TrueVoiceFeed>('/content/suara-sejati', { signal })
-          : await fetchStaticContent<TrueVoiceFeed>('suara-sejati');
+        const raw =
+          contentSource() === 'bff'
+            ? await apiFetch<TrueVoiceFeed>('/content/suara-sejati', { signal })
+            : await fetchStaticContent<TrueVoiceFeed>('suara-sejati');
         const result = parseTrueVoiceFeed(raw);
         writeCache((cache) => {
           cache.suaraSejati = result;

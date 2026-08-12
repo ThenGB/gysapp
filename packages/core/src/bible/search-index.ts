@@ -31,10 +31,7 @@ function findRanges(needle: string, haystack: string): Array<{ start: number; en
  * Pencarian seluruh Alkitab via index flat. Semua term wajib muncul di ayat
  * yang sama; filter testament diterapkan dari id (bookId = floor(id/1e6)).
  */
-export function searchBibleIndex(
-  index: BibleIndexEntry[],
-  query: SearchQuery,
-): BibleIndexHit[] {
+export function searchBibleIndex(index: BibleIndexEntry[], query: SearchQuery): BibleIndexHit[] {
   const terms = query.term.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (terms.length === 0) return [];
   const hits: BibleIndexHit[] = [];

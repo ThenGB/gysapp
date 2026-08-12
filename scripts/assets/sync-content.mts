@@ -41,19 +41,31 @@ async function main() {
     url.searchParams.set('_embed', 'wp:featuredmedia');
     const posts = (await fetchText(url.toString()).then((t) => JSON.parse(t))) as unknown[];
     const result = sauh.normalizeSauhPosts(posts, new Date());
-    await writeFile(join(outDir, 'sauh.json'), JSON.stringify({ ...result, fetchedAt: now }), 'utf8');
+    await writeFile(
+      join(outDir, 'sauh.json'),
+      JSON.stringify({ ...result, fetchedAt: now }),
+      'utf8',
+    );
     report.sauh = result.items.length;
   }
 
   // Suara Sejati + Warta (selector .grid4 article).
   {
     const items = edge.parseSuaraSejatiPage(await fetchText(TJC_SUARA_SEJATI));
-    await writeFile(join(outDir, 'suara-sejati.json'), JSON.stringify(parseTrueVoiceFeed({ items, fetchedAt: now })), 'utf8');
+    await writeFile(
+      join(outDir, 'suara-sejati.json'),
+      JSON.stringify(parseTrueVoiceFeed({ items, fetchedAt: now })),
+      'utf8',
+    );
     report['suara-sejati'] = items.length;
   }
   {
     const items = edge.parseSuaraSejatiPage(await fetchText(TJC_WARTA));
-    await writeFile(join(outDir, 'warta.json'), JSON.stringify(parseTrueVoiceFeed({ items, fetchedAt: now })), 'utf8');
+    await writeFile(
+      join(outDir, 'warta.json'),
+      JSON.stringify(parseTrueVoiceFeed({ items, fetchedAt: now })),
+      'utf8',
+    );
     report.warta = items.length;
   }
 
@@ -61,10 +73,18 @@ async function main() {
   {
     const html = await fetchText(TJC_LITERATUR);
     const kesaksian = literature.parseTableLinks(html, KESAKSIAN_SELECTOR);
-    await writeFile(join(outDir, 'kesaksian.json'), JSON.stringify(parseTrueVoiceFeed({ items: kesaksian, fetchedAt: now })), 'utf8');
+    await writeFile(
+      join(outDir, 'kesaksian.json'),
+      JSON.stringify(parseTrueVoiceFeed({ items: kesaksian, fetchedAt: now })),
+      'utf8',
+    );
     report.kesaksian = kesaksian.length;
     const renungan = literature.parseTableLinks(html, RENUNGAN_SELECTOR);
-    await writeFile(join(outDir, 'renungan.json'), JSON.stringify(parseTrueVoiceFeed({ items: renungan, fetchedAt: now })), 'utf8');
+    await writeFile(
+      join(outDir, 'renungan.json'),
+      JSON.stringify(parseTrueVoiceFeed({ items: renungan, fetchedAt: now })),
+      'utf8',
+    );
     report.renungan = renungan.length;
   }
 

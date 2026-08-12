@@ -26,7 +26,7 @@ describe('searchBibleIndex', () => {
     const ot = searchBibleIndex(INDEX, { term: 'Allah', testament: 'ot' });
     expect(ot.every((h) => Math.floor(h.entry.id / 1_000_000) <= 39)).toBe(true);
     const nt = searchBibleIndex(INDEX, { term: 'Allah', testament: 'nt' });
-        expect(nt.map((h) => h.entry.id)).toEqual([43001001]);
+    expect(nt.map((h) => h.entry.id)).toEqual([43001001]);
   });
 
   it('requires all terms in same verse', () => {

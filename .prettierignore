@@ -1,5 +1,11 @@
 node_modules
 dist
 coverage
+test-results
+playwright-report
 tests/fixtures
+apps/web/public/data
+apps/native/src-tauri/target
+apps/native/src-tauri/gen/android/app/build
+apps/native/src-tauri/gen/schemas
 pnpm-lock.yaml
