@@ -17,6 +17,10 @@
   padding-bottom: calc(var(--nav-height) + 20px + env(safe-area-inset-bottom));
 }
 
+.shell-content-with-player {
+  padding-bottom: calc(var(--nav-height) + 220px + env(safe-area-inset-bottom));
+}
+
 .shell-dock {
   position: fixed;
   inset-inline: max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right));
@@ -152,6 +156,9 @@
   }
   .shell-content {
     padding-bottom: 0;
+  }
+  .shell-content.shell-content-with-player {
+    padding-bottom: 190px;
   }
 }
 
