@@ -142,10 +142,10 @@ export function MorePage() {
       <Section title="Unduhan & Pengaturan">
         <ul className="more-grid">
           <li>
-            <button type="button" className="more-card" disabled>
+            <Link to="/settings" className="more-card">
               <DownloadSimple size={26} aria-hidden="true" />
-              <span>Versi Alkitab & Buku Kidung</span>
-            </button>
+              <span>Unduhan & Penyimpanan</span>
+            </Link>
           </li>
           <li>
             <Link to="/settings" className="more-card">
