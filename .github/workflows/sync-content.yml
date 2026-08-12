@@ -2,7 +2,7 @@ name: sync-content
 
 on:
   schedule:
-    # Tiap 6 jam: Sauh (harian), Suara Sejati, Kesaksian, Warta, Renungan.
+    # Tiap 6 jam: Sauh (harian), Suara Sejati, Kesaksian, Warta, Renungan, Panduan Alkitab.
     - cron: '0 */6 * * *'
   workflow_dispatch:
 
