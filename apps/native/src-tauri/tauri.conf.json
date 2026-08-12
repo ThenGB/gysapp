@@ -21,7 +21,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: https:; media-src 'self' https:; connect-src 'self' https://raw.githubusercontent.com https://github.com https://api.github.com https://tjc.org https://e.gys.or.id https://*.workers.dev; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; script-src 'self' 'wasm-unsafe-eval'"
+      "csp": "default-src 'self'; img-src 'self' data: https:; media-src 'self' https:; connect-src 'self' https://raw.githubusercontent.com https://github.com https://api.github.com https://tjc.org https://*.workers.dev; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; script-src 'self' 'wasm-unsafe-eval'"
     }
   },
   "bundle": {
