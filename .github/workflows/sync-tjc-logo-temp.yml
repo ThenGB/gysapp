@@ -1,0 +1,32 @@
+name: sync-tjc-logo-temp
+
+on:
+  push:
+    branches: [feature/bible-mobile-parity]
+    paths:
+      - '.github/workflows/sync-tjc-logo-temp.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feature/bible-mobile-parity
+      - name: Sync official TJC Indonesia logos from gyschordweb
+        run: |
+          mkdir -p apps/web/public/brand
+          base='https://raw.githubusercontent.com/gyspnk/gyschordweb/main/docs/assets/logo'
+          curl -fsSL "$base/tjc_logo_indonesia_color.png" -o apps/web/public/brand/tjc-logo-indonesia-color.png
+          curl -fsSL "$base/tjc_logo_indonesia_white.png" -o apps/web/public/brand/tjc-logo-indonesia-white.png
+          curl -fsSL "$base/tjc_logo_indonesia_black.png" -o apps/web/public/brand/tjc-logo-indonesia-black.png
+          test -s apps/web/public/brand/tjc-logo-indonesia-color.png
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/web/public/brand
+          git diff --cached --quiet && exit 0
+          git commit -m 'assets: sync official TJC Indonesia logos'
+          git push
