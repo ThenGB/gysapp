@@ -41,7 +41,8 @@ jobs:
 
       - name: Build web
         env:
-          GYSAPP_BASE: /GYSApp/
+          # Pages project site: https://thengb.github.io/gysapp
+          GYSAPP_BASE: /gysapp/
         run: pnpm --filter @gysapp/web build
 
       - uses: actions/configure-pages@v5
