@@ -12,6 +12,7 @@ const { mockEngine } = vi.hoisted(() => ({
     loadMidi: vi.fn(),
     play: vi.fn(),
     pause: vi.fn(),
+    stop: vi.fn(),
     seek: vi.fn(),
     setTranspose: vi.fn(),
     setTempoBpm: vi.fn(),
@@ -53,6 +54,14 @@ describe('MiniMidiPlayer', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Putar' }));
     expect(mockEngine.loadMidi).toHaveBeenCalledWith(
       expect.objectContaining({ url: '/data/hymnal/midi/kr/001_Test.mid', autoplay: true }),
+    );
+  });
+
+  it('loads with the restored transpose value', () => {
+    render(<MiniMidiPlayer url="/x.mid" title="X" transposeStep={-3} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Putar' }));
+    expect(mockEngine.loadMidi).toHaveBeenCalledWith(
+      expect.objectContaining({ url: '/x.mid', autoplay: true, transpose: -3 }),
     );
   });
 
