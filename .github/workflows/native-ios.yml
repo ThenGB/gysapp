@@ -88,12 +88,6 @@ jobs:
           pod --version
           xcodebuild -version
 
-      - name: Configure pnpm for non-interactive CI
-        shell: bash
-        run: |
-          set -euo pipefail
-          printf '%s\n' 'confirmModulesPurge=false' > "$GITHUB_WORKSPACE/.npmrc"
-
       - name: Install frontend deps
         run: pnpm install --frozen-lockfile
 
@@ -103,16 +97,31 @@ jobs:
       - name: Initialize iOS project
         run: pnpm --filter @gysapp/native tauri ios init --ci --skip-targets-install
 
-      - name: Verify iOS identity and Xcode pnpm config
+      - name: Verify iOS identity and inject Xcode CI setting
         shell: bash
         run: |
           set -euo pipefail
           APPLE_DIR="$GITHUB_WORKSPACE/apps/native/src-tauri/gen/apple"
-          test -d "$APPLE_DIR"
+          PBXPROJ="$APPLE_DIR/gysapp.xcodeproj/project.pbxproj"
+          test -f "$PBXPROJ"
           grep -R --fixed-strings 'id.sch.kanaan.egys' "$APPLE_DIR" >/dev/null
-          cp "$GITHUB_WORKSPACE/.npmrc" "$APPLE_DIR/.npmrc"
-          grep -Fx 'confirmModulesPurge=false' "$APPLE_DIR/.npmrc"
-          test "$(cd "$APPLE_DIR" && pnpm config get confirmModulesPurge)" = "false"
+
+          PBXPROJ="$PBXPROJ" python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          path = Path(os.environ['PBXPROJ'])
+          text = path.read_text()
+          needle = '\t\t\t\tENABLE_BITCODE = NO;'
+          count = text.count(needle)
+          if count < 1:
+              raise SystemExit('Unable to locate target build settings in generated Xcode project')
+          text = text.replace(needle, '\t\t\t\tCI = true;\n' + needle)
+          path.write_text(text)
+          print(f'Injected CI=true into {count} Xcode build configuration(s).')
+          PY
+
+          grep -F 'CI = true;' "$PBXPROJ" >/dev/null
 
       - name: Build iOS simulator app
         shell: bash
