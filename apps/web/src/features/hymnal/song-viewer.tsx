@@ -19,6 +19,7 @@ import { rememberHymnalSong } from './hymnal-recent-store';
 import { midiEngine } from './midi-engine';
 import { LatestRequestGuard } from '../../lib/latest-request';
 import { offlineMediaCache } from '../../platform/offline-media-cache';
+import { useT } from '../../i18n';
 import './song-viewer.css';
 
 type PdfJs = typeof import('pdfjs-dist');
@@ -143,6 +144,7 @@ async function loadChordDoc(book: string, song: string): Promise<ChordDocument |
 }
 
 export function SongViewer() {
+  const { t } = useT();
   const { book = 'KR', song = '001' } = useParams();
   const initialPrefs = useRef(readViewerPrefs()).current;
   const initialSongState = useRef(readSongViewState(book, song, initialPrefs)).current;
@@ -489,7 +491,7 @@ export function SongViewer() {
   if (missing) {
     return (
       <div className="content-shell song-page">
-        <h1 className="section-title">Pujian tidak ditemukan</h1>
+        <h1 className="section-title">{t('hymnNotFound')}</h1>
       </div>
     );
   }
@@ -509,7 +511,7 @@ export function SongViewer() {
             aria-pressed={mode === 'pdf'}
             onClick={() => setMode('pdf')}
           >
-            Partitur
+            {t('score')}
           </button>
           <button
             type="button"
@@ -517,12 +519,12 @@ export function SongViewer() {
             aria-pressed={mode === 'text'}
             onClick={() => setMode('text')}
           >
-            Teks & Chord
+            {t('textAndChord')}
           </button>
         </div>
       </div>
 
-      <div className="song-controlbar" aria-label="Kontrol tampilan pujian">
+      <div className="song-controlbar" aria-label={t('hymnViewControls')}>
         <div className="song-controlgroup" role="group" aria-label="Notasi accidental">
           <button
             type="button"
@@ -530,7 +532,7 @@ export function SongViewer() {
             aria-pressed={accidentalMode === 'sharp'}
             onClick={() => changeAccidentalMode('sharp')}
           >
-            ♯ Sharp
+            ♯ {t('sharp')}
           </button>
           <button
             type="button"
@@ -538,24 +540,26 @@ export function SongViewer() {
             aria-pressed={accidentalMode === 'flat'}
             onClick={() => changeAccidentalMode('flat')}
           >
-            ♭ Mol
+            ♭ {t('flat')}
           </button>
         </div>
 
-        <div className="song-transpose-control" role="group" aria-label="Transpose pujian">
+        <div className="song-transpose-control" role="group" aria-label={t('transposeHymn')}>
           <button
             type="button"
             className="icon-btn mini"
-            aria-label="Turunkan nada pujian"
+            aria-label={t('lowerHymnKey')}
             onClick={() => bumpTranspose(-1)}
           >
             −
           </button>
-          <span>Nada {transposeStep > 0 ? `+${transposeStep}` : transposeStep}</span>
+          <span>
+            {t('keyLabel')} {transposeStep > 0 ? `+${transposeStep}` : transposeStep}
+          </span>
           <button
             type="button"
             className="icon-btn mini"
-            aria-label="Naikkan nada pujian"
+            aria-label={t('raiseHymnKey')}
             onClick={() => bumpTranspose(1)}
           >
             +
@@ -571,7 +575,7 @@ export function SongViewer() {
                 aria-pressed={pageMode === 1}
                 onClick={() => setPageMode(1)}
               >
-                1 halaman
+                {t('onePage')}
               </button>
               <button
                 type="button"
@@ -580,17 +584,17 @@ export function SongViewer() {
                 disabled={pageCount === 1}
                 onClick={() => setPageMode(2)}
               >
-                2 halaman
+                {t('twoPages')}
               </button>
             </div>
-            <div className="song-controlgroup" role="group" aria-label="Mode fitting">
+            <div className="song-controlgroup" role="group" aria-label={t('fittingMode')}>
               <button
                 type="button"
                 className={`chip${fitMode === 'page' ? ' chip-active' : ''}`}
                 aria-pressed={fitMode === 'page'}
                 onClick={() => setFitMode('page')}
               >
-                Fit halaman
+                {t('fitPage')}
               </button>
               <button
                 type="button"
@@ -598,14 +602,14 @@ export function SongViewer() {
                 aria-pressed={fitMode === 'width'}
                 onClick={() => setFitMode('width')}
               >
-                Fit lebar
+                {t('fitWidth')}
               </button>
             </div>
-            <div className="song-zoom-control" role="group" aria-label="Zoom partitur">
+            <div className="song-zoom-control" role="group" aria-label={t('scoreZoom')}>
               <button
                 type="button"
                 className="icon-btn mini"
-                aria-label="Perkecil partitur"
+                aria-label={t('decreaseScore')}
                 onClick={() => setZoom((value) => Math.max(0.7, Number((value - 0.1).toFixed(1))))}
               >
                 −
@@ -614,7 +618,7 @@ export function SongViewer() {
               <button
                 type="button"
                 className="icon-btn mini"
-                aria-label="Perbesar partitur"
+                aria-label={t('increaseScore')}
                 onClick={() => setZoom((value) => Math.min(2, Number((value + 0.1).toFixed(1))))}
               >
                 +
@@ -625,10 +629,7 @@ export function SongViewer() {
       </div>
 
       {mode === 'pdf' && pageMode === 2 && (
-        <p className="song-landscape-hint">
-          Untuk 2 halaman di layar kecil, gunakan posisi landscape agar partitur lebih nyaman
-          dibaca.
-        </p>
+        <p className="song-landscape-hint">{t('landscapeTwoPageHint')}</p>
       )}
 
       {mode === 'pdf' && (
@@ -639,7 +640,7 @@ export function SongViewer() {
           {pdfError ? (
             <div className="song-pdf-fallback">
               <p className="song-error" role="alert">
-                Partitur belum tersedia untuk buku ini — menampilkan lirik.
+                {t('scoreUnavailableLyrics')}
               </p>
               <LyricsVerses verses={resolved?.entry.verses ?? []} />
             </div>
@@ -650,7 +651,7 @@ export function SongViewer() {
                   canvasRefs.current[0] = element;
                 }}
                 className="song-canvas"
-                aria-label={`Partitur ${book} ${song} halaman 1`}
+                aria-label={`${t('score')} ${book} ${song} ${t('pageLabel')} 1`}
               />
               {pageMode === 2 && (
                 <canvas
@@ -658,7 +659,7 @@ export function SongViewer() {
                     canvasRefs.current[1] = element;
                   }}
                   className={`song-canvas${pageCount < 2 ? ' song-canvas-hidden' : ''}`}
-                  aria-label={`Partitur ${book} ${song} halaman 2`}
+                  aria-label={`${t('score')} ${book} ${song} ${t('pageLabel')} 2`}
                 />
               )}
             </div>
@@ -681,10 +682,11 @@ export function SongViewer() {
 }
 
 function LyricsVerses({ verses }: { verses: string[] }) {
+  const { t } = useT();
   if (verses.length === 0) {
     return (
       <div className="song-lyrics song-empty">
-        <p>Lirik belum tersedia.</p>
+        <p>{t('lyricsUnavailable')}</p>
       </div>
     );
   }
@@ -708,11 +710,12 @@ export function ChordedTextLines({
   accidentalMode?: AccidentalMode;
   transposeStep?: number;
 }) {
+  const { t } = useT();
   if (lines.length === 0) {
     return (
       <div className="song-lyrics song-empty">
-        <p>Belum ada data chord untuk lagu ini.</p>
-        <p className="song-empty-sub">Chord dimuat otomatis saat lagu dibuka (lazy cache).</p>
+        <p>{t('chordUnavailable')}</p>
+        <p className="song-empty-sub">{t('chordLazyHint')}</p>
       </div>
     );
   }
