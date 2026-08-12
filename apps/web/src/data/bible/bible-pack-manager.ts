@@ -166,15 +166,15 @@ export async function decodeBiblePackage(packageBytes: Uint8Array): Promise<Uint
   const ciphertext = packageBytes.slice(ivOffset + 16);
   const key = await crypto.subtle.importKey(
     'raw',
-    base64Bytes(LEGACY_PACKAGE_KEY_BASE64),
+    new Uint8Array(base64Bytes(LEGACY_PACKAGE_KEY_BASE64)).buffer,
     'AES-CTR',
     false,
     ['decrypt'],
   );
   const decrypted = await crypto.subtle.decrypt(
-    { name: 'AES-CTR', counter: iv, length: 128 },
+    { name: 'AES-CTR', counter: new Uint8Array(iv).buffer, length: 128 },
     key,
-    ciphertext,
+    new Uint8Array(ciphertext).buffer,
   );
   return gunzip(new Uint8Array(decrypted));
 }
