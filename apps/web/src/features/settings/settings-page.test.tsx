@@ -31,8 +31,8 @@ describe('SettingsPage', () => {
     render(<SettingsPage />);
     fireEvent.click(screen.getByRole('button', { name: 'Perbesar huruf' }));
     await waitFor(() =>
-      expect(document.documentElement.style.getPropertyValue('--font-scale')).toBe('1.1'),
+      expect(document.documentElement.style.getPropertyValue('--font-scale')).toBe('1.05'),
     );
-    expect(screen.getByText('110%')).toBeInTheDocument();
+    expect(screen.getByText('105%')).toBeInTheDocument();
   });
 });
