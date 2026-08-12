@@ -26,7 +26,7 @@ test('hymnal catalog lists songs and opens a song', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'KR', exact: true })).toBeVisible();
   await expect(page.locator('.hymnal-item').first()).toBeVisible({ timeout: 15_000 });
   await page.locator('.hymnal-item').first().click();
-  await expect(page.getByRole('button', { name: 'Partitur' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Partitur', exact: true })).toBeVisible();
 });
 
 test('settings toggles dark theme', async ({ page }) => {
