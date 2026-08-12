@@ -21,6 +21,8 @@ jobs:
   check-ios:
     runs-on: macos-latest
     timeout-minutes: 60
+    env:
+      CI: 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -78,7 +80,4 @@ jobs:
           pnpm --filter @gysapp/native tauri ios build \
             --debug \
             --target "$IOS_TARGET" \
-            --ci \
-            -- \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO
+            --ci
