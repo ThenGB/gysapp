@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowsOutLineHorizontal,
   BookmarkSimple,
@@ -16,7 +16,7 @@ import {
   X,
 } from '@phosphor-icons/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { chapterKey, decodeVerseId, stripBibleTags, type BiblePackCode } from '@gysapp/core';
+import { chapterKey, stripBibleTags, type BiblePackCode } from '@gysapp/core';
 import {
   biblePackManager,
   type BibleDownloadTask,
@@ -33,6 +33,7 @@ import {
   type BibleLocation,
 } from './bible-reading-store';
 import { bibleTts } from './bible-tts';
+import { BibleVerseContext } from './bible-verse-context';
 import './bible.css';
 
 const VERSION_SHORT: Record<BiblePackCode, string> = {
@@ -210,6 +211,7 @@ interface ReaderPaneProps {
   bookId: number;
   chapterId: number;
   readerScale: number;
+  focusVerse?: number;
   onScroll?: (source: HTMLElement, paneId: 'primary' | 'secondary') => void;
 }
 
@@ -219,6 +221,7 @@ function ReaderPane({
   bookId,
   chapterId,
   readerScale,
+  focusVerse,
   onScroll,
 }: ReaderPaneProps) {
   const port = getBiblePortForVersion(version);
@@ -246,6 +249,18 @@ function ReaderPane({
   const related = selectedVerse
     ? refs.filter((item) => selectedVerse >= item.sv && selectedVerse <= item.ev)
     : [];
+
+  useEffect(() => {
+    if (!focusVerse || !chapterQuery.data?.some((verse) => verse.v === focusVerse)) return;
+    setSelectedVerse(focusVerse);
+    const frame = window.requestAnimationFrame(() => {
+      const node = document.querySelector(
+        `[data-pane=\"${paneId}\"] [data-verse=\"${focusVerse}\"]`,
+      );
+      node?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [chapterQuery.data, focusVerse, paneId]);
 
   if (chapterQuery.isError) {
     return (
@@ -320,61 +335,34 @@ function ReaderPane({
       })}
 
       {selected && (
-        <aside className="bible-verse-actions" aria-label={`Aksi ayat ${selected.v}`}>
-          <button
-            type="button"
-            className="btn-text"
-            onClick={() => {
-              toggleBibleBookmark({
-                version,
-                bookId,
-                chapter: chapterId,
-                verse: selected.v,
-                label: `${book?.bl ?? 'Alkitab'} ${chapterId}:${selected.v}`,
-                text: stripBibleTags(selected.t),
-              });
-              setSelectedVerse(null);
-            }}
-          >
-            <BookmarkSimple size={19} aria-hidden="true" />
-            {isBibleBookmarked({ version, bookId, chapter: chapterId, verse: selected.v })
-              ? 'Hapus tanda'
-              : 'Tandai'}
-          </button>
-          <button
-            type="button"
-            className="btn-text"
-            onClick={() => bibleTts.speak(stripBibleTags(selected.t), version)}
-          >
-            <SpeakerHigh size={19} aria-hidden="true" /> Baca ayat
-          </button>
-          {(related.length > 0 || paralels.length > 0) && (
-            <details className="bible-related">
-              <summary>Referensi terkait ({related.length + paralels.length})</summary>
-              <div>
-                {related.map((reference, index) => {
-                  const target = decodeVerseId(reference.id);
-                  return (
-                    <Link
-                      key={`${reference.id}-${index}`}
-                      to={`/bible/${target.bookId}/${target.chapterId}`}
-                    >
-                      {target.bookId}:{target.chapterId}:{target.verseId}
-                    </Link>
-                  );
-                })}
-                {paralels.map((parallel) => {
-                  const target = decodeVerseId(parallel.id2 || parallel.id1);
-                  return (
-                    <Link key={parallel.id} to={`/bible/${target.bookId}/${target.chapterId}`}>
-                      {parallel.t || `${target.bookId}:${target.chapterId}:${target.verseId}`}
-                    </Link>
-                  );
-                })}
-              </div>
-            </details>
-          )}
-        </aside>
+        <BibleVerseContext
+          version={version}
+          bookId={bookId}
+          chapterId={chapterId}
+          bookLabel={book?.bl ?? 'Alkitab'}
+          verse={selected}
+          books={catalogQuery.data?.books ?? []}
+          relatedRefs={related}
+          parallels={paralels}
+          bookmarked={isBibleBookmarked({
+            version,
+            bookId,
+            chapter: chapterId,
+            verse: selected.v,
+          })}
+          onToggleBookmark={() =>
+            toggleBibleBookmark({
+              version,
+              bookId,
+              chapter: chapterId,
+              verse: selected.v,
+              label: `${book?.bl ?? 'Alkitab'} ${chapterId}:${selected.v}`,
+              text: stripBibleTags(selected.t),
+            })
+          }
+          onRead={() => bibleTts.speak(stripBibleTags(selected.t), version)}
+          onClose={() => setSelectedVerse(null)}
+        />
       )}
     </article>
   );
@@ -383,6 +371,10 @@ function ReaderPane({
 export function BiblePage() {
   const params = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const focusVerseValue = Number(searchParams.get('v'));
+  const focusVerse =
+    Number.isInteger(focusVerseValue) && focusVerseValue > 0 ? focusVerseValue : undefined;
   const reading = useSyncExternalStore(
     subscribeBibleReading,
     getBibleReadingSnapshot,
@@ -605,6 +597,7 @@ export function BiblePage() {
             bookId={bookId}
             chapterId={chapterId}
             readerScale={reading.settings.readerScale}
+            focusVerse={focusVerse}
             onScroll={syncScroll}
           />
         </div>

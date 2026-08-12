@@ -10,18 +10,8 @@ import {
   X,
 } from '@phosphor-icons/react';
 import type { BibleBook, BibleParalel, BibleRef, BibleVerse } from '@gysapp/contracts';
-import {
-  decodeVerseId,
-  encodeVerseId,
-  stripBibleTags,
-  type BiblePackCode,
-} from '@gysapp/core';
-import {
-  deleteNote,
-  findContextNote,
-  saveContextNote,
-  type AppNote,
-} from '../notes/notes-store';
+import { decodeVerseId, encodeVerseId, stripBibleTags, type BiblePackCode } from '@gysapp/core';
+import { deleteNote, findContextNote, saveContextNote, type AppNote } from '../notes/notes-store';
 import './bible-verse-context.css';
 
 interface BibleVerseContextProps {
@@ -173,7 +163,12 @@ export function BibleVerseContext({
           <strong>{target}</strong>
           <span>{version.replace('b_', '').toUpperCase()}</span>
         </div>
-        <button type="button" className="icon-btn mini" aria-label="Tutup aksi ayat" onClick={onClose}>
+        <button
+          type="button"
+          className="icon-btn mini"
+          aria-label="Tutup aksi ayat"
+          onClick={onClose}
+        >
           <X size={18} aria-hidden="true" />
         </button>
       </header>
@@ -187,7 +182,11 @@ export function BibleVerseContext({
           <SpeakerHigh size={19} aria-hidden="true" /> Baca
         </button>
         <button type="button" className="btn-text" onClick={() => void copyVerse()}>
-          {copyState === 'done' ? <Check size={19} aria-hidden="true" /> : <Copy size={19} aria-hidden="true" />}
+          {copyState === 'done' ? (
+            <Check size={19} aria-hidden="true" />
+          ) : (
+            <Copy size={19} aria-hidden="true" />
+          )}
           {copyState === 'done' ? 'Tersalin' : 'Salin'}
         </button>
         <button
@@ -222,7 +221,12 @@ export function BibleVerseContext({
             }}
           />
           <div>
-            <button type="button" className="btn-primary" disabled={!noteText.trim()} onClick={persistNote}>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={!noteText.trim()}
+              onClick={persistNote}
+            >
               {noteState === 'saved' ? 'Tersimpan' : note ? 'Perbarui catatan' : 'Simpan catatan'}
             </button>
             {note && (

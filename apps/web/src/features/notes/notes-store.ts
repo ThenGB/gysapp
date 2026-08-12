@@ -58,9 +58,7 @@ export function findContextNote(kind: NoteKind, target: string): AppNote | null 
  * Catatan lama dari halaman Notes tetap kompatibel; record terbaru untuk target
  * yang sama diperbarui dan duplikat contextual lama dibersihkan.
  */
-export function saveContextNote(
-  note: Omit<AppNote, 'id' | 'updatedAt'>,
-): AppNote {
+export function saveContextNote(note: Omit<AppNote, 'id' | 'updatedAt'>): AppNote {
   const notes = loadNotes();
   const normalized = note.target.trim().toLocaleLowerCase();
   const existing = notes.find(
@@ -74,10 +72,7 @@ export function saveContextNote(
   persist([
     saved,
     ...notes.filter(
-      (item) =>
-        !(
-          item.kind === note.kind && item.target.trim().toLocaleLowerCase() === normalized
-        ),
+      (item) => !(item.kind === note.kind && item.target.trim().toLocaleLowerCase() === normalized),
     ),
   ]);
   return saved;
