@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gysapp-bff",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-12",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "APP_ORIGINS": "https://thengb.github.io,https://gyspnk.github.io,https://gysapp.pages.dev,http://localhost:5173"
+  }
+}

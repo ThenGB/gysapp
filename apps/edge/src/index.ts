@@ -12,11 +12,21 @@ const TJC_WP_POSTS = 'https://tjc.org/id/wp-json/wp/v2/posts';
 const TJC_SUARA_SEJATI = 'https://tjc.org/id/suarasejati/';
 const TJC_LITERATUR = 'https://tjc.org/id/literatur/';
 const TJC_WARTA = 'https://tjc.org/id/literatur/warta-sejati/';
-
-// Selector dari config Flutter (config_literature) — tetap di BFF agar
-// perubahan markup terdeteksi oleh contract test, bukan oleh pengguna.
 const KESAKSIAN_SELECTOR = '#posts-table-1 > tbody > tr > td > a';
 const RENUNGAN_SELECTOR = '#posts-table-3 > tbody > tr > td > a';
+
+export type EdgeEnv = {
+  SESSION_SECRET?: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  REPORT_WEBHOOK_URL?: string;
+  APP_ORIGINS?: string;
+};
+
+function parseOrigins(value?: string): string[] | undefined {
+  const origins = value?.split(',').map((v) => v.trim()).filter(Boolean);
+  return origins && origins.length > 0 ? origins : undefined;
+}
 
 export function createApp(
   opts: {
@@ -27,42 +37,31 @@ export function createApp(
     googleClientSecret?: string;
     secureCookie?: boolean;
     reportWebhookUrl?: string;
+    appOrigins?: string[];
   } = {},
 ) {
   const app = new Hono();
   const now = opts.now ?? (() => new Date());
   const fetchImpl = opts.fetchImpl ?? globalThis.fetch.bind(globalThis);
   const sessionSecret = opts.sessionSecret ?? 'dev-session-secret-change-me';
-  const googleClientId = opts.googleClientId ?? process.env.GOOGLE_CLIENT_ID;
-  const googleClientSecret = opts.googleClientSecret ?? process.env.GOOGLE_CLIENT_SECRET;
-  const reportWebhookUrl = opts.reportWebhookUrl ?? process.env.REPORT_WEBHOOK_URL;
+  const allowedOrigins = opts.appOrigins ?? [
+    'https://thengb.github.io',
+    'https://gyspnk.github.io',
+    'https://gysapp.pages.dev',
+    'http://localhost:5173',
+  ];
 
-  app.use(
-    '/api/*',
-    cors({
-      origin: [
-        'https://thengb.github.io',
-        'https://gyspnk.github.io',
-        'https://gysapp.pages.dev',
-        'http://localhost:5173',
-      ],
-      credentials: true,
-      maxAge: 86400,
-    }),
-  );
-
+  app.use('/api/*', cors({ origin: allowedOrigins, credentials: true, maxAge: 86400 }));
   app.route('/api/chords', createChordApp({ fetchImpl }));
-  app.route(
-    '/api/auth',
-    createAuthApp({
-      fetchImpl,
-      sessionSecret,
-      googleClientId,
-      googleClientSecret,
-      secureCookie: opts.secureCookie,
-    }),
-  );
-  app.route('/api/report', createReportApp({ fetchImpl, webhookUrl: reportWebhookUrl }));
+  app.route('/api/auth', createAuthApp({
+    fetchImpl,
+    sessionSecret,
+    googleClientId: opts.googleClientId,
+    googleClientSecret: opts.googleClientSecret,
+    secureCookie: opts.secureCookie,
+    appOrigins: allowedOrigins,
+  }));
+  app.route('/api/report', createReportApp({ fetchImpl, webhookUrl: opts.reportWebhookUrl }));
 
   app.get('/health', (c) => c.json({ ok: true, ts: now().toISOString() }));
 
@@ -73,43 +72,30 @@ export function createApp(
       url.searchParams.set('per_page', '6');
       url.searchParams.set('orderby', 'date');
       url.searchParams.set('_embed', 'wp:featuredmedia');
-      const posts = (await fetchImpl(url.toString(), {
-        headers: { 'user-agent': 'gysapp-bff/0.1' },
-      }).then(async (r) => {
+      const posts = (await fetchImpl(url.toString(), { headers: { 'user-agent': 'gysapp-bff/0.2' } }).then(async (r) => {
         if (!r.ok) throw new Error(`upstream ${r.status}`);
         return r.json();
       })) as unknown[];
       const result = normalizeSauhPosts(posts, now());
       c.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
-      const body = parseSauhResult({ ...result, fetchedAt: now().toISOString() });
-      return c.json(body);
+      return c.json(parseSauhResult({ ...result, fetchedAt: now().toISOString() }));
     } catch (err) {
       c.status(502);
-      return c.json({
-        error: 'sauh-unavailable',
-        message: err instanceof Error ? err.message : String(err),
-      });
+      return c.json({ error: 'sauh-unavailable', message: err instanceof Error ? err.message : String(err) });
     }
   });
 
   app.get('/api/content/suara-sejati', async (c) => {
     try {
-      const html = await fetchImpl(TJC_SUARA_SEJATI, {
-        headers: { 'user-agent': 'gysapp-bff/0.1' },
-      }).then(async (r) => {
+      const html = await fetchImpl(TJC_SUARA_SEJATI, { headers: { 'user-agent': 'gysapp-bff/0.2' } }).then(async (r) => {
         if (!r.ok) throw new Error(`upstream ${r.status}`);
         return r.text();
       });
-      const items = parseSuaraSejatiPage(html);
       c.header('Cache-Control', 'public, max-age=600, stale-while-revalidate=3600');
-      const body = parseTrueVoiceFeed({ items, fetchedAt: now().toISOString() });
-      return c.json(body);
+      return c.json(parseTrueVoiceFeed({ items: parseSuaraSejatiPage(html), fetchedAt: now().toISOString() }));
     } catch (err) {
       c.status(502);
-      return c.json({
-        error: 'suara-sejati-unavailable',
-        message: err instanceof Error ? err.message : String(err),
-      });
+      return c.json({ error: 'suara-sejati-unavailable', message: err instanceof Error ? err.message : String(err) });
     }
   });
 
@@ -120,10 +106,7 @@ export function createApp(
       return c.json({ error: 'invalid-url' });
     }
     try {
-      const html = await fetchImpl(url, {
-        headers: { 'user-agent': 'gysapp-bff/0.1' },
-        signal: c.req.raw.signal,
-      }).then(async (r) => {
+      const html = await fetchImpl(url, { headers: { 'user-agent': 'gysapp-bff/0.2' }, signal: c.req.raw.signal }).then(async (r) => {
         if (!r.ok) throw new Error(`upstream ${r.status}`);
         return r.text();
       });
@@ -134,43 +117,39 @@ export function createApp(
     }
   });
 
-  const literatureFeed = (
-    path: string,
-    upstream: string,
-    errorKey: string,
-    parse: (html: string) => ReturnType<typeof parseSuaraSejatiPage>,
-  ) => {
+  const literatureFeed = (path: string, upstream: string, errorKey: string, parse: (html: string) => ReturnType<typeof parseSuaraSejatiPage>) => {
     app.get(path, async (c) => {
       try {
-        const html = await fetchImpl(upstream, {
-          headers: { 'user-agent': 'gysapp-bff/0.1' },
-        }).then(async (r) => {
+        const html = await fetchImpl(upstream, { headers: { 'user-agent': 'gysapp-bff/0.2' } }).then(async (r) => {
           if (!r.ok) throw new Error(`upstream ${r.status}`);
           return r.text();
         });
-        const items = parse(html);
         c.header('Cache-Control', 'public, max-age=600, stale-while-revalidate=3600');
-        const body = parseTrueVoiceFeed({ items, fetchedAt: now().toISOString() });
-        return c.json(body);
+        return c.json(parseTrueVoiceFeed({ items: parse(html), fetchedAt: now().toISOString() }));
       } catch (err) {
         c.status(502);
-        return c.json({
-          error: errorKey,
-          message: err instanceof Error ? err.message : String(err),
-        });
+        return c.json({ error: errorKey, message: err instanceof Error ? err.message : String(err) });
       }
     });
   };
 
-  literatureFeed('/api/content/kesaksian', TJC_LITERATUR, 'kesaksian-unavailable', (html) =>
-    parseTableLinks(html, KESAKSIAN_SELECTOR),
-  );
+  literatureFeed('/api/content/kesaksian', TJC_LITERATUR, 'kesaksian-unavailable', (html) => parseTableLinks(html, KESAKSIAN_SELECTOR));
   literatureFeed('/api/content/warta', TJC_WARTA, 'warta-unavailable', parseSuaraSejatiPage);
-  literatureFeed('/api/content/renungan', TJC_LITERATUR, 'renungan-unavailable', (html) =>
-    parseTableLinks(html, RENUNGAN_SELECTOR),
-  );
+  literatureFeed('/api/content/renungan', TJC_LITERATUR, 'renungan-unavailable', (html) => parseTableLinks(html, RENUNGAN_SELECTOR));
 
   return app;
 }
 
-export default createApp();
+export default {
+  fetch(request: Request, env: EdgeEnv): Promise<Response> {
+    const app = createApp({
+      sessionSecret: env.SESSION_SECRET,
+      googleClientId: env.GOOGLE_CLIENT_ID,
+      googleClientSecret: env.GOOGLE_CLIENT_SECRET,
+      reportWebhookUrl: env.REPORT_WEBHOOK_URL,
+      appOrigins: parseOrigins(env.APP_ORIGINS),
+      secureCookie: true,
+    });
+    return app.fetch(request);
+  },
+};

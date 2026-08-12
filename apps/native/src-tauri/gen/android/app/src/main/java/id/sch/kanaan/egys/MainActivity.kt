@@ -1,4 +1,4 @@
-package org.gyspnk.gysapp
+package id.sch.kanaan.egys
 
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge

@@ -15,14 +15,14 @@ val tauriProperties = Properties().apply {
 
 android {
     compileSdk = 36
-    namespace = "org.gyspnk.gysapp"
+    namespace = "id.sch.kanaan.egys"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
-        applicationId = "org.gyspnk.gysapp"
+        applicationId = "id.sch.kanaan.egys"
         minSdk = 24
         targetSdk = 36
-        versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
-        versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
+        versionCode = tauriProperties.getProperty("tauri.android.versionCode", "134").toInt()
+        versionName = tauriProperties.getProperty("tauri.android.versionName", "2.2.0")
     }
     buildTypes {
         getByName("debug") {
@@ -30,7 +30,8 @@ android {
             isDebuggable = true
             isJniDebuggable = true
             isMinifyEnabled = false
-            packaging {                jniLibs.keepDebugSymbols.add("*/arm64-v8a/*.so")
+            packaging {
+                jniLibs.keepDebugSymbols.add("*/arm64-v8a/*.so")
                 jniLibs.keepDebugSymbols.add("*/armeabi-v7a/*.so")
                 jniLibs.keepDebugSymbols.add("*/x86/*.so")
                 jniLibs.keepDebugSymbols.add("*/x86_64/*.so")
@@ -45,17 +46,11 @@ android {
             )
         }
     }
-    kotlinOptions {
-        jvmTarget = "1.8"
-    }
-    buildFeatures {
-        buildConfig = true
-    }
+    kotlinOptions { jvmTarget = "1.8" }
+    buildFeatures { buildConfig = true }
 }
 
-rust {
-    rootDirRel = "../../../"
-}
+rust { rootDirRel = "../../../" }
 
 dependencies {
     implementation("androidx.webkit:webkit:1.14.0")

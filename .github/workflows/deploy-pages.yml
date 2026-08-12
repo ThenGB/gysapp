@@ -41,9 +41,14 @@ jobs:
 
       - name: Build web
         env:
-          # Pages project site: https://thengb.github.io/gysapp
           GYSAPP_BASE: /gysapp/
-        run: pnpm --filter @gysapp/web build
+          VITE_BFF_BASE: ${{ vars.VITE_BFF_BASE }}
+        run: |
+          if [ -z "$VITE_BFF_BASE" ]; then
+            echo 'Repository variable VITE_BFF_BASE belum diatur (contoh: https://gysapp-bff.<subdomain>.workers.dev/api).' >&2
+            exit 1
+          fi
+          pnpm --filter @gysapp/web build
 
       - uses: actions/configure-pages@v5
 
