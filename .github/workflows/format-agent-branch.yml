@@ -1,0 +1,54 @@
+name: format-agent-branch
+
+on:
+  push:
+    branches:
+      - agent/gysapp-parity-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/gysapp-parity-hardening
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Format changed files
+        run: |
+          pnpm exec prettier --write \
+            apps/edge/src/index.ts \
+            apps/edge/test/auth.test.ts \
+            apps/edge/wrangler.jsonc \
+            apps/web/src/features/account/account-page.tsx \
+            apps/web/src/features/more/more-page.tsx \
+            apps/web/src/ui/shell.css \
+            docs/parity-matrix.md
+
+      - name: Commit formatting
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/edge/src/index.ts apps/edge/test/auth.test.ts apps/edge/wrangler.jsonc \
+            apps/web/src/features/account/account-page.tsx \
+            apps/web/src/features/more/more-page.tsx apps/web/src/ui/shell.css docs/parity-matrix.md
+          git commit -m 'style: format parity hardening changes'
+          git push origin HEAD:agent/gysapp-parity-hardening
