@@ -66,7 +66,9 @@ test.describe('responsive release regressions', () => {
     await expectNoDocumentOverflow(page);
   });
 
-  test('persistent MIDI dock clears the mobile nav and survives route changes', async ({ page }) => {
+  test('persistent MIDI dock clears the mobile nav and survives route changes', async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/hymnal/KR/001');
 
