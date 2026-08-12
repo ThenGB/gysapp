@@ -1,0 +1,81 @@
+name: Harden Hymnal Text Fit
+
+on:
+  push:
+    branches:
+      - feature/bible-mobile-parity
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feature/bible-mobile-parity
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Clamp chord edges and add readability regression
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          viewer = Path('apps/web/src/features/hymnal/song-viewer.tsx')
+          text = viewer.read_text()
+          old = "style={{ left: `${(chord.pos * 100).toFixed(2)}%` }}"
+          new = "style={{\n                  left: `clamp(1.75rem, ${(chord.pos * 100).toFixed(2)}%, calc(100% - 1.75rem))`,\n                }}"
+          if old not in text:
+              raise SystemExit('chord position anchor not found')
+          viewer.write_text(text.replace(old, new, 1))
+
+          css = Path('apps/web/src/features/hymnal/song-viewer.css')
+          text = css.read_text()
+          old = "  text-wrap: balance;\n}"
+          new = "  text-wrap: balance;\n  overflow-wrap: anywhere;\n}"
+          if old not in text:
+              raise SystemExit('lyric wrap anchor not found')
+          css.write_text(text.replace(old, new, 1))
+
+          unit = Path('apps/web/src/features/hymnal/song-viewer.test.tsx')
+          text = unit.read_text()
+          old = "  it('positions badges by percentage of line width', () => {\n    render(<ChordedTextLines lines={lines} />);\n    const badges = screen.getAllByText(/^(C|G|Am)$/);\n    const lefts = badges.map((b) => (b as HTMLElement).style.left);\n    // jsdom menormalkan serialisasi CSS ('5.00%' -> '5%').\n    expect(lefts).toEqual(['5%', '30%', '55%']);\n  });"
+          new = "  it('keeps chord badges inside the readable row at both edges', () => {\n    render(\n      <ChordedTextLines\n        lines={[\n          {\n            text: 'Nada tepi',\n            chords: [\n              { chord: 'C', pos: 0 },\n              { chord: 'G', pos: 1 },\n            ],\n          },\n        ]}\n      />,\n    );\n    const badges = [screen.getByText('C'), screen.getByText('G')];\n    const lefts = badges.map((badge) => (badge as HTMLElement).style.left);\n    expect(lefts[0]).toContain('clamp(1.75rem');\n    expect(lefts[0]).toContain('0%');\n    expect(lefts[1]).toContain('100%');\n    expect(lefts[1]).toContain('calc(100% - 1.75rem)');\n  });"
+          if old not in text:
+              raise SystemExit('song viewer unit test anchor not found')
+          unit.write_text(text.replace(old, new, 1))
+
+          e2e = Path('tests/e2e/responsive-regression.spec.ts')
+          text = e2e.read_text()
+          marker = "  test('Hymnal two-page guidance follows portrait and landscape orientation'"
+          if marker not in text:
+              raise SystemExit('responsive E2E marker not found')
+          test = "  test('Hymnal text stays readable and contained at 320px', async ({ page }) => {\n    await page.setViewportSize({ width: 320, height: 720 });\n    await page.goto('/hymnal/ASM-I/019');\n\n    const lyrics = page.locator('.song-lyrics');\n    await expect(lyrics).toBeVisible({ timeout: 15_000 });\n    await expect(page.getByText(/Biarlah aku b'ritahumu/).first()).toBeVisible();\n\n    const metrics = await lyrics.evaluate((node) => {\n      const line = node.querySelector<HTMLElement>('.song-line-text');\n      if (!line) throw new Error('lyric line missing');\n      return {\n        clientWidth: node.clientWidth,\n        scrollWidth: node.scrollWidth,\n        fontSize: Number.parseFloat(getComputedStyle(line).fontSize),\n      };\n    });\n    expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);\n    expect(metrics.fontSize).toBeGreaterThanOrEqual(16);\n    await expectNoDocumentOverflow(page);\n  });\n\n"
+          if "Hymnal text stays readable and contained at 320px" not in text:
+              text = text.replace(marker, test + marker, 1)
+          e2e.write_text(text)
+          PY
+          pnpm exec prettier --write apps/web/src/features/hymnal/song-viewer.tsx apps/web/src/features/hymnal/song-viewer.css apps/web/src/features/hymnal/song-viewer.test.tsx tests/e2e/responsive-regression.spec.ts
+          pnpm --filter @gysapp/web typecheck
+          pnpm --filter @gysapp/web test -- src/features/hymnal/song-viewer.test.tsx
+          pnpm format:check
+      - name: Commit hardening
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/src/features/hymnal/song-viewer.tsx apps/web/src/features/hymnal/song-viewer.css apps/web/src/features/hymnal/song-viewer.test.tsx tests/e2e/responsive-regression.spec.ts
+          git commit -m "fix: keep Hymnal text and chords readable at narrow widths"
+          git push origin HEAD:feature/bible-mobile-parity
