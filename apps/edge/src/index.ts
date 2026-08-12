@@ -24,7 +24,10 @@ export type EdgeEnv = {
 };
 
 function parseOrigins(value?: string): string[] | undefined {
-  const origins = value?.split(',').map((v) => v.trim()).filter(Boolean);
+  const origins = value
+    ?.split(',')
+    .map((v) => v.trim())
+    .filter(Boolean);
   return origins && origins.length > 0 ? origins : undefined;
 }
 
@@ -53,14 +56,17 @@ export function createApp(
 
   app.use('/api/*', cors({ origin: allowedOrigins, credentials: true, maxAge: 86400 }));
   app.route('/api/chords', createChordApp({ fetchImpl }));
-  app.route('/api/auth', createAuthApp({
-    fetchImpl,
-    sessionSecret,
-    googleClientId: opts.googleClientId,
-    googleClientSecret: opts.googleClientSecret,
-    secureCookie: opts.secureCookie,
-    appOrigins: allowedOrigins,
-  }));
+  app.route(
+    '/api/auth',
+    createAuthApp({
+      fetchImpl,
+      sessionSecret,
+      googleClientId: opts.googleClientId,
+      googleClientSecret: opts.googleClientSecret,
+      secureCookie: opts.secureCookie,
+      appOrigins: allowedOrigins,
+    }),
+  );
   app.route('/api/report', createReportApp({ fetchImpl, webhookUrl: opts.reportWebhookUrl }));
 
   app.get('/health', (c) => c.json({ ok: true, ts: now().toISOString() }));
@@ -72,7 +78,9 @@ export function createApp(
       url.searchParams.set('per_page', '6');
       url.searchParams.set('orderby', 'date');
       url.searchParams.set('_embed', 'wp:featuredmedia');
-      const posts = (await fetchImpl(url.toString(), { headers: { 'user-agent': 'gysapp-bff/0.2' } }).then(async (r) => {
+      const posts = (await fetchImpl(url.toString(), {
+        headers: { 'user-agent': 'gysapp-bff/0.2' },
+      }).then(async (r) => {
         if (!r.ok) throw new Error(`upstream ${r.status}`);
         return r.json();
       })) as unknown[];
@@ -81,21 +89,31 @@ export function createApp(
       return c.json(parseSauhResult({ ...result, fetchedAt: now().toISOString() }));
     } catch (err) {
       c.status(502);
-      return c.json({ error: 'sauh-unavailable', message: err instanceof Error ? err.message : String(err) });
+      return c.json({
+        error: 'sauh-unavailable',
+        message: err instanceof Error ? err.message : String(err),
+      });
     }
   });
 
   app.get('/api/content/suara-sejati', async (c) => {
     try {
-      const html = await fetchImpl(TJC_SUARA_SEJATI, { headers: { 'user-agent': 'gysapp-bff/0.2' } }).then(async (r) => {
+      const html = await fetchImpl(TJC_SUARA_SEJATI, {
+        headers: { 'user-agent': 'gysapp-bff/0.2' },
+      }).then(async (r) => {
         if (!r.ok) throw new Error(`upstream ${r.status}`);
         return r.text();
       });
       c.header('Cache-Control', 'public, max-age=600, stale-while-revalidate=3600');
-      return c.json(parseTrueVoiceFeed({ items: parseSuaraSejatiPage(html), fetchedAt: now().toISOString() }));
+      return c.json(
+        parseTrueVoiceFeed({ items: parseSuaraSejatiPage(html), fetchedAt: now().toISOString() }),
+      );
     } catch (err) {
       c.status(502);
-      return c.json({ error: 'suara-sejati-unavailable', message: err instanceof Error ? err.message : String(err) });
+      return c.json({
+        error: 'suara-sejati-unavailable',
+        message: err instanceof Error ? err.message : String(err),
+      });
     }
   });
 
@@ -106,7 +124,10 @@ export function createApp(
       return c.json({ error: 'invalid-url' });
     }
     try {
-      const html = await fetchImpl(url, { headers: { 'user-agent': 'gysapp-bff/0.2' }, signal: c.req.raw.signal }).then(async (r) => {
+      const html = await fetchImpl(url, {
+        headers: { 'user-agent': 'gysapp-bff/0.2' },
+        signal: c.req.raw.signal,
+      }).then(async (r) => {
         if (!r.ok) throw new Error(`upstream ${r.status}`);
         return r.text();
       });
@@ -117,10 +138,17 @@ export function createApp(
     }
   });
 
-  const literatureFeed = (path: string, upstream: string, errorKey: string, parse: (html: string) => ReturnType<typeof parseSuaraSejatiPage>) => {
+  const literatureFeed = (
+    path: string,
+    upstream: string,
+    errorKey: string,
+    parse: (html: string) => ReturnType<typeof parseSuaraSejatiPage>,
+  ) => {
     app.get(path, async (c) => {
       try {
-        const html = await fetchImpl(upstream, { headers: { 'user-agent': 'gysapp-bff/0.2' } }).then(async (r) => {
+        const html = await fetchImpl(upstream, {
+          headers: { 'user-agent': 'gysapp-bff/0.2' },
+        }).then(async (r) => {
           if (!r.ok) throw new Error(`upstream ${r.status}`);
           return r.text();
         });
@@ -128,14 +156,21 @@ export function createApp(
         return c.json(parseTrueVoiceFeed({ items: parse(html), fetchedAt: now().toISOString() }));
       } catch (err) {
         c.status(502);
-        return c.json({ error: errorKey, message: err instanceof Error ? err.message : String(err) });
+        return c.json({
+          error: errorKey,
+          message: err instanceof Error ? err.message : String(err),
+        });
       }
     });
   };
 
-  literatureFeed('/api/content/kesaksian', TJC_LITERATUR, 'kesaksian-unavailable', (html) => parseTableLinks(html, KESAKSIAN_SELECTOR));
+  literatureFeed('/api/content/kesaksian', TJC_LITERATUR, 'kesaksian-unavailable', (html) =>
+    parseTableLinks(html, KESAKSIAN_SELECTOR),
+  );
   literatureFeed('/api/content/warta', TJC_WARTA, 'warta-unavailable', parseSuaraSejatiPage);
-  literatureFeed('/api/content/renungan', TJC_LITERATUR, 'renungan-unavailable', (html) => parseTableLinks(html, RENUNGAN_SELECTOR));
+  literatureFeed('/api/content/renungan', TJC_LITERATUR, 'renungan-unavailable', (html) =>
+    parseTableLinks(html, RENUNGAN_SELECTOR),
+  );
 
   return app;
 }
