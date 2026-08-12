@@ -1,0 +1,197 @@
+name: Patch PDF Rapid Switch
+
+on:
+  push:
+    branches:
+      - feature/bible-mobile-parity
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feature/bible-mobile-parity
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Patch PDF loading lifecycle
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('apps/web/src/features/hymnal/song-viewer.tsx')
+          text = path.read_text()
+
+          helper_import = "import { LatestRequestGuard } from '../../lib/latest-request';\n"
+          if helper_import not in text:
+              text = text.replace(
+                  "import { midiEngine } from './midi-engine';\n",
+                  "import { midiEngine } from './midi-engine';\n" + helper_import,
+                  1,
+              )
+
+          loading_type = "type PdfDocumentLoadingTask = import('pdfjs-dist').PDFDocumentLoadingTask;\n"
+          if loading_type not in text:
+              text = text.replace(
+                  "type PdfDocumentProxy = import('pdfjs-dist').PDFDocumentProxy;\n",
+                  "type PdfDocumentProxy = import('pdfjs-dist').PDFDocumentProxy;\n" + loading_type,
+                  1,
+              )
+
+          guard_ref = "  const pdfLoadGuardRef = useRef(new LatestRequestGuard());\n"
+          if guard_ref not in text:
+              text = text.replace(
+                  "  const pdfDocRef = useRef<{ url: string; doc: PdfDocumentProxy } | null>(null);\n",
+                  "  const pdfDocRef = useRef<{ url: string; doc: PdfDocumentProxy } | null>(null);\n" + guard_ref,
+                  1,
+              )
+
+          start_marker = "  // Load PDF + ekstraksi teks/chord hanya ketika lagu berubah. Resize/zoom tidak\n"
+          end_marker = "\n  useEffect(() => {\n    if (mode !== 'pdf') return;"
+          start = text.index(start_marker)
+          end = text.index(end_marker, start)
+
+          replacement = r'''  // Load PDF + ekstraksi teks/chord hanya ketika lagu berubah. Resize/zoom tidak
+          // mengulang pekerjaan mahal ini; render canvas ditangani effect terpisah.
+          // LatestRequestGuard mencegah PDF lama yang selesai belakangan mengambil alih
+          // viewer setelah user sudah berpindah lagu.
+          useEffect(() => {
+            if (!resolved) return;
+            let cancelled = false;
+            let loadingTask: PdfDocumentLoadingTask | null = null;
+            let committedLoadingTask = false;
+            const loadToken = pdfLoadGuardRef.current.begin();
+            const isCurrent = () =>
+              !cancelled && pdfLoadGuardRef.current.isCurrent(loadToken);
+
+            const load = async () => {
+              setPdfError(null);
+              setPageCount(0);
+              setChordedLines([]);
+              try {
+                const pdfjs: PdfJs = await import('pdfjs-dist');
+                const moduleWorker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+                if (!isCurrent()) return;
+                pdfjs.GlobalWorkerOptions.workerSrc = moduleWorker.default;
+
+                let doc: PdfDocumentProxy;
+                if (pdfDocRef.current?.url === resolved.pdfUrl) {
+                  doc = pdfDocRef.current.doc;
+                } else {
+                  loadingTask = pdfjs.getDocument({ url: resolved.pdfUrl });
+                  const loadedDoc = await loadingTask.promise;
+                  if (!isCurrent()) {
+                    void loadedDoc.destroy().catch(() => undefined);
+                    return;
+                  }
+
+                  const previous = pdfDocRef.current;
+                  pdfDocRef.current = { url: resolved.pdfUrl, doc: loadedDoc };
+                  committedLoadingTask = true;
+                  doc = loadedDoc;
+                  if (previous && previous.doc !== loadedDoc) {
+                    void previous.doc.cleanup().catch(() => undefined);
+                  }
+                }
+                if (!isCurrent()) return;
+
+                setPageCount(doc.numPages);
+                setPdfRevision((value) => value + 1);
+
+                const chordDoc = await loadChordDoc(book, song);
+                if (!isCurrent()) return;
+                const nextLines: ChordedLine[] = [];
+                for (let pageNo = 1; pageNo <= doc.numPages; pageNo += 1) {
+                  if (!isCurrent()) return;
+                  const page = await doc.getPage(pageNo);
+                  if (!isCurrent()) return;
+                  const logicalViewport = page.getViewport({ scale: 1 });
+                  const content = await page.getTextContent();
+                  if (!isCurrent()) return;
+                  const items: Array<{ str: string; transform: number[]; width: number }> = [];
+                  for (const item of content.items) {
+                    if ('str' in item && 'transform' in item) {
+                      items.push({
+                        str: String(item.str),
+                        transform: item.transform as number[],
+                        width: item.width as number,
+                      });
+                    }
+                  }
+
+                  const extracted = extractPageNotes(items, {
+                    width: logicalViewport.width,
+                    height: logicalViewport.height,
+                  });
+                  const lyrics = extractLyricLines(items, logicalViewport.width);
+                  const pageEntries = chordDoc?.pages[String(pageNo)] ?? [];
+                  nextLines.push(
+                    ...buildChordedLines(
+                      extracted.notes,
+                      extracted.noteRows,
+                      lyrics,
+                      pageEntries as Array<{ noteIdx: number; chord: string }>,
+                    ),
+                  );
+                }
+
+                if (isCurrent()) setChordedLines(nextLines);
+              } catch (err) {
+                if (isCurrent()) setPdfError(err instanceof Error ? err.message : String(err));
+              }
+            };
+
+            void load();
+            return () => {
+              cancelled = true;
+              if (pdfLoadGuardRef.current.isCurrent(loadToken)) {
+                pdfLoadGuardRef.current.invalidate();
+              }
+              if (loadingTask && !committedLoadingTask) {
+                void loadingTask.destroy().catch(() => undefined);
+              }
+            };
+          }, [resolved, book, song]);
+          '''
+          replacement = '\n'.join(line[10:] if line.startswith('          ') else line for line in replacement.splitlines()) + '\n'
+          text = text[:start] + replacement + text[end:]
+
+          autofit = text.index('  // True autofit:')
+          tail = text[autofit:]
+          match = re.search(r"\n  }, \[(.*?)\]\);", tail, flags=re.S)
+          if not match:
+              raise SystemExit('Unable to find PDF render effect dependency list')
+          deps = match.group(1)
+          if 'resolved?.pdfUrl' not in deps:
+              clean = deps.rstrip()
+              suffix = '' if clean.endswith(',') else ','
+              new_deps = clean + suffix + '\n    resolved?.pdfUrl,\n  '
+              tail = tail[:match.start(1)] + new_deps + tail[match.end(1):]
+              text = text[:autofit] + tail
+
+          path.write_text(text)
+          PY
+          pnpm exec prettier --write apps/web/src/features/hymnal/song-viewer.tsx
+      - name: Commit PDF lifecycle hardening
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/src/features/hymnal/song-viewer.tsx
+          git commit -m "fix: cancel stale PDF loads during rapid song switches"
+          git push origin HEAD:feature/bible-mobile-parity
