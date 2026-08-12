@@ -18,12 +18,16 @@ describe('OfflineMediaSettings', () => {
     render(<OfflineMediaSettings />);
 
     expect(await screen.findByText(/2 file \(PDF 1, MIDI 1, soundfont 0\)/)).toBeInTheDocument();
-    expect(screen.getByText(/tidak menghapus Alkitab, bookmark, riwayat, atau catatan/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/tidak menghapus Alkitab, bookmark, riwayat, atau catatan/i),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Hapus media offline' }));
 
     expect(await screen.findByText('Media offline berhasil dihapus.')).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByText(/0 file \(PDF 0, MIDI 0, soundfont 0\)/)).toBeVisible());
+    await waitFor(() =>
+      expect(screen.getByText(/0 file \(PDF 0, MIDI 0, soundfont 0\)/)).toBeVisible(),
+    );
     expect(await offlineMediaCache.get('/song.pdf', 'pdf')).toBeNull();
     expect(await offlineMediaCache.get('/song.mid', 'midi')).toBeNull();
   });

@@ -257,7 +257,10 @@ function ReaderPane({
       const node = document.querySelector(
         `[data-pane=\"${paneId}\"] [data-verse=\"${focusVerse}\"]`,
       );
-      node?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      const reduceMotion =
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+        document.documentElement.dataset.reduceMotion === 'true';
+      node?.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' });
     });
     return () => window.cancelAnimationFrame(frame);
   }, [chapterQuery.data, focusVerse, paneId]);

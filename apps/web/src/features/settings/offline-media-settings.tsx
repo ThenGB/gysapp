@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Trash } from '@phosphor-icons/react';
-import {
-  offlineMediaCache,
-  type OfflineMediaStats,
-} from '../../platform/offline-media-cache';
+import { offlineMediaCache, type OfflineMediaStats } from '../../platform/offline-media-cache';
 
 function formatBytes(bytes: number): string {
   if (bytes <= 0) return '0 MB';

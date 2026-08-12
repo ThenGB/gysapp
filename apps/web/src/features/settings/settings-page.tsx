@@ -23,6 +23,7 @@ import {
   type ThemeMode,
 } from './settings-store';
 import { useLocale, useT } from '../../i18n';
+import { OfflineMediaSettings } from './offline-media-settings';
 import './settings.css';
 
 const THEMES: Array<{ value: ThemeMode; label: string }> = [
@@ -390,6 +391,7 @@ export function SettingsPage() {
 
       <section className="settings-section" aria-label="Data">
         <h2 className="settings-heading">Data</h2>
+        <OfflineMediaSettings />
         <div className="settings-data-actions">
           <button type="button" className="btn-primary" onClick={() => setDialog('export')}>
             <DownloadSimple size={20} /> Ekspor backup
