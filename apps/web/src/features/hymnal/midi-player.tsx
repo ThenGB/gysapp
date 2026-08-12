@@ -34,6 +34,7 @@ export function MiniMidiPlayer({
   onTransposeChange,
   onPrevious,
   onNext,
+  onEnded,
 }: {
   url: string | null;
   title: string;
@@ -46,6 +47,7 @@ export function MiniMidiPlayer({
   onTransposeChange?: (step: number) => void;
   onPrevious?: TrackChangeHandler;
   onNext?: TrackChangeHandler;
+  onEnded?: TrackChangeHandler;
 }) {
   const [status, setStatus] = useState<MidiStatus>('idle');
   const [time, setTime] = useState(0);
@@ -57,6 +59,7 @@ export function MiniMidiPlayer({
   const [detailsOpen, setDetailsOpen] = useState(!compact);
   const previousUrl = useRef(url);
   const autoplayAfterTrackChange = useRef(false);
+  const endedHandled = useRef(false);
   const transposeRef = useRef(transpose);
   const onTransposeChangeRef = useRef(onTransposeChange);
 
@@ -95,6 +98,7 @@ export function MiniMidiPlayer({
     const changed = Boolean(previousUrl.current && previousUrl.current !== url);
     if (changed) midiEngine.stop();
     previousUrl.current = url;
+    endedHandled.current = false;
     setStatus('idle');
     setTime(0);
     setDuration(0);
@@ -139,17 +143,27 @@ export function MiniMidiPlayer({
     void loadTrack(url, true);
   }, [loadTrack, url]);
 
-  const changeTrack = useCallback(async (handler: TrackChangeHandler | undefined) => {
-    if (!handler) return;
-    autoplayAfterTrackChange.current = midiEngine.getStatus() === 'playing';
-    try {
-      const changed = await handler();
-      if (!changed) autoplayAfterTrackChange.current = false;
-    } catch (err) {
-      autoplayAfterTrackChange.current = false;
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }, []);
+  const changeTrack = useCallback(
+    async (handler: TrackChangeHandler | undefined, autoplayOverride?: boolean) => {
+      if (!handler) return;
+      autoplayAfterTrackChange.current =
+        autoplayOverride ?? midiEngine.getStatus() === 'playing';
+      try {
+        const changed = await handler();
+        if (!changed) autoplayAfterTrackChange.current = false;
+      } catch (err) {
+        autoplayAfterTrackChange.current = false;
+        setError(err instanceof Error ? err.message : String(err));
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (status !== 'ended' || !onEnded || endedHandled.current) return;
+    endedHandled.current = true;
+    void changeTrack(onEnded, true);
+  }, [changeTrack, onEnded, status]);
 
   const onSeek = useCallback((value: number) => {
     midiEngine.seek(value);
