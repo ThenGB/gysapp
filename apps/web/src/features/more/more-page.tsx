@@ -15,7 +15,7 @@ import {
   YoutubeLogo,
   SpotifyLogo,
   GlobeHemisphereWest,
-  SignIn,
+  UserCircle,
 } from '@phosphor-icons/react';
 import './more.css';
 
@@ -27,7 +27,6 @@ const LITERATURE = [
 ];
 
 const EXTERNAL = [
-  { href: 'https://e.gys.or.id/login', label: 'e-GYS / Area Anggota', icon: SignIn },
   { href: 'https://Bible.tjc.org', label: 'eRhema', icon: GlobeHemisphereWest },
   { href: 'https://pelitakecil.com/', label: 'Pelita Kecil', icon: BookOpenText },
   {
@@ -76,6 +75,27 @@ export function MorePage() {
     <div className="content-shell more-page">
       <h1 className="section-title">Lainnya</h1>
 
+      <Section title="Akun e-GYS">
+        <ul className="more-grid">
+          <li>
+            <Link to="/account" className="more-card">
+              <UserCircle size={26} weight="duotone" aria-hidden="true" />
+              <span>Akun & Keanggotaan</span>
+            </Link>
+          </li>
+          <li>
+            <button
+              type="button"
+              className="more-card"
+              onClick={() => openExternal('https://e.gys.or.id')}
+            >
+              <GlobeHemisphereWest size={26} aria-hidden="true" />
+              <span>Buka situs e-GYS</span>
+            </button>
+          </li>
+        </ul>
+      </Section>
+
       <Section title="Literatur & Bacaan">
         <ul className="more-grid">
           {LITERATURE.map((item) => (
@@ -89,7 +109,7 @@ export function MorePage() {
         </ul>
       </Section>
 
-      <Section title="e-GYS & Media">
+      <Section title="Media & Tautan">
         <ul className="more-grid">
           {EXTERNAL.map((item) => (
             <li key={item.href}>
