@@ -1,0 +1,73 @@
+name: Finalize Milestone Docs
+
+on:
+  push:
+    branches:
+      - feature/bible-mobile-parity
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feature/bible-mobile-parity
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Update milestone status
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              if old not in text:
+                  raise SystemExit(f'anchor not found: {label}')
+              return text.replace(old, new, 1)
+
+          parity_path = Path('docs/parity-matrix.md')
+          parity = parity_path.read_text()
+          parity = replace_once(parity, 'Audit terakhir: **12 Agustus 2026**.', 'Audit terakhir: **13 Agustus 2026**.', 'parity audit date')
+          parity = replace_once(parity, '| Lanjut membaca / pujian        | in-progress | State reader/hymnal tersedia; surface Home masih dipoles |', '| Lanjut membaca / pujian        | done        | Ayat terakhir + recent hymn persisted dan dapat dilanjutkan langsung |', 'home resume')
+          parity = replace_once(parity, '| Multi-select/copy/share/note | in-progress | Copy/search tersedia; selection/share parity belum final |', '| Multi-select/copy/share/note | done        | Multi-select, pilih semua, copy, Web Share + clipboard fallback, catatan lokal |', 'faith selection')
+          parity = replace_once(parity, '| Panduan Alkitab                   | in-progress | Route ada; katalog masih diperkaya            |', '| Panduan Alkitab                   | done        | Snapshot 14 panduan TJC + optional gateway; ikut sync 6-jam |', 'panduan parity')
+          parity = replace_once(parity, '| Unified reset/cache      | in-progress | Bible remove + media clear tersedia; chord/unified one-stop reset tersisa |', '| Unified reset/cache      | done        | Bible manager + media/chord cleanup tersedia; bookmark/history/playlist/notes aman |', 'unified cache')
+          parity_path.write_text(parity)
+
+          roadmap_path = Path('docs/implementation-roadmap.md')
+          roadmap = roadmap_path.read_text()
+          roadmap = replace_once(roadmap, 'Audit: 12 Agustus 2026', 'Audit: 13 Agustus 2026', 'roadmap audit date')
+          roadmap = replace_once(roadmap, '- persistent offline soundfont/MIDI/PDF cache dengan bounded LRU dan safe cleanup di Settings;\n- encrypted backup, settings/i18n, 10 Pokok Iman, literature/content surfaces;\n- snapshot konten TJC default yang disinkronkan GitHub Actions setiap 6 jam;', '- persistent offline soundfont/MIDI/PDF cache dengan bounded LRU dan safe cleanup di Settings;\n- shared chord-cache cleanup + Settings storage navigation tanpa menghapus Bible/bookmark/history/playlist/notes;\n- Home resume untuk ayat terakhir dan recent hymn yang persisted;\n- encrypted backup, settings/i18n, 10 Pokok Iman + multi-select/copy/share, literature/content surfaces;\n- snapshot konten TJC default termasuk 14 Panduan Alkitab yang disinkronkan GitHub Actions setiap 6 jam;', 'foundation milestones')
+          roadmap = replace_once(roadmap, 'Masih untuk P1/release polish:\n\n- unified one-stop cache/data management surface;\n- final light/dark contrast + real-device accessibility soak.', 'Masih untuk P1/release polish:\n\n- final light/dark contrast + real-device accessibility soak.', 'bible remaining')
+          roadmap = replace_once(roadmap, '- Settings menampilkan ukuran/cache count dan dapat menghapus hanya media offline tanpa menyentuh Bible/bookmark/history/notes.', '- Settings menampilkan ukuran/cache count dan dapat menghapus media + chord offline tanpa menyentuh Bible/bookmark/history/playlist/notes.', 'hymnal storage')
+          roadmap = replace_once(roadmap, 'Sisa Hymnal untuk P1:\n\n- optional text/chord autofit bila golden screenshot menunjukkan overflow;\n- real-device long-song/performance soak;\n- current-song/history surface di Home.', 'Sisa Hymnal untuk P1:\n\n- optional text/chord autofit bila golden screenshot menunjukkan overflow;\n- real-device long-song/performance soak.', 'hymnal remaining')
+          roadmap = replace_once(roadmap, '### Bible / Settings\n\n- unified one-stop asset/cache/reset surface untuk Bible, chord, dan media;\n- final light/dark contrast audit dan real-device accessibility soak;\n- Home continue-reading/current-song polish.', '### Bible / Settings\n\n- final light/dark contrast audit dan real-device accessibility soak.', 'p1 bible settings')
+          roadmap = replace_once(roadmap, '### Hymnal\n\n- optional text autofit algorithm dengan minimum readable size;\n- current-song/history surface di Home;\n- real-device long-song/performance soak.', '### Hymnal\n\n- optional text autofit algorithm dengan minimum readable size;\n- real-device long-song/performance soak.', 'p1 hymnal')
+          roadmap = replace_once(roadmap, '### Literature / Faith / More\n\n- perluas i18n copy;\n- audit external links dengan platform opener yang sama;\n- sempurnakan Panduan Alkitab/remote catalog;\n- selesaikan selection/share parity di Iman.', '### Literature / Faith / More\n\n- perluas i18n copy;\n- audit external links dengan platform opener yang sama.', 'p1 literature')
+          roadmap = replace_once(roadmap, '- `sync-content.yml` mengambil Sauh, Suara Sejati, Kesaksian, Warta, dan Renungan dari `tjc.org` setiap 6 jam;', '- `sync-content.yml` mengambil Sauh, Suara Sejati, Kesaksian, Warta, Renungan, dan Panduan Alkitab dari `tjc.org` setiap 6 jam;', 'online architecture')
+          roadmap = replace_once(roadmap, '1. Konsolidasikan unified cache/reset surface termasuk chord cache.\n2. Poles Home continue-reading/current-song dan optional text/chord autofit.\n3. Selesaikan Faith selection/share + Panduan Alkitab/i18n parity.\n4. Jalankan real-device accessibility/MIDI soak + production Web Vitals.\n5. Jalankan Android production signed upgrade smoke setelah legacy keystore + fingerprint tersedia.\n6. Tambahkan signed iOS distribution setelah provisioning/signing Apple tersedia.', '1. Poles optional text/chord autofit dan perluas i18n copy yang masih hard-coded.\n2. Jalankan final light/dark contrast + real-device accessibility/MIDI long-song soak.\n3. Ukur production Web Vitals dan jalankan final beta regression.\n4. Jalankan Android production signed upgrade smoke setelah legacy keystore + fingerprint tersedia.\n5. Tambahkan signed iOS distribution setelah provisioning/signing Apple tersedia.', 'execution order')
+          roadmap_path.write_text(roadmap)
+          PY
+          pnpm exec prettier --write docs/parity-matrix.md docs/implementation-roadmap.md
+          pnpm exec prettier --check docs/parity-matrix.md docs/implementation-roadmap.md
+      - name: Commit docs
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/parity-matrix.md docs/implementation-roadmap.md
+          git commit -m "docs: mark Home Faith storage and Panduan milestones verified"
+          git push origin HEAD:feature/bible-mobile-parity
