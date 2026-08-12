@@ -7,6 +7,7 @@ import {
   transposeNotes,
 } from '@gysapp/core';
 import { assetUrl } from '../../lib/asset-url';
+import { LatestRequestGuard } from '../../lib/latest-request';
 
 export type MidiStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'ended';
 
@@ -19,13 +20,20 @@ export interface MidiLoadOptions {
   onProgress?: (pct: number) => void;
 }
 
+export interface MidiLoadResult {
+  duration: number;
+  activated: boolean;
+}
+
 interface Deck {
   source: AudioBufferSourceNode;
   gain: GainNode;
   buffer: AudioBuffer;
   startOffset: number;
   startCtxTime: number;
+  started: boolean;
   ended: boolean;
+  manualStop: boolean;
 }
 
 interface CacheEntry {
@@ -33,6 +41,7 @@ interface CacheEntry {
   transpose: number;
   instrument: number;
   bytes: number;
+  baseBpm: number;
 }
 
 const CACHE_MAX_BYTES = 96 * 1024 * 1024;
@@ -42,11 +51,20 @@ function cacheKey(url: string, transpose: number, instrument: number): string {
   return `${url}|${transpose}|${instrument}`;
 }
 
+function isTempoNeutral(baseBpm: number, tempoBpm: number): boolean {
+  if (baseBpm <= 0) return true;
+  return Math.abs(tempoBpm / baseBpm - 1) < 1e-4;
+}
+
 /**
  * MIDI engine: render offline di worker (js-synthesizer + FluidSynth WASM),
- * playback AudioBufferSourceNode + A/B deck sederhana, cache LRU per
- * (url, transpose, instrument) dengan byte cap. Tempo TIDAK masuk key cache
- * (render tempo-neutral, kontrak gyschordweb).
+ * playback AudioBufferSourceNode, cache LRU per (url, transpose, instrument)
+ * dengan byte cap. Render cache hanya menyimpan tempo-neutral supaya perubahan
+ * tempo tidak membuat cache membengkak.
+ *
+ * Load guard menjamin request lama tidak boleh mengaktifkan deck setelah user
+ * sudah pindah lagu/menekan stop. AudioBufferSourceNode benar-benar dimulai
+ * lewat source.start(); paused deck baru dimulai saat play() dipanggil.
  */
 export class MidiEngine {
   private ctx: AudioContext | null = null;
@@ -69,6 +87,7 @@ export class MidiEngine {
   private requestId = 0;
   private sfLoaded = false;
   private sfLoading: Promise<void> | null = null;
+  private readonly loadGuard = new LatestRequestGuard();
 
   private onStateChange: ((status: MidiStatus) => void) | null = null;
   private currentUrl: string | null = null;
@@ -87,33 +106,38 @@ export class MidiEngine {
     return this.tempoBpm;
   }
 
-  /** Transpose ulang lagu aktif tanpa mengubah posisi (render baru). */
+  /** Transpose ulang lagu aktif tanpa mengubah posisi. */
   async setTranspose(step: number): Promise<void> {
     const url = this.currentUrl;
     if (!url) return;
     const wasPlaying = this.status === 'playing';
     const position = this.getTime();
-    this.transpose = step;
-    await this.loadMidi({ url, transpose: step, instrument: this.instrument, autoplay: false });
+    const result = await this.loadMidi({
+      url,
+      transpose: step,
+      instrument: this.instrument,
+      autoplay: false,
+    });
+    if (!result.activated) return;
     this.seek(position);
     if (wasPlaying) this.play();
   }
 
-  /** Ubah tempo (BPM); rate != 1 memicu render tempo-scaled (tanpa cache). */
+  /** Ubah tempo (BPM) sambil mempertahankan posisi lagu aktif. */
   async setTempoBpm(bpm: number): Promise<void> {
     const clamped = Math.max(30, Math.min(220, Math.round(bpm)));
     const url = this.currentUrl;
-    this.tempoBpm = clamped;
     if (!url || this.baseBpm <= 0) return;
     const wasPlaying = this.status === 'playing';
     const position = this.getTime();
-    await this.loadMidi({
+    const result = await this.loadMidi({
       url,
       transpose: this.transpose,
       instrument: this.instrument,
       autoplay: false,
       tempoBpm: clamped,
     });
+    if (!result.activated) return;
     this.seek(position);
     if (wasPlaying) this.play();
   }
@@ -228,69 +252,96 @@ export class MidiEngine {
     return this.sfLoading;
   }
 
-  async loadMidi(options: MidiLoadOptions): Promise<{ duration: number }> {
-    const transpose = options.transpose ?? 0;
-    const instrument = options.instrument ?? -1;
-    const tempoBpm = options.tempoBpm ?? this.tempoBpm;
-    const key = cacheKey(options.url, transpose, instrument);
+  async loadMidi(options: MidiLoadOptions): Promise<MidiLoadResult> {
+    const loadToken = this.loadGuard.begin();
+    const isCurrent = () => this.loadGuard.isCurrent(loadToken);
+    const reportProgress = (pct: number) => {
+      if (isCurrent()) options.onProgress?.(pct);
+    };
+    const inactive = (duration = 0): MidiLoadResult => ({ duration, activated: false });
 
-    await this.loadSoundFont();
-    this.ensureContext();
+    try {
+      const transpose = options.transpose ?? 0;
+      const instrument = options.instrument ?? -1;
+      const sameTrack = this.currentUrl === options.url;
+      const requestedTempo = options.tempoBpm ?? (sameTrack ? this.tempoBpm : null);
+      const key = cacheKey(options.url, transpose, instrument);
 
-    const cached = this.cache.get(key);
-    let entry: CacheEntry | null = null;
-    const tempoRate = this.baseBpm > 0 ? tempoBpm / this.baseBpm : 1;
-    const tempoNeutral = Math.abs(tempoRate - 1) < 1e-4;
+      await this.loadSoundFont();
+      if (!isCurrent()) return inactive();
+      this.ensureContext();
 
-    // Cache hanya menyimpan render tempo-neutral (kontrak gyschordweb).
-    if (tempoNeutral && cached) {
-      entry = cached;
-      this.cache.delete(key);
-      this.cache.set(key, entry); // LRU touch
-    }
-    if (!entry) {
-      this.setStatus('loading');
-      options.onProgress?.(5);
-      const raw = await fetch(options.url).then(async (r) => {
-        if (!r.ok) throw new Error(`midi fetch failed: ${r.status}`);
-        return new Uint8Array(await r.arrayBuffer());
-      });
-      options.onProgress?.(15);
-      const doc = parseSmf(raw);
-      const detectedBpm = Math.round(60_000_000 / firstTempoMpqn(doc));
-      if (this.currentUrl !== options.url || tempoNeutral) {
-        this.baseBpm = detectedBpm;
-        this.tempoBpm = tempoNeutral ? detectedBpm : tempoBpm;
+      const cached = this.cache.get(key);
+      let entry: CacheEntry | null = null;
+      let effectiveTempo = requestedTempo ?? 0;
+
+      if (cached) {
+        effectiveTempo = requestedTempo ?? cached.baseBpm;
+        if (isTempoNeutral(cached.baseBpm, effectiveTempo)) {
+          entry = cached;
+          this.cache.delete(key);
+          this.cache.set(key, entry); // LRU touch
+        }
       }
-      const scaled = scaleTempo(doc, this.baseBpm > 0 ? this.tempoBpm / this.baseBpm : 1);
-      const prepared = applyInstrumentOverride(
-        transposeNotes(scaled ?? doc, transpose),
-        instrument >= 0 ? instrument : null,
-      );
-      const bytes = encodeSmf(prepared);
-      options.onProgress?.(30);
-      const result = (await this.request(
-        'render',
-        { midiBuffer: bytes.buffer.slice(0), sampleRate: 48000, transpose, instrument },
-        120_000,
-        [bytes.buffer.slice(0)],
-      )) as { buffer: AudioBuffer; duration: number };
-      const bytesCount = result.buffer.length * result.buffer.numberOfChannels * 4;
-      const fresh: CacheEntry = { buffer: result.buffer, transpose, instrument, bytes: bytesCount };
-      if (tempoNeutral) this.putCache(key, fresh);
-      entry = fresh;
+
+      if (!entry) {
+        this.setStatus('loading');
+        reportProgress(5);
+        const raw = await fetch(options.url).then(async (r) => {
+          if (!r.ok) throw new Error(`midi fetch failed: ${r.status}`);
+          return new Uint8Array(await r.arrayBuffer());
+        });
+        if (!isCurrent()) return inactive();
+        reportProgress(15);
+
+        const doc = parseSmf(raw);
+        const detectedBpm = Math.round(60_000_000 / firstTempoMpqn(doc));
+        effectiveTempo = requestedTempo ?? detectedBpm;
+        const tempoRate = detectedBpm > 0 ? effectiveTempo / detectedBpm : 1;
+        const scaled = scaleTempo(doc, tempoRate);
+        const prepared = applyInstrumentOverride(
+          transposeNotes(scaled ?? doc, transpose),
+          instrument >= 0 ? instrument : null,
+        );
+        const bytes = encodeSmf(prepared);
+        reportProgress(30);
+
+        const result = (await this.request(
+          'render',
+          { midiBuffer: bytes.buffer.slice(0), sampleRate: 48000, transpose, instrument },
+          120_000,
+          [bytes.buffer.slice(0)],
+        )) as { buffer: AudioBuffer; duration: number };
+        const bytesCount = result.buffer.length * result.buffer.numberOfChannels * 4;
+        const fresh: CacheEntry = {
+          buffer: result.buffer,
+          transpose,
+          instrument,
+          bytes: bytesCount,
+          baseBpm: detectedBpm,
+        };
+        if (isTempoNeutral(detectedBpm, effectiveTempo)) this.putCache(key, fresh);
+        entry = fresh;
+      }
+
+      if (!isCurrent()) return inactive(entry.buffer.duration);
+
+      this.currentUrl = options.url;
+      this.transpose = transpose;
+      this.instrument = instrument;
+      this.baseBpm = entry.baseBpm;
+      this.tempoBpm = effectiveTempo || entry.baseBpm;
+
+      if (this.deck) this.disposeDeck(this.deck);
+      const deck = this.createDeck(entry.buffer, 0, 0, options.autoplay === true);
+      this.deck = deck;
+      reportProgress(100);
+      this.setStatus(options.autoplay ? 'playing' : 'paused');
+      return { duration: entry.buffer.duration, activated: true };
+    } catch (err) {
+      if (!isCurrent()) return inactive();
+      throw err;
     }
-
-    this.currentUrl = options.url;
-    this.transpose = transpose;
-    this.instrument = instrument;
-
-    const deck = this.startDeck(entry.buffer, 0, 0);
-    this.deck = deck;
-    options.onProgress?.(100);
-    if (options.autoplay) this.setStatus('playing');
-    else this.setStatus('paused');
-    return { duration: entry.buffer.duration };
   }
 
   private putCache(key: string, entry: CacheEntry): void {
@@ -305,7 +356,12 @@ export class MidiEngine {
     }
   }
 
-  private startDeck(buffer: AudioBuffer, offset: number, fadeMs: number): Deck {
+  private createDeck(
+    buffer: AudioBuffer,
+    offset: number,
+    fadeMs: number,
+    startImmediately: boolean,
+  ): Deck {
     const ctx = this.ensureContext();
     const source = ctx.createBufferSource();
     source.buffer = buffer;
@@ -318,77 +374,109 @@ export class MidiEngine {
     }
     source.connect(gain);
     gain.connect(this.master as GainNode);
+
     const deck: Deck = {
       source,
       gain,
       buffer,
-      startOffset: offset,
+      startOffset: Math.max(0, Math.min(offset, buffer.duration)),
       startCtxTime: ctx.currentTime,
+      started: false,
       ended: false,
+      manualStop: false,
     };
     source.onended = () => {
       deck.ended = true;
-      if (this.deck === deck) this.setStatus('ended');
+      if (!deck.manualStop) deck.startOffset = deck.buffer.duration;
+      if (this.deck === deck && !deck.manualStop) this.setStatus('ended');
     };
+
+    if (startImmediately) this.startDeckSource(deck);
     return deck;
   }
 
+  private startDeckSource(deck: Deck): void {
+    if (deck.started || deck.ended) return;
+    const ctx = this.ensureContext();
+    deck.startCtxTime = ctx.currentTime;
+    deck.started = true;
+    deck.manualStop = false;
+    deck.source.start(0, Math.max(0, Math.min(deck.startOffset, deck.buffer.duration)));
+  }
+
+  private disposeDeck(deck: Deck): void {
+    deck.manualStop = true;
+    if (deck.started && !deck.ended) {
+      try {
+        deck.source.stop();
+      } catch {
+        // Source sudah berhenti.
+      }
+    }
+    try {
+      deck.source.disconnect();
+    } catch {
+      // no-op
+    }
+    try {
+      deck.gain.disconnect();
+    } catch {
+      // no-op
+    }
+    deck.ended = true;
+  }
+
   play(): void {
-    if (!this.deck) return;
+    let deck = this.deck;
+    if (!deck) return;
     void this.ensureContext().resume();
-    if (this.deck.ended) {
-      // Resume dari posisi terakhir (pause/seek sebelumnya).
-      const buffer = this.deck.buffer;
-      const offset = this.deck.startOffset;
-      this.deck = this.startDeck(buffer, offset, 0);
+
+    if (deck.ended) {
+      const offset = deck.startOffset >= deck.buffer.duration ? 0 : deck.startOffset;
+      deck = this.createDeck(deck.buffer, offset, 0, true);
+      this.deck = deck;
+    } else if (!deck.started) {
+      this.startDeckSource(deck);
     }
     this.setStatus('playing');
   }
 
   pause(): void {
-    if (!this.deck || this.deck.ended) return;
-    this.deck.startOffset = this.getTime();
-    this.deck.source.stop();
-    this.deck.source.disconnect();
-    this.deck.gain.disconnect();
-    this.deck.ended = true;
+    const deck = this.deck;
+    if (!deck || this.status !== 'playing' || !deck.started || deck.ended) return;
+    deck.startOffset = this.getTime();
+    this.disposeDeck(deck);
     this.setStatus('paused');
   }
 
   seek(time: number): void {
-    if (!this.deck || this.deck.ended) {
-      return;
-    }
+    const deck = this.deck;
+    if (!deck) return;
     const wasPlaying = this.status === 'playing';
-    const buffer = this.deck.buffer;
-    this.deck.source.stop();
-    this.deck.source.disconnect();
-    this.deck.gain.disconnect();
-    this.deck.ended = true;
-    const deck = this.startDeck(buffer, Math.max(0, Math.min(time, buffer.duration)), 0);
-    this.deck = deck;
-    if (wasPlaying) this.setStatus('playing');
+    const buffer = deck.buffer;
+    const target = Math.max(0, Math.min(time, buffer.duration));
+    this.disposeDeck(deck);
+    this.deck = this.createDeck(buffer, target, 0, wasPlaying);
+    this.setStatus(wasPlaying ? 'playing' : 'paused');
   }
 
   stop(): void {
+    this.loadGuard.invalidate();
     if (this.deck) {
-      try {
-        this.deck.source.stop();
-      } catch {
-        // sudah berhenti
-      }
-      this.deck.source.disconnect();
-      this.deck.gain.disconnect();
-      this.deck.ended = true;
+      this.disposeDeck(this.deck);
       this.deck = null;
     }
     this.setStatus('idle');
   }
 
   getTime(): number {
-    if (!this.deck || this.deck.ended) return 0;
-    const elapsed = this.ensureContext().currentTime - this.deck.startCtxTime;
-    return Math.max(0, Math.min(this.deck.startOffset + elapsed, this.deck.buffer.duration));
+    const deck = this.deck;
+    if (!deck) return 0;
+    if (!deck.started || deck.ended) {
+      return Math.max(0, Math.min(deck.startOffset, deck.buffer.duration));
+    }
+    const elapsed = this.ensureContext().currentTime - deck.startCtxTime;
+    return Math.max(0, Math.min(deck.startOffset + elapsed, deck.buffer.duration));
   }
 
   getDuration(): number {
@@ -409,5 +497,4 @@ export class MidiEngine {
   }
 }
 
-/** Singleton app-level; di-reset di fase berikutnya bersama lifecycle. */
 export const midiEngine = new MidiEngine(assetUrl('/assets/soundfont/TimGM6mb.sf2'));
