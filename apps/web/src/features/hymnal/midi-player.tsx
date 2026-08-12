@@ -52,8 +52,7 @@ export function MiniMidiPlayer({
     setLoadingPct(0);
     setError(null);
     setTempo(120);
-    setTranspose(transposeStep);
-  }, [url, transposeStep]);
+  }, [url]);
 
   useEffect(() => {
     setTranspose(transposeStep);
