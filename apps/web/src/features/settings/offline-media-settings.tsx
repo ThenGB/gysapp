@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Trash } from '@phosphor-icons/react';
+import {
+  clearChordCache,
+  getChordCacheStats,
+  type ChordCacheStats,
+} from '../hymnal/chord-cache';
 import { offlineMediaCache, type OfflineMediaStats } from '../../platform/offline-media-cache';
 
 function formatBytes(bytes: number): string {
@@ -10,59 +15,101 @@ function formatBytes(bytes: number): string {
 
 export function OfflineMediaSettings() {
   const [stats, setStats] = useState<OfflineMediaStats | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [chordStats, setChordStats] = useState<ChordCacheStats | null>(null);
+  const [busy, setBusy] = useState<'media' | 'chord' | 'all' | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    try {
-      setStats(await offlineMediaCache.stats());
-    } catch {
-      setStats(null);
-    }
+    const [nextMedia, nextChord] = await Promise.allSettled([
+      offlineMediaCache.stats(),
+      getChordCacheStats(),
+    ]);
+    setStats(nextMedia.status === 'fulfilled' ? nextMedia.value : null);
+    setChordStats(nextChord.status === 'fulfilled' ? nextChord.value : null);
   }, []);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
-  const clear = async () => {
-    setBusy(true);
+  const runCleanup = async (target: 'media' | 'chord' | 'all') => {
+    setBusy(target);
     setMessage(null);
     try {
-      await offlineMediaCache.clear();
+      if (target === 'media' || target === 'all') await offlineMediaCache.clear();
+      if (target === 'chord' || target === 'all') await clearChordCache();
       await refresh();
-      setMessage('Media offline berhasil dihapus.');
+      setMessage(
+        target === 'all'
+          ? 'Cache Pujian berhasil dibersihkan.'
+          : target === 'media'
+            ? 'Media offline berhasil dihapus.'
+            : 'Cache chord berhasil dihapus.',
+      );
     } catch {
-      setMessage('Media offline belum dapat dihapus. Coba lagi.');
+      setMessage('Cache belum dapat dibersihkan. Coba lagi.');
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   };
+
+  const mediaCount = stats?.count ?? 0;
+  const chordCount = chordStats?.blobs ?? 0;
+  const hasAnyCache = mediaCount + chordCount > 0;
 
   return (
     <div className="settings-row settings-row-stack">
       <div className="settings-row-main">
-        <strong>Media offline Pujian</strong>
+        <strong>Penyimpanan offline Pujian</strong>
         <span>
-          Soundfont, MIDI, dan PDF yang pernah dibuka disimpan lokal agar lebih cepat dan tetap
-          tersedia setelah tersimpan. File lama dibersihkan otomatis saat cache mencapai batasnya.
+          Soundfont, MIDI, PDF, dan chord yang pernah dibuka disimpan lokal agar lebih cepat dan
+          tetap tersedia setelah tersimpan. Media besar dibatasi dengan LRU; chord tetap
+          content-addressed dan dapat diunduh ulang saat lagu dibuka.
         </span>
         <small>
           {stats
-            ? `${formatBytes(stats.sizeBytes)} • ${stats.count} file (PDF ${stats.byKind.pdf.count}, MIDI ${stats.byKind.midi.count}, soundfont ${stats.byKind.soundfont.count})`
-            : 'Ukuran cache belum dapat dibaca.'}
+            ? `${formatBytes(stats.sizeBytes)} media • ${stats.count} file (PDF ${stats.byKind.pdf.count}, MIDI ${stats.byKind.midi.count}, soundfont ${stats.byKind.soundfont.count})`
+            : 'Ukuran media belum dapat dibaca.'}
         </small>
-        <small>Menghapus media ini tidak menghapus Alkitab, bookmark, riwayat, atau catatan.</small>
+        <small>
+          {chordStats
+            ? `${formatBytes(chordStats.sizeBytes)} chord • ${chordStats.blobs} blob`
+            : 'Ukuran cache chord belum dapat dibaca.'}
+        </small>
+        <small>
+          Pembersihan cache Pujian tidak menghapus versi Alkitab, bookmark, riwayat, playlist,
+          pengaturan, atau catatan.
+        </small>
       </div>
-      <button
-        type="button"
-        className="btn-text settings-danger-action"
-        disabled={busy || stats?.count === 0}
-        onClick={() => void clear()}
-      >
-        <Trash size={18} aria-hidden="true" />
-        {busy ? 'Menghapus…' : 'Hapus media offline'}
-      </button>
+      <div className="settings-data-actions settings-cache-actions">
+        <button
+          type="button"
+          className="btn-text settings-danger-action"
+          disabled={busy !== null || mediaCount === 0}
+          onClick={() => void runCleanup('media')}
+        >
+          <Trash size={18} aria-hidden="true" />
+          {busy === 'media' ? 'Menghapus…' : 'Hapus media'}
+        </button>
+        <button
+          type="button"
+          className="btn-text settings-danger-action"
+          disabled={busy !== null || chordCount === 0}
+          onClick={() => void runCleanup('chord')}
+        >
+          <Trash size={18} aria-hidden="true" />
+          {busy === 'chord' ? 'Menghapus…' : 'Hapus chord'}
+        </button>
+        <button
+          type="button"
+          className="btn-danger"
+          disabled={busy !== null || !hasAnyCache}
+          onClick={() => void runCleanup('all')}
+        >
+          <Trash size={18} aria-hidden="true" />
+          {busy === 'all' ? 'Membersihkan…' : 'Bersihkan cache Pujian'}
+        </button>
+      </div>
       {message && (
         <span className="settings-action-status" role="status" aria-live="polite">
           {message}
