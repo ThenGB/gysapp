@@ -25,11 +25,11 @@ Sudah tersedia dan terverifikasi:
 - pnpm monorepo `apps/web`, `apps/edge`, `apps/native`, `packages/core`, `packages/contracts`;
 - React + TypeScript strict, Vite, Vitest, Playwright;
 - shell responsif mobile dock / tablet rail / desktop sidebar;
-- route-level lazy loading; initial main shell sekitar **130 KB gzip**, di bawah budget 250 KB;
+- route-level lazy loading; initial production JavaScript sekitar **134 KiB gzip**, dipagari hard budget 250 KiB;
 - PWA + GitHub Pages;
 - Bible SQLite + TB/KJV/CUV asset manager, SHA-256, cancel/retry/resume, split reader, history/bookmark, TTS;
 - contextual Bible refs/paralel dengan nama kitab, dedup, deep-link ayat, copy/bookmark/read actions, dan inline contextual notes;
-- accessibility regression: 320–1920, effective 200% browser-zoom reflow, keyboard focus, reduced motion;
+- accessibility regression: 320–1920, effective 200% browser-zoom reflow, keyboard focus, reduced motion, serta automated light/dark WCAG contrast checks;
 - full Hymnal catalog, KR PDF/MIDI, web-native chord extraction, lazy immutable chord cache;
 - app-level MIDI player + playlist previous/next, loop/shuffle, auto-advance;
 - Web Audio lifecycle nyata (`AudioBufferSourceNode.start`) + rapid-load guard;
@@ -42,7 +42,8 @@ Sudah tersedia dan terverifikasi:
 - optional Cloudflare near-live content/report gateway;
 - Windows Tauri compile gate;
 - Android ARM64 APK compile gate yang memverifikasi `id.sch.kanaan.egys` dan versionCode 134;
-- iOS Xcode simulator compile gate pada macOS.
+- iOS Xcode simulator compile gate pada macOS;
+- CI Playwright menjalankan artefak production `dist` melalui `vite preview`, dengan lab guard Home LCP <=2.5s dan CLS <=0.1.
 
 ## P0 — milestone PR #4
 
@@ -64,7 +65,7 @@ Sudah lolos gate:
 
 Masih untuk P1/release polish:
 
-- final light/dark contrast + real-device accessibility soak.
+- real-device light/dark/system accessibility/WCAG soak. Automated contrast regression sudah aktif dan hijau.
 
 ### B. Hymnal finishing — verified core
 
@@ -88,12 +89,12 @@ Sudah masuk dan lolos regression gate:
 - persistent soundfont + MIDI cache;
 - persistent PDF cache yang tetap abortable saat rapid song switch;
 - 192 MB media budget dengan LRU untuk MIDI/PDF dan pinned soundfont;
-- Settings menampilkan ukuran/cache count dan dapat menghapus media + chord offline tanpa menyentuh Bible/bookmark/history/playlist/notes.
+- Settings menampilkan ukuran/cache count dan dapat menghapus media + chord offline tanpa menyentuh Bible/bookmark/history/playlist/notes;
+- mode teks/chord dipagari narrow-width regression 320px: chord badge di-clamp ke baris, emergency wrapping tersedia, dan font lirik tetap >=16px.
 
 Sisa Hymnal untuk P1:
 
-- optional text/chord autofit bila golden screenshot menunjukkan overflow;
-- real-device long-song/performance soak.
+- real-device long-song MIDI/PDF performance soak. Automated narrow-width text/chord fitting sudah selesai tanpa aggressive font shrinking.
 
 ### C. e-GYS boundary — final
 
@@ -147,16 +148,15 @@ Arah visual: **minimal worship utility**, bukan dashboard SaaS.
 
 ### Bible / Settings
 
-- final light/dark contrast audit dan real-device accessibility soak.
+- real-device light/dark/system accessibility soak; automated contrast/reflow/keyboard/reduced-motion gates sudah aktif.
 
 ### Hymnal
 
-- optional text autofit algorithm dengan minimum readable size;
-- real-device long-song/performance soak.
+- real-device long-song MIDI/PDF performance soak; narrow-width text/chord readability sudah dipagari otomatis.
 
 ### Literature / Faith / More
 
-- perluas i18n copy;
+- i18n ID/EN/ZH sudah mencakup Home, Faith, Literatur/Panduan, Lainnya, Settings/backup/cache, e-GYS, Kirim Masukan, Catatan, dan daftar Pujian; lanjutkan hanya generic chrome yang masih hard-coded;
 - audit external links dengan platform opener yang sama.
 
 ## Online content architecture — audited
@@ -180,7 +180,9 @@ Konsekuensinya, deployment tanpa Cloudflare tetap merupakan konfigurasi producti
 - fixture integrity;
 - production frontend build;
 - Prettier;
-- Playwright Chromium desktop/mobile/accessibility matrix;
+- Playwright Chromium production-preview desktop/mobile/accessibility matrix;
+- initial JavaScript gzip budget 250 KiB;
+- lab Web Vitals guard Home LCP <=2.5s / CLS <=0.1;
 - secret scan;
 - Windows Tauri compile;
 - Android Tauri APK compile + identity verification;
@@ -201,15 +203,15 @@ Sudah otomatis:
 
 Masih manual/real-device:
 
-- final light/dark/system contrast soak;
-- long-song MIDI performance soak;
-- production Web Vitals;
+- real-device light/dark/system contrast/accessibility soak;
+- real-device long-song MIDI/PDF performance soak;
+- field/RUM Web Vitals (terutama INP dan p75) setelah deployment beta stabil;
 - Android signed upgrade/install smoke menggunakan signing identity lama;
 - iOS signed distribution smoke setelah provisioning tersedia.
 
 ### Performance budgets
 
-- initial shell <250KB gzip — **achieved (~130KB gzip)**;
+- initial JS <250 KiB gzip — **achieved (~134 KiB gzip)**;
 - PDF/MIDI/heavy feature code lazy-loaded;
 - local navigation tidak menunggu network;
 - warm local search p95 <100ms pada target mid-range;
@@ -217,9 +219,9 @@ Masih manual/real-device:
 
 ## Urutan eksekusi berikutnya
 
-1. Poles optional text/chord autofit dan perluas i18n copy yang masih hard-coded.
-2. Jalankan final light/dark contrast + real-device accessibility/MIDI long-song soak.
-3. Ukur production Web Vitals dan jalankan final beta regression.
+1. Lanjutkan i18n hanya pada generic chrome Alkitab/Pujian yang masih hard-coded.
+2. Jalankan real-device light/dark/system accessibility dan MIDI/PDF long-song soak.
+3. Kumpulkan field/RUM Web Vitals setelah deployment beta stabil; production-preview lab regression sudah otomatis.
 4. Jalankan Android production signed upgrade smoke setelah legacy keystore + fingerprint tersedia.
 5. Tambahkan signed iOS distribution setelah provisioning/signing Apple tersedia.
 

@@ -6,14 +6,14 @@ Status: `todo | in-progress | done | n/a`.
 
 ## Shell & Navigasi
 
-| Fitur                                   | Status | Catatan                                                 |
-| --------------------------------------- | ------ | ------------------------------------------------------- |
-| 5 menu utama                            | done   | Beranda / Alkitab / Pujian / Iman / Lainnya             |
-| Bottom nav / rail / sidebar responsif   | done   | Navigasi selalu tersedia                                |
-| i18n id/en/zh foundation                | done   | Copy feature masih terus diperluas                      |
-| Floating/bubble mobile dock             | done   | Label tetap terlihat, active indicator restrained       |
-| Global player tidak menutupi konten/nav | done   | App-level dock + reserved space lolos regression mobile |
-| Reduced motion                          | done   | OS preference + deep-link Bible scroll dihormati        |
+| Fitur                                   | Status | Catatan                                                          |
+| --------------------------------------- | ------ | ---------------------------------------------------------------- |
+| 5 menu utama                            | done   | Beranda / Alkitab / Pujian / Iman / Lainnya                      |
+| Bottom nav / rail / sidebar responsif   | done   | Navigasi selalu tersedia                                         |
+| i18n id/en/zh foundation                | done   | Journey utama + Settings/e-GYS/Notes/Hymnal list sudah localized |
+| Floating/bubble mobile dock             | done   | Label tetap terlihat, active indicator restrained                |
+| Global player tidak menutupi konten/nav | done   | App-level dock + reserved space lolos regression mobile          |
+| Reduced motion                          | done   | OS preference + deep-link Bible scroll dihormati                 |
 
 ## Beranda
 
@@ -47,32 +47,32 @@ Status: `todo | in-progress | done | n/a`.
 
 ## Pujian
 
-| Fitur                          | Status      | Catatan                                                                 |
-| ------------------------------ | ----------- | ----------------------------------------------------------------------- |
-| Katalog buku kidung            | done        | Katalog penuh + fallback lirik                                          |
-| KR PDF 533                     | done        | Aset lengkap                                                            |
-| KR MIDI                        | done        | WebAudio/WASM; AudioBufferSourceNode benar-benar dimulai                |
-| MIDI seek/tempo/transpose      | done        | Pause/resume/seek + tempo reset + stale-load guard dites                |
-| PDF 1/2 halaman                | done        | True container/viewport autofit + orientation regression                |
-| Fit page / fit width / zoom    | done        | DPR-aware canvas render, zoom 70–200%                                   |
-| Landscape hint 2 halaman       | done        | Layar kecil portrait                                                    |
-| Mode teks + chord              | in-progress | Centered + multi-page extraction; optional text autofit lanjut          |
-| Sharp/flat viewer + player     | done        | State tersinkron                                                        |
-| Transpose MIDI -> chord text   | done        | Formatter core sama dengan jalur chord web                              |
-| Restore viewer per lagu        | done        | Mode/page/fit/zoom/transpose/scroll disimpan dan diuji                  |
-| Chord lazy immutable cache     | done        | Direct `gyschordweb`, SHA-addressed, check-on-open                      |
-| Chord melalui Worker           | n/a         | Tidak diperlukan untuk sumber publik                                    |
-| Persistent app-level MIDI dock | done        | Lintas route, tidak overlap nav, regression Playwright                  |
-| Playlist persistence           | done        | Local persisted state                                                   |
-| Playlist rename/dedup/reorder  | done        | Shared store + Naik/Turun keyboard/touch accessible                     |
-| Previous/next playlist         | done        | Mengikuti active playlist dan boundary loop                             |
-| Loop/shuffle controls          | done        | Label Indonesia + deterministic core semantics                          |
-| Auto-advance MIDI              | done        | Track berikutnya otomatis saat ended                                    |
-| Rapid MIDI switch safety       | done        | Request lama tidak mengaktifkan deck setelah track baru/stop            |
-| Rapid PDF switch safety        | done        | Loading task stale dibatalkan; stale doc tidak mengambil alih viewer    |
-| Offline soundfont/MIDI cache   | done        | IndexedDB bounded cache; soundfont pinned, media LRU                    |
-| Offline PDF cache              | done        | Cache-first bytes + AbortController tanpa melemahkan PDF race guard     |
-| Hapus media offline            | done        | Settings menghapus hanya PDF/MIDI/soundfont, bukan Bible/bookmark/notes |
+| Fitur                          | Status | Catatan                                                                    |
+| ------------------------------ | ------ | -------------------------------------------------------------------------- |
+| Katalog buku kidung            | done   | Katalog penuh + fallback lirik                                             |
+| KR PDF 533                     | done   | Aset lengkap                                                               |
+| KR MIDI                        | done   | WebAudio/WASM; AudioBufferSourceNode benar-benar dimulai                   |
+| MIDI seek/tempo/transpose      | done   | Pause/resume/seek + tempo reset + stale-load guard dites                   |
+| PDF 1/2 halaman                | done   | True container/viewport autofit + orientation regression                   |
+| Fit page / fit width / zoom    | done   | DPR-aware canvas render, zoom 70–200%                                      |
+| Landscape hint 2 halaman       | done   | Layar kecil portrait                                                       |
+| Mode teks + chord              | done   | Centered + multi-page extraction; 320px clamp/wrap regression, font >=16px |
+| Sharp/flat viewer + player     | done   | State tersinkron                                                           |
+| Transpose MIDI -> chord text   | done   | Formatter core sama dengan jalur chord web                                 |
+| Restore viewer per lagu        | done   | Mode/page/fit/zoom/transpose/scroll disimpan dan diuji                     |
+| Chord lazy immutable cache     | done   | Direct `gyschordweb`, SHA-addressed, check-on-open                         |
+| Chord melalui Worker           | n/a    | Tidak diperlukan untuk sumber publik                                       |
+| Persistent app-level MIDI dock | done   | Lintas route, tidak overlap nav, regression Playwright                     |
+| Playlist persistence           | done   | Local persisted state                                                      |
+| Playlist rename/dedup/reorder  | done   | Shared store + Naik/Turun keyboard/touch accessible                        |
+| Previous/next playlist         | done   | Mengikuti active playlist dan boundary loop                                |
+| Loop/shuffle controls          | done   | Label Indonesia + deterministic core semantics                             |
+| Auto-advance MIDI              | done   | Track berikutnya otomatis saat ended                                       |
+| Rapid MIDI switch safety       | done   | Request lama tidak mengaktifkan deck setelah track baru/stop               |
+| Rapid PDF switch safety        | done   | Loading task stale dibatalkan; stale doc tidak mengambil alih viewer       |
+| Offline soundfont/MIDI cache   | done   | IndexedDB bounded cache; soundfont pinned, media LRU                       |
+| Offline PDF cache              | done   | Cache-first bytes + AbortController tanpa melemahkan PDF race guard        |
+| Hapus media offline            | done   | Settings menghapus hanya PDF/MIDI/soundfont, bukan Bible/bookmark/notes    |
 
 ## Iman
 
@@ -146,20 +146,20 @@ Status: `todo | in-progress | done | n/a`.
 
 ## Kualitas
 
-| Gate                                | Status      | Catatan                                                                 |
-| ----------------------------------- | ----------- | ----------------------------------------------------------------------- |
-| TypeScript strict                   | done        | Strictness tidak dilonggarkan                                           |
-| Unit/component tests                | done        | Bible context, notes, media cache, MIDI lifecycle, race guards          |
-| Native PR compile                   | done        | Windows + Android + iOS                                                 |
-| Playwright desktop/mobile           | done        | 320–1920 matrix + Bible/Hymnal orientation + player/nav + e-GYS         |
-| Browser zoom/reflow                 | done        | Effective CSS viewport equivalent 200% browser zoom                     |
-| Keyboard-only/focus visibility      | done        | Primary navigation journey + focus-ring regression                      |
-| Reduced motion                      | done        | Motion-duration regression + Bible deep-link auto-scroll                |
-| Secret scan                         | done        | Credential legacy tidak dimigrasikan                                    |
-| Runtime third-party executable code | done        | App logic bundled/local                                                 |
-| Initial shell <250KB gzip           | done        | Route-level lazy loading menurunkan main shell ke sekitar 130KB gzip    |
-| WCAG 2.2 AA journey utama           | in-progress | Automated reflow/keyboard/motion lolos; final contrast/real-device soak |
-| Production web vitals               | todo        | Diukur setelah deployment stabil                                        |
+| Gate                                | Status      | Catatan                                                                   |
+| ----------------------------------- | ----------- | ------------------------------------------------------------------------- |
+| TypeScript strict                   | done        | Strictness tidak dilonggarkan                                             |
+| Unit/component tests                | done        | Bible context, notes, media cache, MIDI lifecycle, race guards            |
+| Native PR compile                   | done        | Windows + Android + iOS                                                   |
+| Playwright desktop/mobile           | done        | Production `dist` preview; 320–1920 + Bible/Hymnal/player/e-GYS           |
+| Browser zoom/reflow                 | done        | Effective CSS viewport equivalent 200% browser zoom                       |
+| Keyboard-only/focus visibility      | done        | Primary navigation journey + focus-ring regression                        |
+| Reduced motion                      | done        | Motion-duration regression + Bible deep-link auto-scroll                  |
+| Secret scan                         | done        | Credential legacy tidak dimigrasikan                                      |
+| Runtime third-party executable code | done        | App logic bundled/local                                                   |
+| Initial shell <250KB gzip           | done        | Production initial JS ~134 KiB gzip + hard CI budget 250 KiB              |
+| WCAG 2.2 AA journey utama           | in-progress | Automated reflow/keyboard/motion/contrast lolos; real-device soak tersisa |
+| Production web vitals               | in-progress | Production-preview LCP/CLS lab gate done; field/RUM INP+p75 tersisa       |
 
 ## Blocker eksternal tersisa
 
