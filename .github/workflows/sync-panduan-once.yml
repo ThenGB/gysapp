@@ -1,0 +1,42 @@
+name: Sync Panduan Snapshot Once
+
+on:
+  push:
+    branches:
+      - feature/bible-mobile-parity
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feature/bible-mobile-parity
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Sync TJC snapshots
+        run: pnpm exec tsx scripts/assets/sync-content.mts
+      - name: Verify Panduan snapshot
+        run: node -e "const fs=require('node:fs'); const p='apps/web/public/data/content/panduan.json'; if(!fs.existsSync(p)) throw new Error('panduan.json missing'); const j=JSON.parse(fs.readFileSync(p,'utf8')); if(!Array.isArray(j.items)||j.items.length===0) throw new Error('panduan snapshot empty'); console.log('panduan items='+j.items.length)"
+      - name: Commit refreshed snapshots
+        shell: bash
+        run: |
+          if git diff --quiet -- apps/web/public/data/content; then
+            echo "Snapshots already up to date"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/public/data/content
+          git commit -m "chore(content): refresh TJC snapshots with Panduan"
+          git push origin HEAD:feature/bible-mobile-parity
