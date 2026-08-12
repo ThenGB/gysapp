@@ -55,7 +55,7 @@ Status: `todo | in-progress | done | n/a`
 | -------------------------------- | ------ | ----------------------- |
 | 10 pokok id/en/zh + search       | todo   |                         |
 | Multi-select + copy/share + note | todo   |                         |
-| PDF lanjutan per topik + resume  | todo   | Manifest GitHub release |
+| PDF lanjutan per topik + resume  | done   | Manifest GitHub release, sha256, resume |
 
 ## Literatur & Media Online
 
