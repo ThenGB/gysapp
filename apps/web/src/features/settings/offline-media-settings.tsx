@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Trash } from '@phosphor-icons/react';
+import { useT } from '../../i18n';
 import { clearChordCache, getChordCacheStats, type ChordCacheStats } from '../hymnal/chord-cache';
 import { offlineMediaCache, type OfflineMediaStats } from '../../platform/offline-media-cache';
 
@@ -10,6 +11,7 @@ function formatBytes(bytes: number): string {
 }
 
 export function OfflineMediaSettings() {
+  const { t } = useT();
   const [stats, setStats] = useState<OfflineMediaStats | null>(null);
   const [chordStats, setChordStats] = useState<ChordCacheStats | null>(null);
   const [busy, setBusy] = useState<'media' | 'chord' | 'all' | null>(null);
@@ -37,13 +39,13 @@ export function OfflineMediaSettings() {
       await refresh();
       setMessage(
         target === 'all'
-          ? 'Cache Pujian berhasil dibersihkan.'
+          ? t('hymnalCacheCleared')
           : target === 'media'
-            ? 'Media offline berhasil dihapus.'
-            : 'Cache chord berhasil dihapus.',
+            ? t('offlineMediaDeleted')
+            : t('chordCacheDeleted'),
       );
     } catch {
-      setMessage('Cache belum dapat dibersihkan. Coba lagi.');
+      setMessage(t('cacheCleanupFailed'));
     } finally {
       setBusy(null);
     }
@@ -56,26 +58,19 @@ export function OfflineMediaSettings() {
   return (
     <div className="settings-row settings-row-stack">
       <div className="settings-row-main">
-        <strong>Penyimpanan offline Pujian</strong>
-        <span>
-          Soundfont, MIDI, PDF, dan chord yang pernah dibuka disimpan lokal agar lebih cepat dan
-          tetap tersedia setelah tersimpan. Media besar dibatasi dengan LRU; chord tetap
-          content-addressed dan dapat diunduh ulang saat lagu dibuka.
-        </span>
+        <strong>{t('hymnalOfflineStorage')}</strong>
+        <span>{t('hymnalOfflineStorageLead')}</span>
         <small>
           {stats
-            ? `${formatBytes(stats.sizeBytes)} media • ${stats.count} file (PDF ${stats.byKind.pdf.count}, MIDI ${stats.byKind.midi.count}, soundfont ${stats.byKind.soundfont.count})`
-            : 'Ukuran media belum dapat dibaca.'}
+            ? `${formatBytes(stats.sizeBytes)} ${t('mediaUnit')} • ${stats.count} ${t('fileUnit')} (PDF ${stats.byKind.pdf.count}, MIDI ${stats.byKind.midi.count}, soundfont ${stats.byKind.soundfont.count})`
+            : t('mediaSizeUnavailable')}
         </small>
         <small>
           {chordStats
-            ? `${formatBytes(chordStats.sizeBytes)} chord • ${chordStats.blobs} blob`
-            : 'Ukuran cache chord belum dapat dibaca.'}
+            ? `${formatBytes(chordStats.sizeBytes)} ${t('chordUnit')} • ${chordStats.blobs} ${t('blobUnit')}`
+            : t('chordSizeUnavailable')}
         </small>
-        <small>
-          Pembersihan cache Pujian tidak menghapus versi Alkitab, bookmark, riwayat, playlist,
-          pengaturan, atau catatan.
-        </small>
+        <small>{t('cacheCleanupNote')}</small>
       </div>
       <div className="settings-data-actions settings-cache-actions">
         <button
@@ -85,7 +80,7 @@ export function OfflineMediaSettings() {
           onClick={() => void runCleanup('media')}
         >
           <Trash size={18} aria-hidden="true" />
-          {busy === 'media' ? 'Menghapus…' : 'Hapus media'}
+          {busy === 'media' ? t('deleting') : t('deleteMedia')}
         </button>
         <button
           type="button"
@@ -94,7 +89,7 @@ export function OfflineMediaSettings() {
           onClick={() => void runCleanup('chord')}
         >
           <Trash size={18} aria-hidden="true" />
-          {busy === 'chord' ? 'Menghapus…' : 'Hapus chord'}
+          {busy === 'chord' ? t('deleting') : t('deleteChord')}
         </button>
         <button
           type="button"
@@ -103,7 +98,7 @@ export function OfflineMediaSettings() {
           onClick={() => void runCleanup('all')}
         >
           <Trash size={18} aria-hidden="true" />
-          {busy === 'all' ? 'Membersihkan…' : 'Bersihkan cache Pujian'}
+          {busy === 'all' ? t('clearing') : t('clearHymnalCache')}
         </button>
       </div>
       {message && (
