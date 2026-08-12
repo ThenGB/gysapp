@@ -72,7 +72,7 @@ export function AccountPage() {
 
   useEffect(() => {
     if (!native) return;
-    let dispose = () => undefined;
+    let dispose: () => void = () => {};
     void listenForTauriEgysToken((token) => void acceptToken(token)).then((unlisten) => {
       dispose = unlisten;
     });
