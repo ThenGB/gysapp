@@ -92,8 +92,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pnpm config set --global confirmModulesPurge false
-          test "$(pnpm config get --global confirmModulesPurge)" = "false"
+          printf '%s\n' 'confirm-modules-purge=false' > "$GITHUB_WORKSPACE/.npmrc"
+          grep -Fx 'confirm-modules-purge=false' "$GITHUB_WORKSPACE/.npmrc"
 
       - name: Install frontend deps
         run: pnpm install --frozen-lockfile
