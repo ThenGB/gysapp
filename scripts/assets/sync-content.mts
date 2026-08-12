@@ -13,6 +13,7 @@ const TJC_WP_POSTS = 'https://tjc.org/id/wp-json/wp/v2/posts';
 const TJC_SUARA_SEJATI = 'https://tjc.org/id/suarasejati/';
 const TJC_LITERATUR = 'https://tjc.org/id/literatur/';
 const TJC_WARTA = 'https://tjc.org/id/literatur/warta-sejati/';
+const TJC_BIBLE_GUIDES = 'https://tjc.org/id/literatur/bsg/';
 const KESAKSIAN_SELECTOR = '#posts-table-1 > tbody > tr > td > a';
 const RENUNGAN_SELECTOR = '#posts-table-3 > tbody > tr > td > a';
 
@@ -69,7 +70,7 @@ async function main() {
     report.warta = items.length;
   }
 
-  // Kesaksian + Renungan (tabel literatur).
+  // Kesaksian + Renungan (tabel literatur utama).
   {
     const html = await fetchText(TJC_LITERATUR);
     const kesaksian = literature.parseTableLinks(html, KESAKSIAN_SELECTOR);
@@ -86,6 +87,18 @@ async function main() {
       'utf8',
     );
     report.renungan = renungan.length;
+  }
+
+  // Panduan Pemahaman Alkitab memiliki katalog resmi terpisah `/literatur/bsg/`.
+  {
+    const items = literature.parseBibleGuideLinks(await fetchText(TJC_BIBLE_GUIDES));
+    if (items.length === 0) throw new Error('Panduan Alkitab catalog parsed zero items');
+    await writeFile(
+      join(outDir, 'panduan.json'),
+      JSON.stringify(parseTrueVoiceFeed({ items, fetchedAt: now })),
+      'utf8',
+    );
+    report.panduan = items.length;
   }
 
   console.log('[content-sync]', JSON.stringify(report));
