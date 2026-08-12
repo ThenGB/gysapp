@@ -146,8 +146,7 @@ export function MiniMidiPlayer({
   const changeTrack = useCallback(
     async (handler: TrackChangeHandler | undefined, autoplayOverride?: boolean) => {
       if (!handler) return;
-      autoplayAfterTrackChange.current =
-        autoplayOverride ?? midiEngine.getStatus() === 'playing';
+      autoplayAfterTrackChange.current = autoplayOverride ?? midiEngine.getStatus() === 'playing';
       try {
         const changed = await handler();
         if (!changed) autoplayAfterTrackChange.current = false;
