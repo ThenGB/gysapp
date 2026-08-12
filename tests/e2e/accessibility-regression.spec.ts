@@ -45,17 +45,17 @@ test.describe('accessibility release regressions', () => {
     }
   });
 
-  test('reader reflows without horizontal page overflow at a 200% layout zoom equivalent', async ({
+  test('Bible reader reflows at the effective CSS viewport of 200% browser zoom', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 780, height: 900 });
+    // Browser zoom changes the effective CSS viewport and therefore re-evaluates
+    // media queries. A 780px-wide window at 200% zoom exposes about 390 CSS px.
+    // CSS `zoom: 2` is intentionally not used here because it leaves media-query
+    // width at 780px and creates a layout state real browser zoom does not produce.
+    await page.setViewportSize({ width: 390, height: 900 });
     await page.goto('/bible/1/1');
     await expect(page.getByRole('heading', { name: 'Kejadian 1' }).first()).toBeVisible({
       timeout: 10_000,
-    });
-
-    await page.evaluate(() => {
-      document.documentElement.style.zoom = '2';
     });
 
     await expect(page.getByText(/Pada mulanya Allah menciptakan/).first()).toBeVisible();
