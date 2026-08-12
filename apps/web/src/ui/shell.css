@@ -4,57 +4,103 @@
   grid-template-rows: 1fr auto;
 }
 
-/* Mobile: bottom dock selalu terlihat, sidebar disembunyikan */
 .shell-sidebar {
   display: none;
 }
 
 .shell-content {
+  min-width: 0;
   min-height: 0;
-  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom));
+  padding-bottom: calc(var(--nav-height) + 28px + env(safe-area-inset-bottom));
 }
 
+/* Mobile: floating navigation dock. Labels sengaja selalu terlihat agar
+ * navigasi tetap jelas untuk pengguna lanjut usia. */
 .shell-dock {
   position: fixed;
-  inset-inline: 0;
-  bottom: 0;
+  inset-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
+  bottom: calc(10px + env(safe-area-inset-bottom));
   z-index: 40;
   display: flex;
-  background: var(--surface-raised);
-  border-top: var(--border-thin);
-  padding-bottom: env(safe-area-inset-bottom);
-  height: calc(var(--nav-height) + env(safe-area-inset-bottom));
-  box-shadow: var(--shadow-raised);
+  align-items: stretch;
+  gap: 2px;
+  height: var(--nav-height);
+  padding: 6px;
+  background: color-mix(in srgb, var(--surface-raised) 94%, transparent);
+  border: var(--border-thin);
+  border-radius: 24px;
+  box-shadow: 0 10px 32px rgba(20, 33, 52, 0.12), var(--shadow-raised);
 }
 
 .dock-item {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 3px;
+  min-width: 0;
   min-height: var(--target-min);
+  padding: 4px 2px;
+  border-radius: 18px;
   color: var(--text-tertiary);
   text-decoration: none;
   font-size: var(--text-xs);
-  line-height: 1.2;
+  line-height: 1.15;
+  transition:
+    color var(--duration-base) var(--ease-out),
+    background-color var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+
+.dock-item svg {
+  flex-shrink: 0;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.dock-item:hover {
+  color: var(--text-primary);
+  background: var(--surface-muted);
 }
 
 .dock-item-active {
   color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
   font-weight: 700;
+}
+
+.dock-item-active svg {
+  transform: translateY(-1px) scale(1.06);
+}
+
+.dock-item:active {
+  transform: scale(0.97);
+}
+
+/* Sangat sempit: label tetap ada, hanya ukuran tipografi diperkecil sedikit. */
+@media (max-width: 359px) {
+  .shell-dock {
+    inset-inline: 8px;
+    gap: 0;
+    padding-inline: 4px;
+  }
+
+  .dock-item {
+    font-size: 0.75rem;
+  }
 }
 
 /* Rail 600-959px */
 @media (min-width: 600px) {
   .app-shell {
-    grid-template-columns: var(--rail-width) 1fr;
+    grid-template-columns: var(--rail-width) minmax(0, 1fr);
     grid-template-rows: 1fr;
   }
 
   .shell-sidebar {
     display: block;
+    min-height: 100dvh;
     border-inline-end: var(--border-thin);
     background: var(--surface-muted);
   }
@@ -69,16 +115,23 @@
   }
 
   .nav-item {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 4px;
-    padding: var(--space-3) var(--space-1);
-    min-height: var(--target-min);
-    border-radius: var(--radius-md);
+    min-height: 62px;
+    padding: var(--space-2) var(--space-1);
+    border-radius: var(--radius-lg);
     color: var(--text-tertiary);
     text-decoration: none;
     font-size: var(--text-xs);
+    transition:
+      color var(--duration-base) var(--ease-out),
+      background-color var(--duration-base) var(--ease-out),
+      transform var(--duration-base) var(--ease-out),
+      box-shadow var(--duration-base) var(--ease-out);
   }
 
   .nav-item:hover {
@@ -86,11 +139,25 @@
     color: var(--text-primary);
   }
 
+  .nav-item:active {
+    transform: scale(0.98);
+  }
+
   .nav-item-active {
     background: var(--surface-raised);
     color: var(--accent);
     font-weight: 700;
     box-shadow: var(--shadow-raised);
+  }
+
+  .nav-item-active::before {
+    content: '';
+    position: absolute;
+    inset-block: 14px;
+    inset-inline-start: -8px;
+    width: 3px;
+    border-radius: 999px;
+    background: var(--accent);
   }
 
   .shell-dock {
@@ -105,18 +172,45 @@
 /* Sidebar penuh >=960px */
 @media (min-width: 960px) {
   .app-shell {
-    grid-template-columns: var(--sidebar-width) 1fr;
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  }
+
+  .shell-sidebar {
+    background: var(--surface);
+    padding: var(--space-3);
+  }
+
+  .shell-nav {
+    top: var(--space-3);
+    gap: 4px;
+    padding: var(--space-2);
+    background: var(--surface-muted);
+    border: var(--border-thin);
+    border-radius: 22px;
   }
 
   .nav-item {
+    min-height: 54px;
     flex-direction: row;
     justify-content: flex-start;
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
     font-size: var(--text-sm);
   }
 
   .nav-item svg {
     flex-shrink: 0;
+  }
+
+  .nav-item-active::before {
+    inset-block: 13px;
+    inset-inline-start: -2px;
+  }
+}
+
+@media (min-width: 1440px) {
+  .shell-content {
+    padding-inline: var(--space-3);
   }
 }
