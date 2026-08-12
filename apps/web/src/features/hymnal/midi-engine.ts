@@ -5,6 +5,7 @@ import {
   scaleTempo,
   transposeNotes,
 } from '@gysapp/core';
+import { assetUrl } from '../../lib/asset-url';
 
 export type MidiStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'ended';
 
@@ -33,7 +34,7 @@ interface CacheEntry {
 }
 
 const CACHE_MAX_BYTES = 96 * 1024 * 1024;
-const WORKER_URL = '/js/midi-render-worker.js';
+const WORKER_URL = assetUrl('/js/midi-render-worker.js');
 
 function cacheKey(url: string, transpose: number, instrument: number): string {
   return `${url}|${transpose}|${instrument}`;
@@ -346,4 +347,4 @@ export class MidiEngine {
 }
 
 /** Singleton app-level; di-reset di fase berikutnya bersama lifecycle. */
-export const midiEngine = new MidiEngine('/assets/soundfont/TimGM6mb.sf2');
+export const midiEngine = new MidiEngine(assetUrl('/assets/soundfont/TimGM6mb.sf2'));

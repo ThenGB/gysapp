@@ -14,35 +14,40 @@ import { SettingsPage } from './features/settings/settings-page';
 import { applySettings, loadSettings } from './features/settings/settings-store';
 import { subscribeSettings } from './i18n';
 
-const router = createBrowserRouter([
+const router = createBrowserRouter(
+  [
+    {
+      path: '/',
+      element: <AppShell />,
+      children: [
+        { index: true, element: <Navigate to="/home" replace /> },
+        { path: 'home', element: <HomePage /> },
+        {
+          path: 'bible',
+          children: [
+            { index: true, element: <Navigate to="/bible/1/1" replace /> },
+            { path: 'search', element: <BibleSearchPage /> },
+            { path: ':book/:chapter', element: <BiblePage /> },
+          ],
+        },
+        {
+          path: 'hymnal',
+          children: [
+            { index: true, element: <HymnalListPage /> },
+            { path: ':book/:song', element: <SongViewer /> },
+          ],
+        },
+        { path: 'faith', element: <FaithPage /> },
+        { path: 'more', element: <MorePage /> },
+        { path: 'literature/:kind', element: <LiteratureFeedPage /> },
+        { path: 'settings', element: <SettingsPage /> },
+      ],
+    },
+  ],
   {
-    path: '/',
-    element: <AppShell />,
-    children: [
-      { index: true, element: <Navigate to="/home" replace /> },
-      { path: 'home', element: <HomePage /> },
-      {
-        path: 'bible',
-        children: [
-          { index: true, element: <Navigate to="/bible/1/1" replace /> },
-          { path: 'search', element: <BibleSearchPage /> },
-          { path: ':book/:chapter', element: <BiblePage /> },
-        ],
-      },
-      {
-        path: 'hymnal',
-        children: [
-          { index: true, element: <HymnalListPage /> },
-          { path: ':book/:song', element: <SongViewer /> },
-        ],
-      },
-      { path: 'faith', element: <FaithPage /> },
-      { path: 'more', element: <MorePage /> },
-      { path: 'literature/:kind', element: <LiteratureFeedPage /> },
-      { path: 'settings', element: <SettingsPage /> },
-    ],
+    basename: import.meta.env.BASE_URL.replace(/\/$/, ''),
   },
-]);
+);
 
 export function App() {
   const [queryClient] = useState(

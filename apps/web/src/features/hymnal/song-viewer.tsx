@@ -5,13 +5,14 @@ import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import type { ChordedLine } from '@gysapp/core';
 import { buildChordedLines, extractLyricLines, extractPageNotes } from '@gysapp/core';
 import { parseChordDocument } from '@gysapp/contracts';
+import { assetUrl } from '../../lib/asset-url';
 import { MiniMidiPlayer } from './midi-player';
 import './song-viewer.css';
 
 GlobalWorkerOptions.workerSrc = workerUrl;
 
 /** Data demo: KR 001. Versi final: index lagu + lazy chord cache + asset manager. */
-const DEMO_CHORD_URL = '/pdf/chords/KR_001.chord.json';
+const DEMO_CHORD_URL = assetUrl('/pdf/chords/KR_001.chord.json');
 
 type Mode = 'pdf' | 'text';
 
@@ -41,7 +42,7 @@ export function SongViewer() {
     const render = async () => {
       setPdfError(null);
       try {
-        const doc = await getDocument({ url: '/pdf/KR001.pdf' }).promise;
+        const doc = await getDocument({ url: assetUrl('/pdf/KR001.pdf') }).promise;
         const page = await doc.getPage(1);
         const viewport = page.getViewport({ scale: 1.4 });
         const canvas = canvasRef.current;
@@ -94,7 +95,7 @@ export function SongViewer() {
   return (
     <div className="content-shell song-page">
       <div className="song-toolbar">
-        <h1>KR 001 — Pujilah Allah Yang Maha Esa</h1>
+        <h1>KR 001 â€” Pujilah Allah Yang Maha Esa</h1>
         <div className="song-mode-tabs" role="group" aria-label="Mode tampilan">
           <button
             type="button"

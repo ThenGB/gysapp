@@ -40,6 +40,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build web
+        env:
+          GYSAPP_BASE: /GYSApp/
         run: pnpm --filter @gysapp/web build
 
       - uses: actions/configure-pages@v5
