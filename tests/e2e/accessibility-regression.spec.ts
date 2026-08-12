@@ -84,7 +84,9 @@ test.describe('accessibility release regressions', () => {
     });
   });
 
-  test('reduced-motion preference collapses transition and animation durations', async ({ page }) => {
+  test('reduced-motion preference collapses transition and animation durations', async ({
+    page,
+  }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/home');
