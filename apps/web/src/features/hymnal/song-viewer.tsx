@@ -8,14 +8,13 @@ import {
   extractPageNotes,
   formatChordForDisplay,
 } from '@gysapp/core';
-import { createHttpManifestFetcher, ChordLazyCache } from '@gysapp/core';
 import { hymnalCatalog, type ResolvedSong } from '../../data/hymnal/hymnal-catalog';
-import { IndexedDbBlobStore } from '../../platform/blob-stores/indexeddb';
 import {
   setHymnalPlayerTrack,
   updateHymnalPlayerPrefs,
   useHymnalPlayerState,
 } from './hymnal-player-store';
+import { chordCache } from './chord-cache';
 import { midiEngine } from './midi-engine';
 import { LatestRequestGuard } from '../../lib/latest-request';
 import { offlineMediaCache } from '../../platform/offline-media-cache';
@@ -47,20 +46,6 @@ const VIEW_PREFS_KEY = 'gysapp.hymnal.viewer.v1';
 const SONG_STATE_KEY = 'gysapp.hymnal.song-state.v1';
 const ACCIDENTAL_KEY = 'gysapp.hymnal.accidental.v1';
 const MAX_SAVED_SONG_STATES = 80;
-
-// Instalasi baru tidak membawa chord. Setiap lagu yang dibuka melakukan
-// conditional manifest check; request dalam window 60 detik didedup supaya
-// navigasi cepat tidak membanjiri gyschordweb. Blob tetap content-addressed:
-// SHA sama = nol download, SHA baru = file baru + pointer aktif atomik.
-const chordCache = new ChordLazyCache({
-  store: new IndexedDbBlobStore('gysapp-chords'),
-  fetchManifest: createHttpManifestFetcher({
-    url: 'https://raw.githubusercontent.com/gyspnk/gyschordweb/main/docs/assets-chord-manifest.json',
-  }),
-  ttlChordsMs: 0,
-  ttlMissingMs: 0,
-  manifestDedupMs: 60_000,
-});
 
 function clampZoom(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0.7 && value <= 2

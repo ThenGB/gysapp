@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Trash } from '@phosphor-icons/react';
-import {
-  clearChordCache,
-  getChordCacheStats,
-  type ChordCacheStats,
-} from '../hymnal/chord-cache';
+import { clearChordCache, getChordCacheStats, type ChordCacheStats } from '../hymnal/chord-cache';
 import { offlineMediaCache, type OfflineMediaStats } from '../../platform/offline-media-cache';
 
 function formatBytes(bytes: number): string {
