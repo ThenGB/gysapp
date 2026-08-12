@@ -80,4 +80,6 @@ jobs:
           pnpm --filter @gysapp/native tauri ios build \
             --debug \
             --target "$IOS_TARGET" \
-            --ci
+            --ci \
+            -- \
+            CI=true
