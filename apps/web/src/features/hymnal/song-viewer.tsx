@@ -132,7 +132,7 @@ export function SongViewer() {
           const previous = pdfDocRef.current;
           doc = await pdfjs.getDocument({ url: resolved.pdfUrl }).promise;
           pdfDocRef.current = { url: resolved.pdfUrl, doc };
-          if (previous) void previous.doc.destroy().catch(() => undefined);
+          if (previous) void previous.doc.cleanup().catch(() => undefined);
         }
         if (cancelled) return;
 
