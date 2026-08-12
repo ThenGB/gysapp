@@ -83,7 +83,7 @@ export function MiniMidiPlayer({
       const next = Math.max(-11, Math.min(11, transpose + delta));
       setTranspose(next);
       onTransposeChange?.(next);
-      void midiEngine.setTranspose(next).catch(() => undefined);
+      void Promise.resolve(midiEngine.setTranspose(next)).catch(() => undefined);
     },
     [onTransposeChange, transpose],
   );
@@ -92,7 +92,7 @@ export function MiniMidiPlayer({
     (delta: number) => {
       const next = Math.max(30, Math.min(220, tempo + delta));
       setTempo(next);
-      void midiEngine.setTempoBpm(next).catch(() => undefined);
+      void Promise.resolve(midiEngine.setTempoBpm(next)).catch(() => undefined);
     },
     [tempo],
   );
