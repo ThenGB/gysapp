@@ -1,0 +1,208 @@
+name: Integrate Home Resume V3
+
+on:
+  push:
+    branches:
+      - feature/bible-mobile-parity
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feature/bible-mobile-parity
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Integrate accessible persisted Bible and Hymnal resume cards
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          home = Path('apps/web/src/features/home/home-page.tsx')
+          text = home.read_text()
+          reading_import = "import { getBibleReadingSnapshot, subscribeBibleReading } from '../bible/bible-reading-store';\n"
+          recent_import = "import { useHymnalRecent } from '../hymnal/hymnal-recent-store';\n"
+          if recent_import not in text:
+              if reading_import not in text:
+                  raise SystemExit('Home reading import anchor not found')
+              text = text.replace(reading_import, reading_import + recent_import, 1)
+
+          start = text.index('function QuickStart() {')
+          end = text.index('\nfunction SauhCard', start)
+          replacement = '''function QuickStart() {
+            const reading = useSyncExternalStore(
+              subscribeBibleReading,
+              getBibleReadingSnapshot,
+              getBibleReadingSnapshot,
+            );
+            const recentHymns = useHymnalRecent();
+            const last = reading.last;
+            const matchingHistory = reading.history.find(
+              (entry) =>
+                entry.version === last.version &&
+                entry.bookId === last.bookId &&
+                entry.chapter === last.chapter,
+            );
+            const bibleLabel =
+              matchingHistory?.label ??
+              (last.bookId === 1
+                ? `Kejadian ${last.chapter}`
+                : `Kitab ${last.bookId} • Pasal ${last.chapter}`);
+            const bibleTarget = `/bible/${last.bookId}/${last.chapter}${last.verse ? `?v=${last.verse}` : ''}`;
+            const recentHymn = recentHymns[0] ?? null;
+
+            return (
+              <section className="home-start" aria-label="Akses cepat">
+                <div className="home-section-head">
+                  <div>
+                    <span>Lanjutkan terakhir</span>
+                    <h2>Bacaan &amp; Pujian</h2>
+                  </div>
+                </div>
+                <div className="home-continue-list">
+                  <Link
+                    className="continue-card"
+                    to={bibleTarget}
+                    aria-label={`Lanjutkan bacaan: ${bibleLabel}`}
+                  >
+                    <BookOpenText size={30} aria-hidden="true" />
+                    <span>
+                      <strong>Lanjutkan bacaan</strong>
+                      <small>{bibleLabel}</small>
+                    </span>
+                    <CaretRight size={21} aria-hidden="true" />
+                  </Link>
+                  {recentHymn && (
+                    <Link
+                      className="continue-card"
+                      to={`/hymnal/${encodeURIComponent(recentHymn.book)}/${encodeURIComponent(recentHymn.song)}`}
+                      aria-label={`Lanjutkan pujian: ${recentHymn.title}`}
+                    >
+                      <MusicNotes size={30} aria-hidden="true" />
+                      <span>
+                        <strong>Lanjutkan pujian</strong>
+                        <small>{recentHymn.title}</small>
+                      </span>
+                      <CaretRight size={21} aria-hidden="true" />
+                    </Link>
+                  )}
+                </div>
+                <div className="home-shortcuts">
+                  <Link to={bibleTarget}>
+                    <BookOpenText size={27} />
+                    <span>Alkitab</span>
+                  </Link>
+                  <Link to="/hymnal">
+                    <MusicNotes size={27} />
+                    <span>Pujian</span>
+                  </Link>
+                  <Link to="/account">
+                    <GlobeHemisphereWest size={27} />
+                    <span>e-GYS</span>
+                  </Link>
+                </div>
+              </section>
+            );
+          }
+          '''
+          replacement = '\n'.join(line[10:] if line.startswith('          ') else line for line in replacement.splitlines()) + '\n'
+          text = text[:start] + replacement + text[end:]
+          home.write_text(text)
+
+          css = Path('apps/web/src/features/home/home-page.css')
+          text = css.read_text()
+          if '.home-continue-list {' not in text:
+              marker = '\n.continue-card {'
+              at = text.index(marker)
+              text = text[:at] + '\n.home-continue-list {\n  display: grid;\n  gap: 8px;\n}\n' + text[at:]
+          css.write_text(text)
+
+          viewer = Path('apps/web/src/features/hymnal/song-viewer.tsx')
+          text = viewer.read_text()
+          player_import = "import { midiEngine } from './midi-engine';\n"
+          recent_import = "import { rememberHymnalSong } from './hymnal-recent-store';\n"
+          if recent_import not in text:
+              if player_import not in text:
+                  raise SystemExit('SongViewer MIDI import anchor not found')
+              text = text.replace(player_import, recent_import + player_import, 1)
+          if 'rememberHymnalSong({' not in text:
+              player_effect_marker = "\n  useEffect(() => {\n    if (!resolved?.midiUrl) return;\n"
+              search_from = text.index('hymnalCatalog.resolveSong')
+              effect_at = text.index(player_effect_marker, search_from) + 1
+              recent_effect = '''  useEffect(() => {
+                if (!resolved) return;
+                rememberHymnalSong({
+                  book,
+                  song,
+                  title: `${book} ${resolved.entry.number} — ${resolved.entry.title}`,
+                });
+              }, [book, resolved, song]);
+
+          '''
+              recent_effect = '\n'.join(line[14:] if line.startswith('              ') else line for line in recent_effect.splitlines()) + '\n'
+              text = text[:effect_at] + recent_effect + text[effect_at:]
+          viewer.write_text(text)
+
+          tests = Path('apps/web/src/features/home/home-page.test.tsx')
+          text = tests.read_text()
+          import_anchor = "import { HomePage } from './home-page';\n"
+          extra = "import { rememberBibleLocation } from '../bible/bible-reading-store';\nimport { clearHymnalRecent, rememberHymnalSong } from '../hymnal/hymnal-recent-store';\n"
+          if "rememberHymnalSong" not in text:
+              text = text.replace(import_anchor, import_anchor + extra, 1)
+          before = "  beforeEach(() => {\n    mockUseSauh.mockReturnValue({"
+          after = "  beforeEach(() => {\n    localStorage.clear();\n    clearHymnalRecent();\n    mockUseSauh.mockReturnValue({"
+          if 'localStorage.clear();' not in text[text.index("describe('HomePage'"):]:
+              if before not in text:
+                  raise SystemExit('Home test beforeEach anchor not found')
+              text = text.replace(before, after, 1)
+          insert_at = text.rindex('\n});')
+          if 'shows human-readable Bible resume and the persisted recent hymn' not in text:
+              test = '''
+
+            it('shows human-readable Bible resume and the persisted recent hymn', () => {
+              rememberBibleLocation(
+                { version: 'b_tb', bookId: 43, chapter: 3, verse: 16 },
+                'Yohanes 3',
+              );
+              rememberHymnalSong({ book: 'KR', song: '010', title: 'KR 010 — Sukacita' });
+
+              renderHome();
+
+              const bibleResume = screen.getByRole('link', { name: 'Lanjutkan bacaan: Yohanes 3' });
+              expect(bibleResume).toHaveAttribute('href', '/bible/43/3?v=16');
+              const hymnResume = screen.getByRole('link', {
+                name: 'Lanjutkan pujian: KR 010 — Sukacita',
+              });
+              expect(hymnResume).toHaveAttribute('href', '/hymnal/KR/010');
+            });
+          '''
+              test = '\n'.join(line[10:] if line.startswith('          ') else line for line in test.splitlines())
+              text = text[:insert_at] + test + text[insert_at:]
+          tests.write_text(text)
+          PY
+          pnpm exec prettier --write apps/web/src/features/home/home-page.tsx apps/web/src/features/home/home-page.css apps/web/src/features/home/home-page.test.tsx apps/web/src/features/hymnal/song-viewer.tsx apps/web/src/features/hymnal/hymnal-recent-store.ts apps/web/src/features/hymnal/hymnal-recent-store.test.ts
+          pnpm --filter @gysapp/web typecheck
+          pnpm --filter @gysapp/web test -- src/features/home/home-page.test.tsx src/features/hymnal/hymnal-recent-store.test.ts src/features/hymnal/song-viewer.test.tsx
+      - name: Commit integration
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/src/features/home/home-page.tsx apps/web/src/features/home/home-page.css apps/web/src/features/home/home-page.test.tsx apps/web/src/features/hymnal/song-viewer.tsx apps/web/src/features/hymnal/hymnal-recent-store.ts apps/web/src/features/hymnal/hymnal-recent-store.test.ts
+          git commit -m "feat: resume recent Bible and Hymnal activity from Home"
+          git push origin HEAD:feature/bible-mobile-parity
