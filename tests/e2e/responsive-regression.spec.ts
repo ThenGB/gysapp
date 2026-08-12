@@ -95,7 +95,7 @@ test.describe('responsive release regressions', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/account');
 
-    await expect(page.getByRole('heading', { name: 'e-GYS' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'e-GYS', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Buka situs e-GYS' })).toBeVisible();
     await expect(page.getByText(/tidak meminta, menerima, atau menyimpan password/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /Google/i })).toHaveCount(0);
