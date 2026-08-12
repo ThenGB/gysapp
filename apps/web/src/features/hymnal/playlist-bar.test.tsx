@@ -24,9 +24,10 @@ describe('PlaylistBar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Buat playlist' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('combobox', { name: 'Playlist aktif' })).toHaveValue(
-        expect.stringMatching(/.+/),
-      );
+      const activeSelect = screen.getByRole('combobox', {
+        name: 'Playlist aktif',
+      }) as HTMLSelectElement;
+      expect(activeSelect.value).not.toBe('');
       expect(screen.getByText('0 lagu')).toBeInTheDocument();
     });
 
