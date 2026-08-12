@@ -141,7 +141,7 @@ export function createApp(
 }
 
 export default {
-  fetch(request: Request, env: EdgeEnv): Promise<Response> {
+  async fetch(request: Request, env: EdgeEnv): Promise<Response> {
     const app = createApp({
       sessionSecret: env.SESSION_SECRET,
       googleClientId: env.GOOGLE_CLIENT_ID,
