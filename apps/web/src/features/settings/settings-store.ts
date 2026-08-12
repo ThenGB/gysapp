@@ -1,72 +1,126 @@
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type Locale = 'id' | 'en' | 'zh';
+export type ComfortPreset = 'standard' | 'comfortable' | 'large';
 
 export interface AppSettings {
   theme: ThemeMode;
-  fontSize: number;
   locale: Locale;
   sabatReminder: boolean;
+  comfortPreset: ComfortPreset;
+  uiScale: number;
+  readerScale: number;
+  readerLineHeight: number;
+  largeTargets: boolean;
+  highContrast: boolean;
+  reduceMotion: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
-  fontSize: 1,
   locale: 'id',
   sabatReminder: false,
+  comfortPreset: 'standard',
+  uiScale: 1,
+  readerScale: 1,
+  readerLineHeight: 1.7,
+  largeTargets: false,
+  highContrast: false,
+  reduceMotion: false,
 };
 
-const STORAGE_KEY = 'gysapp.settings.v1';
+export const COMFORT_PRESETS: Record<ComfortPreset, Pick<AppSettings, 'uiScale' | 'readerScale' | 'readerLineHeight' | 'largeTargets'>> = {
+  standard: { uiScale: 1, readerScale: 1, readerLineHeight: 1.7, largeTargets: false },
+  comfortable: { uiScale: 1.05, readerScale: 1.15, readerLineHeight: 1.78, largeTargets: true },
+  large: { uiScale: 1.12, readerScale: 1.35, readerLineHeight: 1.85, largeTargets: true },
+};
 
-function isSettings(value: unknown): value is AppSettings {
-  if (typeof value !== 'object' || value === null) return false;
-  const s = value as Partial<AppSettings>;
-  return (
-    (s.theme === 'system' || s.theme === 'light' || s.theme === 'dark') &&
-    typeof s.fontSize === 'number' &&
-    (s.locale === 'id' || s.locale === 'en' || s.locale === 'zh') &&
-    typeof s.sabatReminder === 'boolean'
-  );
+const STORAGE_KEY = 'gysapp.settings.v2';
+const LEGACY_STORAGE_KEY = 'gysapp.settings.v1';
+
+function validTheme(value: unknown): value is ThemeMode {
+  return value === 'system' || value === 'light' || value === 'dark';
+}
+
+function validLocale(value: unknown): value is Locale {
+  return value === 'id' || value === 'en' || value === 'zh';
+}
+
+function validPreset(value: unknown): value is ComfortPreset {
+  return value === 'standard' || value === 'comfortable' || value === 'large';
+}
+
+function clamp(value: unknown, min: number, max: number, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(max, Math.max(min, value))
+    : fallback;
+}
+
+function normalize(value: unknown): AppSettings {
+  if (!value || typeof value !== 'object') return { ...DEFAULT_SETTINGS };
+  const s = value as Partial<AppSettings> & { fontSize?: number };
+  const preset = validPreset(s.comfortPreset) ? s.comfortPreset : 'standard';
+  const defaults = COMFORT_PRESETS[preset];
+  return {
+    theme: validTheme(s.theme) ? s.theme : DEFAULT_SETTINGS.theme,
+    locale: validLocale(s.locale) ? s.locale : DEFAULT_SETTINGS.locale,
+    sabatReminder: typeof s.sabatReminder === 'boolean' ? s.sabatReminder : false,
+    comfortPreset: preset,
+    uiScale: clamp(s.uiScale ?? s.fontSize, 0.9, 1.3, defaults.uiScale),
+    readerScale: clamp(s.readerScale, 0.9, 1.6, defaults.readerScale),
+    readerLineHeight: clamp(s.readerLineHeight, 1.5, 2, defaults.readerLineHeight),
+    largeTargets: typeof s.largeTargets === 'boolean' ? s.largeTargets : defaults.largeTargets,
+    highContrast: Boolean(s.highContrast),
+    reduceMotion: Boolean(s.reduceMotion),
+  };
 }
 
 export function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_SETTINGS };
-    const parsed = JSON.parse(raw) as unknown;
-    return isSettings(parsed) ? { ...DEFAULT_SETTINGS, ...parsed } : { ...DEFAULT_SETTINGS };
+    if (raw) return normalize(JSON.parse(raw));
+    const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (legacy) {
+      const migrated = normalize(JSON.parse(legacy));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+      return migrated;
+    }
   } catch {
-    return { ...DEFAULT_SETTINGS };
+    // Corrupt settings should never block app startup.
   }
+  return { ...DEFAULT_SETTINGS };
 }
 
-// Snapshot stabil untuk useSyncExternalStore: objek yang sama selama isi
-// localStorage tidak berubah (identitas harus tetap agar tidak re-render).
 let snapshotRaw = '';
 let snapshot: AppSettings = { ...DEFAULT_SETTINGS };
+const listeners = new Set<() => void>();
+
+function emit(): void {
+  snapshotRaw = '';
+  for (const listener of listeners) listener();
+}
 
 export function getSettingsSnapshot(): AppSettings {
-  const raw = localStorage.getItem(STORAGE_KEY) ?? '';
+  const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY) ?? '';
   if (raw !== snapshotRaw) {
     snapshotRaw = raw;
-    snapshot = raw ? loadSettings() : { ...DEFAULT_SETTINGS };
+    snapshot = loadSettings();
   }
   return snapshot;
 }
 
 export function saveSettings(settings: AppSettings): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(normalize(settings)));
   emit();
 }
 
 export function updateSettings(partial: Partial<AppSettings>): void {
-  const next = { ...loadSettings(), ...partial };
-  saveSettings(next);
+  saveSettings({ ...loadSettings(), ...partial });
 }
 
-const listeners = new Set<() => void>();
-
-function emit() {
-  for (const listener of listeners) listener();
+export function applyComfortPreset(preset: ComfortPreset): AppSettings {
+  const next = { ...loadSettings(), comfortPreset: preset, ...COMFORT_PRESETS[preset] };
+  saveSettings(next);
+  return next;
 }
 
 export function subscribeSettings(listener: () => void): () => void {
@@ -80,10 +134,16 @@ const THEME_COLORS: Record<ThemeMode, string> = {
   system: '',
 };
 
-/** Terapkan tema + skala font ke <html>. */
+/** Apply visual/accessibility settings as design-system tokens and data attributes. */
 export function applySettings(settings: AppSettings): void {
   const root = document.documentElement;
-  root.style.setProperty('--font-scale', String(settings.fontSize));
+  root.style.setProperty('--font-scale', String(settings.uiScale));
+  root.style.setProperty('--reader-scale', String(settings.readerScale));
+  root.style.setProperty('--reader-line-height', String(settings.readerLineHeight));
+  root.dataset.largeTargets = String(settings.largeTargets);
+  root.dataset.highContrast = String(settings.highContrast);
+  root.dataset.reduceMotion = String(settings.reduceMotion);
+  root.dataset.comfort = settings.comfortPreset;
 
   const resolved =
     settings.theme === 'system'
