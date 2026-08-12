@@ -37,6 +37,10 @@ export function songKey(song: SongRef): string {
 export function createPlaylist(state: PlaylistState, name: string): PlaylistState {
   const trimmed = name.trim();
   if (!trimmed) return state;
+  const normalized = trimmed.toLocaleLowerCase();
+  if (state.playlists.some((playlist) => playlist.name.trim().toLocaleLowerCase() === normalized)) {
+    return state;
+  }
   const id = createId();
   const playlist: Playlist = { id, name: trimmed, songs: [], createdAt: Date.now() };
   return { ...state, playlists: [...state.playlists, playlist] };
@@ -45,6 +49,14 @@ export function createPlaylist(state: PlaylistState, name: string): PlaylistStat
 export function renamePlaylist(state: PlaylistState, id: string, name: string): PlaylistState {
   const trimmed = name.trim();
   if (!trimmed) return state;
+  const normalized = trimmed.toLocaleLowerCase();
+  if (
+    state.playlists.some(
+      (playlist) => playlist.id !== id && playlist.name.trim().toLocaleLowerCase() === normalized,
+    )
+  ) {
+    return state;
+  }
   return {
     ...state,
     playlists: state.playlists.map((p) => (p.id === id ? { ...p, name: trimmed } : p)),
