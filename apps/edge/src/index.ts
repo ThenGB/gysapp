@@ -1,8 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { parseSauhResult, parseTrueVoiceFeed } from '@gysapp/contracts';
-import { createChordApp } from './chords';
-import { createAuthApp } from './auth';
 import { createReportApp } from './report';
 import { normalizeSauhPosts } from './content/sauh';
 import { extractAuthorFromHtml, parseSuaraSejatiPage } from './content/suara-sejati';
@@ -16,9 +14,6 @@ const KESAKSIAN_SELECTOR = '#posts-table-1 > tbody > tr > td > a';
 const RENUNGAN_SELECTOR = '#posts-table-3 > tbody > tr > td > a';
 
 export type EdgeEnv = {
-  SESSION_SECRET?: string;
-  GOOGLE_CLIENT_ID?: string;
-  GOOGLE_CLIENT_SECRET?: string;
   REPORT_WEBHOOK_URL?: string;
   APP_ORIGINS?: string;
 };
@@ -35,10 +30,6 @@ export function createApp(
   opts: {
     fetchImpl?: typeof fetch;
     now?: () => Date;
-    sessionSecret?: string;
-    googleClientId?: string;
-    googleClientSecret?: string;
-    secureCookie?: boolean;
     reportWebhookUrl?: string;
     appOrigins?: string[];
   } = {},
@@ -46,7 +37,6 @@ export function createApp(
   const app = new Hono();
   const now = opts.now ?? (() => new Date());
   const fetchImpl = opts.fetchImpl ?? globalThis.fetch.bind(globalThis);
-  const sessionSecret = opts.sessionSecret ?? 'dev-session-secret-change-me';
   const allowedOrigins = opts.appOrigins ?? [
     'https://thengb.github.io',
     'https://gyspnk.github.io',
@@ -54,19 +44,7 @@ export function createApp(
     'http://localhost:5173',
   ];
 
-  app.use('/api/*', cors({ origin: allowedOrigins, credentials: true, maxAge: 86400 }));
-  app.route('/api/chords', createChordApp({ fetchImpl }));
-  app.route(
-    '/api/auth',
-    createAuthApp({
-      fetchImpl,
-      sessionSecret,
-      googleClientId: opts.googleClientId,
-      googleClientSecret: opts.googleClientSecret,
-      secureCookie: opts.secureCookie,
-      appOrigins: allowedOrigins,
-    }),
-  );
+  app.use('/api/*', cors({ origin: allowedOrigins, maxAge: 86400 }));
   app.route('/api/report', createReportApp({ fetchImpl, webhookUrl: opts.reportWebhookUrl }));
 
   app.get('/health', (c) => c.json({ ok: true, ts: now().toISOString() }));
@@ -79,7 +57,7 @@ export function createApp(
       url.searchParams.set('orderby', 'date');
       url.searchParams.set('_embed', 'wp:featuredmedia');
       const posts = (await fetchImpl(url.toString(), {
-        headers: { 'user-agent': 'gysapp-bff/0.2' },
+        headers: { 'user-agent': 'gysapp-content-gateway/0.3' },
       }).then(async (r) => {
         if (!r.ok) throw new Error(`upstream ${r.status}`);
         return r.json();
@@ -99,7 +77,7 @@ export function createApp(
   app.get('/api/content/suara-sejati', async (c) => {
     try {
       const html = await fetchImpl(TJC_SUARA_SEJATI, {
-        headers: { 'user-agent': 'gysapp-bff/0.2' },
+        headers: { 'user-agent': 'gysapp-content-gateway/0.3' },
       }).then(async (r) => {
         if (!r.ok) throw new Error(`upstream ${r.status}`);
         return r.text();
@@ -125,7 +103,7 @@ export function createApp(
     }
     try {
       const html = await fetchImpl(url, {
-        headers: { 'user-agent': 'gysapp-bff/0.2' },
+        headers: { 'user-agent': 'gysapp-content-gateway/0.3' },
         signal: c.req.raw.signal,
       }).then(async (r) => {
         if (!r.ok) throw new Error(`upstream ${r.status}`);
@@ -147,7 +125,7 @@ export function createApp(
     app.get(path, async (c) => {
       try {
         const html = await fetchImpl(upstream, {
-          headers: { 'user-agent': 'gysapp-bff/0.2' },
+          headers: { 'user-agent': 'gysapp-content-gateway/0.3' },
         }).then(async (r) => {
           if (!r.ok) throw new Error(`upstream ${r.status}`);
           return r.text();
@@ -178,12 +156,8 @@ export function createApp(
 export default {
   async fetch(request: Request, env: EdgeEnv): Promise<Response> {
     const app = createApp({
-      sessionSecret: env.SESSION_SECRET,
-      googleClientId: env.GOOGLE_CLIENT_ID,
-      googleClientSecret: env.GOOGLE_CLIENT_SECRET,
       reportWebhookUrl: env.REPORT_WEBHOOK_URL,
       appOrigins: parseOrigins(env.APP_ORIGINS),
-      secureCookie: true,
     });
     return app.fetch(request);
   },
