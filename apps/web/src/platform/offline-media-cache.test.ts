@@ -15,7 +15,7 @@ describe('OfflineMediaCache', () => {
   });
 
   it('downloads once and serves the same media offline across cache instances', async () => {
-    const fetchImpl = vi.fn(async () => new Response(bytes('midi-data'), { status: 200 }));
+    const fetchImpl = vi.fn(async () => new Response('midi-data', { status: 200 }));
     const first = new OfflineMediaCache({ store, fetchImpl: fetchImpl as typeof fetch });
 
     expect(new TextDecoder().decode(await first.getOrFetch('/001.mid', 'midi'))).toBe('midi-data');
