@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { MusicNotes, Pause, Play, SkipBack, SkipForward } from '@phosphor-icons/react';
 import { midiEngine, type MidiStatus } from './midi-engine';
 import './song-viewer.css';
@@ -18,12 +18,14 @@ export function MiniMidiPlayer({
   url,
   title,
   accidentalMode = 'sharp',
+  transposeStep = 0,
   onAccidentalModeChange,
   onTransposeChange,
 }: {
   url: string | null;
   title: string;
   accidentalMode?: AccidentalMode;
+  transposeStep?: number;
   onAccidentalModeChange?: (mode: AccidentalMode) => void;
   onTransposeChange?: (step: number) => void;
 }) {
@@ -32,13 +34,30 @@ export function MiniMidiPlayer({
   const [duration, setDuration] = useState(0);
   const [loadingPct, setLoadingPct] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [transpose, setTranspose] = useState(0);
+  const [transpose, setTranspose] = useState(transposeStep);
   const [tempo, setTempo] = useState(120);
+  const previousUrl = useRef(url);
 
   useEffect(() => {
     midiEngine.setStateListener(setStatus);
     return () => midiEngine.setStateListener(null);
   }, []);
+
+  useEffect(() => {
+    if (previousUrl.current && previousUrl.current !== url) midiEngine.stop();
+    previousUrl.current = url;
+    setStatus('idle');
+    setTime(0);
+    setDuration(0);
+    setLoadingPct(0);
+    setError(null);
+    setTempo(120);
+    setTranspose(transposeStep);
+  }, [url, transposeStep]);
+
+  useEffect(() => {
+    setTranspose(transposeStep);
+  }, [transposeStep]);
 
   useEffect(() => {
     if (status !== 'playing') return;
@@ -61,17 +80,17 @@ export function MiniMidiPlayer({
       return;
     }
     void midiEngine
-      .loadMidi({ url, autoplay: true, onProgress: setLoadingPct })
-      .then(({ duration: d }) => {
+      .loadMidi({ url, autoplay: true, transpose, onProgress: setLoadingPct })
+      .then(({ duration: nextDuration }) => {
         const nextTranspose = midiEngine.getTranspose();
-        setDuration(d);
+        setDuration(nextDuration);
         setTime(0);
         setTempo(midiEngine.getTempoBpm());
         setTranspose(nextTranspose);
         onTransposeChange?.(nextTranspose);
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
-  }, [onTransposeChange, url]);
+  }, [onTransposeChange, transpose, url]);
 
   const onSeek = useCallback((value: number) => {
     midiEngine.seek(value);
