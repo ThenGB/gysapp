@@ -13,13 +13,18 @@ type PdfJs = typeof import('pdfjs-dist');
 
 type Mode = 'pdf' | 'text';
 
-// Chord lazy cache (ADR-0002): manifest dari gyschordweb branch main,
-// blob immutable content-addressed di IndexedDB.
+// Instalasi baru tidak membawa chord. Setiap lagu yang dibuka melakukan
+// conditional manifest check; request dalam window 60 detik didedup supaya
+// navigasi cepat tidak membanjiri gyschordweb. Blob tetap content-addressed:
+// SHA sama = nol download, SHA baru = file baru + pointer aktif atomik.
 const chordCache = new ChordLazyCache({
   store: new IndexedDbBlobStore('gysapp-chords'),
   fetchManifest: createHttpManifestFetcher({
     url: 'https://raw.githubusercontent.com/gyspnk/gyschordweb/main/docs/assets-chord-manifest.json',
   }),
+  ttlChordsMs: 0,
+  ttlMissingMs: 0,
+  manifestDedupMs: 60_000,
 });
 
 async function loadChordDoc(book: string, song: string): Promise<ChordDocument | null> {
@@ -180,7 +185,6 @@ export function SongViewer() {
   );
 }
 
-/** Baris lirik polos (fallback buku tanpa partitur / chord). */
 function LyricsVerses({ verses }: { verses: string[] }) {
   if (verses.length === 0) {
     return (
@@ -200,7 +204,6 @@ function LyricsVerses({ verses }: { verses: string[] }) {
   );
 }
 
-/** Baris lirik dengan badge chord sejajar di atas kata (mode teks). */
 export function ChordedTextLines({ lines }: { lines: ChordedLine[] }) {
   if (lines.length === 0) {
     return (
