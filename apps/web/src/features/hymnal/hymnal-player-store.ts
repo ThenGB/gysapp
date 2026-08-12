@@ -14,6 +14,10 @@ export type HymnalPlayerState = {
   transposeStep: number;
 };
 
+type ActiveHymnalPlayerState = Omit<HymnalPlayerState, 'track'> & {
+  track: HymnalPlayerTrack;
+};
+
 let state: HymnalPlayerState = {
   track: null,
   accidentalMode: 'sharp',
@@ -34,15 +38,15 @@ export function setHymnalPlayerTrack(
   track: HymnalPlayerTrack,
   prefs?: Partial<Pick<HymnalPlayerState, 'accidentalMode' | 'transposeStep'>>,
 ): void {
-  const next: HymnalPlayerState = {
+  const next: ActiveHymnalPlayerState = {
     track,
     accidentalMode: prefs?.accidentalMode ?? state.accidentalMode,
     transposeStep: clampTranspose(prefs?.transposeStep ?? state.transposeStep),
   };
   if (
     state.track?.key === next.track.key &&
-    state.track.url === next.track.url &&
-    state.track.title === next.track.title &&
+    state.track?.url === next.track.url &&
+    state.track?.title === next.track.title &&
     state.accidentalMode === next.accidentalMode &&
     state.transposeStep === next.transposeStep
   ) {
