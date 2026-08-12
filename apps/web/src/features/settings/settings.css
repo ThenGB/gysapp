@@ -155,3 +155,29 @@
   resize: vertical;
   font-family: var(--font-ui);
 }
+
+.notes-form {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+.notes-list {
+  margin-top: var(--space-4);
+}
+
+.notes-item p {
+  white-space: pre-wrap;
+}
+
+.notes-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.notes-target {
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  flex: 1;
+}

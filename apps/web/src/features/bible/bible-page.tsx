@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CaretLeft, CaretRight } from '@phosphor-icons/react';
 import { useQuery } from '@tanstack/react-query';
 import { stripBibleTags } from '@gysapp/core';
-import { biblePort } from '../../data/bible/json-bible-port';
+import { getBiblePort } from '../../data/bible/sqlite-bible-port';
 import './bible.css';
 
 export function BiblePage() {
@@ -13,20 +13,20 @@ export function BiblePage() {
   const chapterId = Number(params.chapter ?? '1');
 
   const catalogQuery = useQuery({
-    queryKey: ['bible-catalog', biblePort.code],
-    queryFn: () => biblePort.loadCatalog(),
+    queryKey: ['bible-catalog', getBiblePort().code],
+    queryFn: () => getBiblePort().loadCatalog(),
     staleTime: Infinity,
   });
 
   const chapterQuery = useQuery({
-    queryKey: ['bible-chapter', biblePort.code, bookId, chapterId],
-    queryFn: () => biblePort.loadChapter(bookId, chapterId),
+    queryKey: ['bible-chapter', getBiblePort().code, bookId, chapterId],
+    queryFn: () => getBiblePort().loadChapter(bookId, chapterId),
     staleTime: Infinity,
   });
 
   const pericopeQuery = useQuery({
-    queryKey: ['bible-pericopes', biblePort.code, bookId, chapterId],
-    queryFn: () => biblePort.loadPericopes(bookId, chapterId),
+    queryKey: ['bible-pericopes', getBiblePort().code, bookId, chapterId],
+    queryFn: () => getBiblePort().loadPericopes(bookId, chapterId),
     staleTime: Infinity,
   });
 
@@ -36,7 +36,7 @@ export function BiblePage() {
   );
   const chapterCount = catalogQuery.data?.chapterCounts.filter((e) => e.b === bookId).length ?? 0;
 
-  if (catalogQuery.isLoading) return <div className="content-shell">Memuat katalog…</div>;
+  if (catalogQuery.isLoading) return <div className="content-shell">Memuat katalogÃ¢â‚¬Â¦</div>;
 
   const chapter = chapterQuery.data;
   const pericopes = pericopeQuery.data;

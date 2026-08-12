@@ -4,7 +4,7 @@ import type { ChordDocument } from '@gysapp/contracts';
 import type { ChordedLine } from '@gysapp/core';
 import { buildChordedLines, extractLyricLines, extractPageNotes } from '@gysapp/core';
 import { createHttpManifestFetcher, ChordLazyCache } from '@gysapp/core';
-import { assetUrl } from '../../lib/asset-url';
+import { hymnalCatalog, type ResolvedSong } from '../../data/hymnal/hymnal-catalog';
 import { IndexedDbBlobStore } from '../../platform/blob-stores/indexeddb';
 import { MiniMidiPlayer } from './midi-player';
 import './song-viewer.css';
@@ -13,8 +13,7 @@ type PdfJs = typeof import('pdfjs-dist');
 
 type Mode = 'pdf' | 'text';
 
-// Chord lazy cache (ADR-0002): manifest dari gyschordweb branch main
-// (CORS raw.githubusercontent), file diunduh hanya saat lagu dibuka,
+// Chord lazy cache (ADR-0002): manifest dari gyschordweb branch main,
 // blob immutable content-addressed di IndexedDB.
 const chordCache = new ChordLazyCache({
   store: new IndexedDbBlobStore('gysapp-chords'),
@@ -32,18 +31,29 @@ async function loadChordDoc(book: string, song: string): Promise<ChordDocument |
   }
 }
 
-async function loadingTaskDestroy(_doc: unknown): Promise<void> {
-  // PDFDocumentProxy v5 tidak punya destroy(); dibersihkan oleh GC.
-}
-
 export function SongViewer() {
   const { book = 'KR', song = '001' } = useParams();
   const [mode, setMode] = useState<Mode>('pdf');
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [chordedLines, setChordedLines] = useState<ChordedLine[]>([]);
+  const [resolved, setResolved] = useState<ResolvedSong | null>(null);
+  const [missing, setMissing] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    hymnalCatalog.resolveSong(book, song).then((r) => {
+      if (cancelled) return;
+      setResolved(r);
+      setMissing(r === null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [book, song]);
+
+  useEffect(() => {
+    if (!resolved) return;
     let cancelled = false;
     const render = async () => {
       setPdfError(null);
@@ -51,7 +61,7 @@ export function SongViewer() {
         const pdfjs: PdfJs = await import('pdfjs-dist');
         const moduleWorker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
         pdfjs.GlobalWorkerOptions.workerSrc = moduleWorker.default;
-        const doc = await pdfjs.getDocument({ url: assetUrl('/pdf/KR001.pdf') }).promise;
+        const doc = await pdfjs.getDocument({ url: resolved.pdfUrl }).promise;
         const page = await doc.getPage(1);
         const viewport = page.getViewport({ scale: 1.4 });
         const canvas = canvasRef.current;
@@ -90,7 +100,6 @@ export function SongViewer() {
             ),
           );
         }
-        await loadingTaskDestroy(doc);
       } catch (err) {
         if (!cancelled) setPdfError(err instanceof Error ? err.message : String(err));
       }
@@ -99,13 +108,23 @@ export function SongViewer() {
     return () => {
       cancelled = true;
     };
-  }, [book, song, canvasRef]);
+  }, [resolved, book, song]);
+
+  if (missing) {
+    return (
+      <div className="content-shell song-page">
+        <h1 className="section-title">Pujian tidak ditemukan</h1>
+      </div>
+    );
+  }
 
   return (
     <div className="content-shell song-page">
       <div className="song-toolbar">
         <h1>
-          {book} {song} — Pujilah Allah Yang Maha Esa
+          {resolved?.entry.number}
+          {resolved?.entry.number2 ? `/${resolved.entry.number2}` : ''} —{' '}
+          {resolved?.entry.title ?? 'Memuat…'}
         </h1>
         <div className="song-mode-tabs" role="group" aria-label="Mode tampilan">
           <button
@@ -134,14 +153,21 @@ export function SongViewer() {
               Partitur gagal dimuat: {pdfError}
             </p>
           ) : (
-            <canvas ref={canvasRef} className="song-canvas" aria-label="Partitur KR 001" />
+            <canvas
+              ref={canvasRef}
+              className="song-canvas"
+              aria-label={`Partitur ${book} ${song}`}
+            />
           )}
         </div>
       )}
 
       {mode === 'text' && <ChordedTextLines lines={chordedLines} />}
 
-      <MiniMidiPlayer />
+      <MiniMidiPlayer
+        url={resolved?.midiUrl ?? null}
+        title={resolved ? `${book} ${resolved.entry.number} — ${resolved.entry.title}` : 'Pujian'}
+      />
     </div>
   );
 }

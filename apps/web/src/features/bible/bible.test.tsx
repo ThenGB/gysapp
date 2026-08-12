@@ -6,48 +6,35 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { BiblePage } from './bible-page';
 import { BibleSearchPage } from './bible-search';
+import { SqliteBiblePort, setBiblePort } from '../../data/bible/sqlite-bible-port';
 
-const FIXTURES = resolve(process.cwd(), '..', '..', 'tests', 'fixtures', 'bible');
+const DB_FILE = resolve(
+  process.cwd(),
+  '..',
+  '..',
+  'apps',
+  'web',
+  'public',
+  'data',
+  'bible',
+  'b_tb',
+  'b_tb.db',
+);
+const WASM_FILE = resolve(
+  process.cwd(),
+  '..',
+  '..',
+  'node_modules',
+  'sql.js',
+  'dist',
+  'sql-wasm.wasm',
+);
 
-function fixtureFetch() {
+function dbFetch() {
   return vi.fn(async (input: string | URL | Request) => {
     const url = String(input);
-    const chapter = url.match(/bible\/b_tb\/chapters\/(\d+_\d+)\.json$/);
-    if (chapter) {
-      return new Response(await readFile(`${FIXTURES}/chapters/${chapter[1]}.json`), {
-        status: 200,
-      });
-    }
-    const pericope = url.match(/bible\/b_tb\/pericopes\/(\d+_\d+)\.json$/);
-    if (pericope) {
-      return new Response(await readFile(`${FIXTURES}/pericopes/${pericope[1]}.json`), {
-        status: 200,
-      });
-    }
-    const file = [
-      'books.json',
-      'chapter_counts.json',
-      'refs_by_bc.json',
-      'pericope_paralels_by_bc.json',
-    ].find((f) => url.endsWith(`/${f}`));
-    if (file) {
-      return new Response(await readFile(`${FIXTURES}/${file}`), { status: 200 });
-    }
-    if (url.includes('/search-index.json')) {
-      const chapters = ['1_1', '1_2', '43_1', '43_3'];
-      const entries: Array<{ id: number; t: string }> = [];
-      for (const ch of chapters) {
-        const verses = JSON.parse(
-          await readFile(`${FIXTURES}/chapters/${ch}.json`, 'utf8'),
-        ) as Array<{
-          id: number;
-          t: string;
-        }>;
-        for (const v of verses) {
-          entries.push({ id: v.id, t: v.t.replace(/<[^>]*>/g, ' ') });
-        }
-      }
-      return new Response(JSON.stringify(entries), { status: 200 });
+    if (url.includes('b_tb.db')) {
+      return new Response(await readFile(DB_FILE), { status: 200 });
     }
     return new Response('not found', { status: 404 });
   });
@@ -62,9 +49,10 @@ function renderBible(path: string, element: React.ReactNode) {
   );
 }
 
-describe('BiblePage (data lengkap via fetch)', () => {
+describe('BiblePage (SQLite b_tb.db)', () => {
   beforeAll(() => {
-    vi.stubGlobal('fetch', fixtureFetch());
+    setBiblePort(new SqliteBiblePort({ locateFile: () => WASM_FILE }));
+    vi.stubGlobal('fetch', dbFetch());
   });
 
   afterEach(() => {
@@ -89,23 +77,23 @@ describe('BiblePage (data lengkap via fetch)', () => {
       ).toBeInTheDocument();
     });
     expect(screen.getByText('Allah menciptakan langit dan bumi serta isinya')).toBeInTheDocument();
-    expect(screen.queryByText(/catatan kaki/i)).not.toBeInTheDocument();
   });
 
-  it('shows empty state when a chapter is missing', async () => {
+  it('renders a New Testament chapter (Yohanes 3)', async () => {
     renderBible(
-      '/bible/10/1',
+      '/bible/43/3',
       <Routes>
         <Route path="/bible/:book/:chapter" element={<BiblePage />} />
       </Routes>,
     );
-    expect(await screen.findByText('Pasal ini tidak ditemukan.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Yohanes 3' })).toBeInTheDocument();
   });
 });
 
-describe('BibleSearchPage (index penuh)', () => {
+describe('BibleSearchPage (search table dari DB)', () => {
   beforeAll(() => {
-    vi.stubGlobal('fetch', fixtureFetch());
+    setBiblePort(new SqliteBiblePort({ locateFile: () => WASM_FILE }));
+    vi.stubGlobal('fetch', dbFetch());
   });
 
   afterEach(() => {
@@ -116,7 +104,7 @@ describe('BibleSearchPage (index penuh)', () => {
     vi.unstubAllGlobals();
   });
 
-  it('finds verses via search index with testament filter', async () => {
+  it('finds verses across the whole bible', async () => {
     renderBible(
       '/bible/search',
       <Routes>

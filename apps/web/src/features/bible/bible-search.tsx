@@ -4,8 +4,7 @@ import { ArrowLeft, MagnifyingGlass } from '@phosphor-icons/react';
 import { useQuery } from '@tanstack/react-query';
 import type { BibleIndexEntry } from '@gysapp/core';
 import { decodeVerseId, searchBibleIndex } from '@gysapp/core';
-import { assetUrl } from '../../lib/asset-url';
-import { biblePort } from '../../data/bible/json-bible-port';
+import { getBiblePort } from '../../data/bible/sqlite-bible-port';
 import './bible.css';
 
 const TESTAMENTS = [
@@ -15,10 +14,11 @@ const TESTAMENTS = [
 ] as const;
 
 function loadSearchIndex(): Promise<BibleIndexEntry[]> {
-  return fetch(assetUrl('/data/bible/search-index.json')).then(async (res) => {
-    if (!res.ok) throw new Error(`index fetch failed: ${res.status}`);
-    return (await res.json()) as BibleIndexEntry[];
-  });
+  const port = getBiblePort();
+  if ('getSearchIndex' in port) {
+    return (port as { getSearchIndex(): Promise<BibleIndexEntry[]> }).getSearchIndex();
+  }
+  return Promise.resolve([]);
 }
 
 export function BibleSearchPage() {
@@ -27,8 +27,8 @@ export function BibleSearchPage() {
   const deferredTerm = useDeferredValue(term);
 
   const catalogQuery = useQuery({
-    queryKey: ['bible-catalog', biblePort.code],
-    queryFn: () => biblePort.loadCatalog(),
+    queryKey: ['bible-catalog', getBiblePort().code],
+    queryFn: () => getBiblePort().loadCatalog(),
     staleTime: Infinity,
   });
 
@@ -74,7 +74,7 @@ export function BibleSearchPage() {
           className="bible-search-input"
           type="search"
           value={term}
-          placeholder="Cari kata atau frasa…"
+          placeholder="Cari kata atau frasaÃ¢â‚¬Â¦"
           onChange={(e) => setTerm(e.target.value)}
           autoFocus
         />
@@ -96,7 +96,7 @@ export function BibleSearchPage() {
 
       <p className="bible-search-hint">Pencarian di seluruh 1.189 pasal Alkitab Terjemahan Baru.</p>
 
-      {searching && <p aria-busy="true">Menyiapkan index…</p>}
+      {searching && <p aria-busy="true">Menyiapkan indexÃ¢â‚¬Â¦</p>}
 
       {indexQuery.isError && (
         <div className="feed-error" role="alert">

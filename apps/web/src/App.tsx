@@ -13,6 +13,7 @@ import { LiteratureFeedPage } from './features/more/literature-feed';
 import { SettingsPage } from './features/settings/settings-page';
 import { AccountPage } from './features/account/account-page';
 import { ReportPage } from './features/account/report-page';
+import { NotesPage } from './features/notes/notes-page';
 import { applySettings, loadSettings } from './features/settings/settings-store';
 import { subscribeSettings } from './i18n';
 
@@ -55,6 +56,7 @@ const router = createBrowserRouter(
         { path: 'settings', element: <SettingsPage /> },
         { path: 'account', element: <AccountPage /> },
         { path: 'report', element: <ReportPage /> },
+        { path: 'notes/:kind', element: <NotesPage /> },
       ],
     },
   ],

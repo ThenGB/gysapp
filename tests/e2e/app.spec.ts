@@ -21,6 +21,14 @@ test('faith page renders ten points with read-more links', async ({ page }) => {
   await expect(page.getByRole('link', { name: /Baca Lebih Lanjut/ }).first()).toBeVisible();
 });
 
+test('hymnal catalog lists songs and opens a song', async ({ page }) => {
+  await page.goto('/hymnal');
+  await expect(page.getByRole('button', { name: 'KR', exact: true })).toBeVisible();
+  await expect(page.locator('.hymnal-item').first()).toBeVisible({ timeout: 15_000 });
+  await page.locator('.hymnal-item').first().click();
+  await expect(page.getByRole('button', { name: 'Partitur' })).toBeVisible();
+});
+
 test('settings toggles dark theme', async ({ page }) => {
   await page.goto('/settings');
   await page.getByRole('button', { name: 'Gelap' }).click();

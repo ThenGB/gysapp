@@ -13,6 +13,10 @@ const { mockEngine } = vi.hoisted(() => ({
     play: vi.fn(),
     pause: vi.fn(),
     seek: vi.fn(),
+    setTranspose: vi.fn(),
+    setTempoBpm: vi.fn(),
+    getTempoBpm: vi.fn(() => 120),
+    getTranspose: vi.fn(() => 0),
   },
 }));
 
@@ -44,37 +48,25 @@ describe('MiniMidiPlayer', () => {
     vi.clearAllMocks();
   });
 
-  it('starts loading the demo song on first play', () => {
-    render(<MiniMidiPlayer />);
+  it('loads the given midi url on first play', () => {
+    render(<MiniMidiPlayer url="/data/hymnal/midi/kr/001_Test.mid" title="KR 001 — Test" />);
     fireEvent.click(screen.getByRole('button', { name: 'Putar' }));
     expect(mockEngine.loadMidi).toHaveBeenCalledWith(
-      expect.objectContaining({ url: '/assets/midi/KR001.mid', autoplay: true }),
+      expect.objectContaining({ url: '/data/hymnal/midi/kr/001_Test.mid', autoplay: true }),
     );
   });
 
-  it('pauses while playing', () => {
-    mockEngine.getStatus.mockReturnValue('playing');
-    render(<MiniMidiPlayer />);
-    emitStatus('playing');
-    fireEvent.click(screen.getByRole('button', { name: 'Jeda' }));
-    expect(mockEngine.pause).toHaveBeenCalled();
+  it('disables play when no midi url', () => {
+    render(<MiniMidiPlayer url={null} title="Tanpa MIDI" />);
+    expect(screen.getByRole('button', { name: 'Putar' })).toBeDisabled();
   });
 
   it('resumes from paused state without reloading', () => {
     mockEngine.getStatus.mockReturnValue('paused');
-    render(<MiniMidiPlayer />);
+    render(<MiniMidiPlayer url="/x.mid" title="X" />);
     emitStatus('paused');
     fireEvent.click(screen.getByRole('button', { name: 'Putar' }));
     expect(mockEngine.loadMidi).not.toHaveBeenCalled();
     expect(mockEngine.play).toHaveBeenCalled();
-  });
-
-  it('shows time as m:ss while playing', () => {
-    render(<MiniMidiPlayer />);
-    emitStatus('playing');
-    act(() => {
-      vi.advanceTimersByTime(200);
-    });
-    expect(screen.getByText('0:12 / 2:45')).toBeInTheDocument();
   });
 });

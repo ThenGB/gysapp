@@ -71,9 +71,9 @@ export function MorePage() {
       <Section title="Catatan & Koleksi">
         <ul className="more-grid">
           {[
-            { to: '/bible/1/1', label: 'Catatan Alkitab', icon: PencilLine },
-            { to: '/hymnal', label: 'Catatan Pujian', icon: PencilLine },
-            { to: '/faith', label: 'Catatan Iman', icon: PencilLine },
+            { to: '/notes/bible', label: 'Catatan Alkitab', icon: PencilLine },
+            { to: '/notes/song', label: 'Catatan Pujian', icon: PencilLine },
+            { to: '/notes/faith', label: 'Catatan Iman', icon: PencilLine },
           ].map((item) => (
             <li key={item.to}>
               <Link to={item.to} className="more-card">

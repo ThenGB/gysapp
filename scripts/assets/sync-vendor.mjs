@@ -12,6 +12,7 @@ const vendor = resolve(webRoot, 'public', 'vendor');
 const files = [
   [resolve(synthPkg, 'dist', 'js-synthesizer.min.js'), 'js-synthesizer.min.js'],
   [resolve(synthPkg, 'externals', 'libfluidsynth-2.4.6.js'), 'libfluidsynth-2.4.6.js'],
+  [resolve(webRoot, 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm'), 'sql-wasm.wasm'],
 ];
 
 await mkdir(vendor, { recursive: true });

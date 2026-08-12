@@ -1,0 +1,38 @@
+{
+  "ASM-I": {
+    "code": "ASM-I",
+    "songCount": 85,
+    "hasMidi": false,
+    "indexFile": "data/index/asm_i_index.json"
+  },
+  "ASM-M": {
+    "code": "ASM-M",
+    "songCount": 93,
+    "hasMidi": false,
+    "indexFile": "data/index/asm_m_index.json"
+  },
+  "ASM-P": {
+    "code": "ASM-P",
+    "songCount": 100,
+    "hasMidi": false,
+    "indexFile": "data/index/asm_p_index.json"
+  },
+  "HYMNE": {
+    "code": "HYMNE",
+    "songCount": 533,
+    "hasMidi": true,
+    "indexFile": "data/index/hymne_index.json"
+  },
+  "KR": {
+    "code": "KR",
+    "songCount": 533,
+    "hasMidi": true,
+    "indexFile": "data/index/kr_index.json"
+  },
+  "MDR": {
+    "code": "MDR",
+    "songCount": 533,
+    "hasMidi": true,
+    "indexFile": "data/index/mdr_index.json"
+  }
+}

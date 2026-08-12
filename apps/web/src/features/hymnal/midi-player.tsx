@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { MusicNotes, Pause, Play, SkipBack, SkipForward } from '@phosphor-icons/react';
-import { assetUrl } from '../../lib/asset-url';
 import { midiEngine, type MidiStatus } from './midi-engine';
 import './song-viewer.css';
-
-const DEMO_MIDI = assetUrl('/assets/midi/KR001.mid');
 
 function formatTime(s: number): string {
   if (!Number.isFinite(s) || s < 0) return '0:00';
@@ -15,7 +12,7 @@ function formatTime(s: number): string {
   return `${m}:${sec}`;
 }
 
-export function MiniMidiPlayer() {
+export function MiniMidiPlayer({ url, title }: { url: string | null; title: string }) {
   const [status, setStatus] = useState<MidiStatus>('idle');
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -40,6 +37,7 @@ export function MiniMidiPlayer() {
 
   const toggle = useCallback(() => {
     setError(null);
+    if (!url) return;
     if (midiEngine.getStatus() === 'playing') {
       midiEngine.pause();
       return;
@@ -49,7 +47,7 @@ export function MiniMidiPlayer() {
       return;
     }
     void midiEngine
-      .loadMidi({ url: DEMO_MIDI, autoplay: true, onProgress: setLoadingPct })
+      .loadMidi({ url, autoplay: true, onProgress: setLoadingPct })
       .then(({ duration: d }) => {
         setDuration(d);
         setTime(0);
@@ -57,7 +55,7 @@ export function MiniMidiPlayer() {
         setTranspose(midiEngine.getTranspose());
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
-  }, []);
+  }, [url]);
 
   const onSeek = useCallback((value: number) => {
     midiEngine.seek(value);
@@ -84,7 +82,7 @@ export function MiniMidiPlayer() {
 
   const loading = status === 'loading';
   const playing = status === 'playing';
-  const hasSong = duration > 0;
+  const hasSong = duration > 0 && url !== null;
 
   return (
     <div className="midi-player" aria-label="Pemutar MIDI">
@@ -93,13 +91,13 @@ export function MiniMidiPlayer() {
         className="icon-btn midi-play"
         onClick={toggle}
         aria-label={playing ? 'Jeda' : 'Putar'}
-        disabled={loading}
+        disabled={loading || !url}
       >
         {playing ? <Pause size={22} aria-hidden="true" /> : <Play size={22} aria-hidden="true" />}
       </button>
       <div className="midi-info">
         <span className="midi-title">
-          <MusicNotes size={16} aria-hidden="true" /> KR 001 — demo
+          <MusicNotes size={16} aria-hidden="true" /> {title}
         </span>
         <div className="midi-seek">
           <input
