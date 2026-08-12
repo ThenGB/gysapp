@@ -68,6 +68,15 @@
   line-height: var(--reader-line-height);
 }
 
+.faith-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.faith-body .faith-text {
+  margin-bottom: var(--space-2);
+}
+
 .faith-copy {
   flex-shrink: 0;
   width: 40px;

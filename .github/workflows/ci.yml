@@ -43,6 +43,12 @@ jobs:
       - name: Format check
         run: pnpm format:check
 
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: E2E smoke
+        run: pnpm test:e2e --project=chromium
+
       - name: Secret scan (basic)
         run: |
           if grep -rniE "rjnsfeygekniyfil|56983466|hatiku\.app@gmail\.com|password[ =:]+['\"][^'\"]{8,}" \

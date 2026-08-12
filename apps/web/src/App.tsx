@@ -1,6 +1,6 @@
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
-import { useEffect, useState } from 'react';
 import { AppShell } from './ui/shell';
 import { HomePage } from './features/home/home-page';
 import { BiblePage } from './features/bible/bible-page';
@@ -15,6 +15,15 @@ import { AccountPage } from './features/account/account-page';
 import { ReportPage } from './features/account/report-page';
 import { applySettings, loadSettings } from './features/settings/settings-store';
 import { subscribeSettings } from './i18n';
+
+// Route yang memuat pdfjs/midi-engine di-split agar bundle awal kecil.
+const FaithPdfViewerPage = lazy(() =>
+  import('./features/faith/faith-pdf-viewer').then((m) => ({ default: m.FaithPdfViewerPage })),
+);
+
+function LazyPage({ element }: { element: React.ReactNode }) {
+  return <Suspense fallback={<div className="content-shell">Memuat…</div>}>{element}</Suspense>;
+}
 
 const router = createBrowserRouter(
   [
@@ -40,6 +49,7 @@ const router = createBrowserRouter(
           ],
         },
         { path: 'faith', element: <FaithPage /> },
+        { path: 'faith/:number/pdf', element: <LazyPage element={<FaithPdfViewerPage />} /> },
         { path: 'more', element: <MorePage /> },
         { path: 'literature/:kind', element: <LiteratureFeedPage /> },
         { path: 'settings', element: <SettingsPage /> },

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "GYSApp",
+  "version": "0.1.0",
+  "identifier": "org.gyspnk.gysapp",
+  "build": {
+    "beforeDevCommand": "pnpm --filter @gysapp/web dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "pnpm --filter @gysapp/web build",
+    "frontendDist": "../../apps/web/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "GYSApp",
+        "width": 1024,
+        "height": 768,
+        "minWidth": 360,
+        "minHeight": 480
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data: https:; media-src 'self' https:; connect-src 'self' https://raw.githubusercontent.com https://github.com https://api.github.com https://tjc.org https://e.gys.or.id; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; script-src 'self' 'wasm-unsafe-eval'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

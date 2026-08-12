@@ -1,0 +1,15 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capabilities untuk window utama",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "opener:default",
+    "store:default",
+    "sql:default",
+    "fs:default",
+    "notification:default",
+    "stronghold:default"
+  ]
+}

@@ -1,0 +1,49 @@
+name: native-windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/native/**'
+      - 'apps/web/**'
+      - 'packages/**'
+      - '.github/workflows/native-windows.yml'
+
+concurrency:
+  group: native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install frontend deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/native/src-tauri
+
+      - name: Build frontend
+        run: pnpm --filter @gysapp/web build
+
+      - name: Cargo check
+        run: cargo check --manifest-path apps/native/src-tauri/Cargo.toml
+
+      - name: Tauri build (no bundle)
+        run: pnpm --filter @gysapp/web exec tauri build --no-bundle

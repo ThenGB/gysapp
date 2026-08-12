@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import type { ChordedLine } from '@gysapp/core';
 import { buildChordedLines, extractLyricLines, extractPageNotes } from '@gysapp/core';
 import { parseChordDocument } from '@gysapp/contracts';
@@ -9,7 +7,7 @@ import { assetUrl } from '../../lib/asset-url';
 import { MiniMidiPlayer } from './midi-player';
 import './song-viewer.css';
 
-GlobalWorkerOptions.workerSrc = workerUrl;
+type PdfJs = typeof import('pdfjs-dist');
 
 /** Data demo: KR 001. Versi final: index lagu + lazy chord cache + asset manager. */
 const DEMO_CHORD_URL = assetUrl('/pdf/chords/KR_001.chord.json');
@@ -42,7 +40,10 @@ export function SongViewer() {
     const render = async () => {
       setPdfError(null);
       try {
-        const doc = await getDocument({ url: assetUrl('/pdf/KR001.pdf') }).promise;
+        const pdfjs: PdfJs = await import('pdfjs-dist');
+        const moduleWorker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+        pdfjs.GlobalWorkerOptions.workerSrc = moduleWorker.default;
+        const doc = await pdfjs.getDocument({ url: assetUrl('/pdf/KR001.pdf') }).promise;
         const page = await doc.getPage(1);
         const viewport = page.getViewport({ scale: 1.4 });
         const canvas = canvasRef.current;

@@ -1,5 +1,6 @@
 import { useDeferredValue, useMemo, useState } from 'react';
-import { CopySimple, Check } from '@phosphor-icons/react';
+import { Link } from 'react-router-dom';
+import { BookOpenText, CopySimple, Check } from '@phosphor-icons/react';
 import { parseFaithData, type FaithLanguage } from '@gysapp/contracts';
 import { searchFaith } from '@gysapp/core';
 import faithRaw from '../../data/faith.json';
@@ -82,7 +83,12 @@ export function FaithPage() {
         {points.map((point) => (
           <li key={point.number} className="faith-item">
             <span className="faith-number">{point.number}</span>
-            <p className="faith-text">{point.text}</p>
+            <div className="faith-body">
+              <p className="faith-text">{point.text}</p>
+              <Link to={`/faith/${point.number}/pdf`} className="btn-text">
+                <BookOpenText size={18} aria-hidden="true" /> Baca Lebih Lanjut
+              </Link>
+            </div>
             <CopyButton text={`${point.number}. ${point.text}`} />
           </li>
         ))}
