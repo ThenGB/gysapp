@@ -1,0 +1,106 @@
+name: Patch Bible Context
+
+on:
+  push:
+    branches:
+      - feature/bible-mobile-parity
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feature/bible-mobile-parity
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Integrate contextual verse surface
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/web/src/features/bible/bible-page.tsx')
+          text = path.read_text()
+
+          text = text.replace(
+              "import { Link, useNavigate, useParams } from 'react-router-dom';",
+              "import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';",
+              1,
+          )
+          text = text.replace(
+              "import { chapterKey, decodeVerseId, stripBibleTags, type BiblePackCode } from '@gysapp/core';",
+              "import { chapterKey, stripBibleTags, type BiblePackCode } from '@gysapp/core';",
+              1,
+          )
+          context_import = "import { BibleVerseContext } from './bible-verse-context';\n"
+          if context_import not in text:
+              text = text.replace("import { bibleTts } from './bible-tts';\n", "import { bibleTts } from './bible-tts';\n" + context_import, 1)
+
+          text = text.replace(
+              "  readerScale: number;\n  onScroll?: (source: HTMLElement, paneId: 'primary' | 'secondary') => void;",
+              "  readerScale: number;\n  focusVerse?: number;\n  onScroll?: (source: HTMLElement, paneId: 'primary' | 'secondary') => void;",
+              1,
+          )
+          text = text.replace(
+              "  chapterId,\n  readerScale,\n  onScroll,",
+              "  chapterId,\n  readerScale,\n  focusVerse,\n  onScroll,",
+              1,
+          )
+
+          related_marker = "  const related = selectedVerse\n    ? refs.filter((item) => selectedVerse >= item.sv && selectedVerse <= item.ev)\n    : [];\n"
+          focus_effect = related_marker + "\n  useEffect(() => {\n    if (!focusVerse || !chapterQuery.data?.some((verse) => verse.v === focusVerse)) return;\n    setSelectedVerse(focusVerse);\n    const frame = window.requestAnimationFrame(() => {\n      const node = document.querySelector(\n        `[data-pane=\\\"${paneId}\\\"] [data-verse=\\\"${focusVerse}\\\"]`,\n      );\n      node?.scrollIntoView({ block: 'center', behavior: 'smooth' });\n    });\n    return () => window.cancelAnimationFrame(frame);\n  }, [chapterQuery.data, focusVerse, paneId]);\n"
+          if related_marker not in text:
+              raise SystemExit('related refs marker not found')
+          text = text.replace(related_marker, focus_effect, 1)
+
+          start_marker = "      {selected && (\n        <aside className=\"bible-verse-actions\" aria-label={`Aksi ayat ${selected.v}`}>"
+          end_marker = "\n      )}\n    </article>"
+          start = text.find(start_marker)
+          if start < 0:
+              raise SystemExit('selected verse action start not found')
+          end = text.find(end_marker, start)
+          if end < 0:
+              raise SystemExit('selected verse action end not found')
+          end += len("\n      )}")
+
+          replacement = '''      {selected && (\n        <BibleVerseContext\n          version={version}\n          bookId={bookId}\n          chapterId={chapterId}\n          bookLabel={book?.bl ?? 'Alkitab'}\n          verse={selected}\n          books={catalogQuery.data?.books ?? []}\n          relatedRefs={related}\n          parallels={paralels}\n          bookmarked={isBibleBookmarked({\n            version,\n            bookId,\n            chapter: chapterId,\n            verse: selected.v,\n          })}\n          onToggleBookmark={() =>\n            toggleBibleBookmark({\n              version,\n              bookId,\n              chapter: chapterId,\n              verse: selected.v,\n              label: `${book?.bl ?? 'Alkitab'} ${chapterId}:${selected.v}`,\n              text: stripBibleTags(selected.t),\n            })\n          }\n          onRead={() => bibleTts.speak(stripBibleTags(selected.t), version)}\n          onClose={() => setSelectedVerse(null)}\n        />\n      )}'''
+          text = text[:start] + replacement + text[end:]
+
+          page_marker = "  const params = useParams();\n  const navigate = useNavigate();\n"
+          page_replacement = page_marker + "  const [searchParams] = useSearchParams();\n  const focusVerseValue = Number(searchParams.get('v'));\n  const focusVerse =\n    Number.isInteger(focusVerseValue) && focusVerseValue > 0 ? focusVerseValue : undefined;\n"
+          if page_marker not in text:
+              raise SystemExit('BiblePage params marker not found')
+          text = text.replace(page_marker, page_replacement, 1)
+
+          primary_marker = "            chapterId={chapterId}\n            readerScale={reading.settings.readerScale}\n            onScroll={syncScroll}"
+          primary_replacement = "            chapterId={chapterId}\n            readerScale={reading.settings.readerScale}\n            focusVerse={focusVerse}\n            onScroll={syncScroll}"
+          if primary_marker not in text:
+              raise SystemExit('primary ReaderPane marker not found')
+          text = text.replace(primary_marker, primary_replacement, 1)
+
+          path.write_text(text)
+          PY
+          pnpm exec prettier --write apps/web/src/features/bible/bible-page.tsx apps/web/src/features/bible/bible-verse-context.tsx apps/web/src/features/bible/bible-verse-context.css apps/web/src/features/notes/notes-store.ts apps/web/src/features/notes/notes-store.test.ts
+          pnpm --filter @gysapp/web typecheck
+      - name: Commit Bible contextual integration
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/src/features/bible/bible-page.tsx apps/web/src/features/bible/bible-verse-context.tsx apps/web/src/features/bible/bible-verse-context.css apps/web/src/features/notes/notes-store.ts apps/web/src/features/notes/notes-store.test.ts
+          git commit -m "feat: integrate contextual Bible references and notes"
+          git push origin HEAD:feature/bible-mobile-parity
