@@ -82,7 +82,8 @@ function normalizeEntry(value: unknown): OfflineMediaEntry | null {
  *
  * - soundfont: pinned, because repeatedly downloading it makes MIDI startup slow;
  * - MIDI/PDF: LRU eviction when the media budget is exceeded;
- * - failed network requests fall back to a previously cached copy automatically.
+ * - IndexedDB is an optimization: playback still falls back to direct network
+ *   loading when persistent storage is unavailable or blocked by the browser.
  */
 export class OfflineMediaCache {
   private readonly store: IndexedDbBlobStore;
@@ -100,22 +101,29 @@ export class OfflineMediaCache {
   }
 
   private loadIndex(): Promise<OfflineMediaEntry[]> {
-    this.indexPromise ??= this.store.read(INDEX_PATH).then((raw) => {
-      if (!raw) return [];
-      try {
-        const parsed = JSON.parse(new TextDecoder().decode(raw)) as unknown;
-        if (!Array.isArray(parsed)) return [];
-        return parsed.map(normalizeEntry).filter((entry): entry is OfflineMediaEntry => entry !== null);
-      } catch {
-        return [];
-      }
-    });
+    this.indexPromise ??= this.store
+      .read(INDEX_PATH)
+      .then((raw) => {
+        if (!raw) return [];
+        try {
+          const parsed = JSON.parse(new TextDecoder().decode(raw)) as unknown;
+          if (!Array.isArray(parsed)) return [];
+          return parsed
+            .map(normalizeEntry)
+            .filter((entry): entry is OfflineMediaEntry => entry !== null);
+        } catch {
+          return [];
+        }
+      })
+      .catch(() => []);
     return this.indexPromise;
   }
 
   private async persistIndex(entries: OfflineMediaEntry[]): Promise<void> {
     const payload = new TextEncoder().encode(JSON.stringify(entries));
-    this.writeQueue = this.writeQueue.then(() => this.store.write(INDEX_PATH, payload));
+    this.writeQueue = this.writeQueue
+      .catch(() => undefined)
+      .then(() => this.store.write(INDEX_PATH, payload));
     await this.writeQueue;
     this.indexPromise = Promise.resolve(entries);
   }
@@ -147,8 +155,13 @@ export class OfflineMediaCache {
     kind: OfflineMediaKind,
     options: { signal?: AbortSignal } = {},
   ): Promise<Uint8Array> {
-    const cached = await this.get(url, kind);
-    if (cached) return cached;
+    try {
+      const cached = await this.get(url, kind);
+      if (cached) return cached;
+    } catch {
+      // Persistent storage can be blocked (private mode/policy). Network playback
+      // must remain usable even when IndexedDB is unavailable.
+    }
 
     const response = await this.fetchImpl(url, {
       signal: options.signal,
@@ -156,7 +169,11 @@ export class OfflineMediaCache {
     });
     if (!response.ok) throw new Error(`${kind} fetch failed: ${response.status}`);
     const bytes = new Uint8Array(await response.arrayBuffer());
-    await this.put(url, kind, bytes);
+    try {
+      await this.put(url, kind, bytes);
+    } catch {
+      // Caching is best-effort; successfully downloaded media is still returned.
+    }
     return bytes;
   }
 
