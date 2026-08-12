@@ -177,6 +177,9 @@ let activePort: BiblePort = getBiblePortForVersion('b_tb');
 
 export function setBiblePort(port: BiblePort): void {
   activePort = port;
+  // The reader resolves ports by Bible version. Keep the compatibility setter
+  // aligned with that registry so injected ports are honored by both paths.
+  if (port instanceof SqliteBiblePort) versionPorts.set(port.code, port);
 }
 
 export function getBiblePort(): BiblePort {
