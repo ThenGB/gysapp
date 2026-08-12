@@ -38,8 +38,7 @@ test.describe('production-preview performance guard', () => {
     await page.waitForTimeout(500);
 
     const vitals = await page.evaluate(
-      () =>
-        (window as unknown as { __gysappLabVitals: LabVitals }).__gysappLabVitals,
+      () => (window as unknown as { __gysappLabVitals: LabVitals }).__gysappLabVitals,
     );
 
     expect(vitals.lcp, 'LCP observer should capture a paint').toBeGreaterThan(0);

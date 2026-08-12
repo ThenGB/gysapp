@@ -7,7 +7,9 @@ const html = await readFile(resolve(distDir, 'index.html'), 'utf8');
 const refs = new Set();
 
 for (const match of html.matchAll(/<script\b[^>]*\bsrc="([^"]+\.js)"[^>]*>/g)) refs.add(match[1]);
-for (const match of html.matchAll(/<link\b[^>]*\brel="modulepreload"[^>]*\bhref="([^"]+\.js)"[^>]*>/g)) {
+for (const match of html.matchAll(
+  /<link\b[^>]*\brel="modulepreload"[^>]*\bhref="([^"]+\.js)"[^>]*>/g,
+)) {
   refs.add(match[1]);
 }
 
@@ -29,7 +31,9 @@ const budget = 250 * 1024;
 for (const item of measured) {
   console.log(`${item.relative}: ${(item.gzipBytes / 1024).toFixed(1)} KiB gzip`);
 }
-console.log(`Initial JS total: ${(total / 1024).toFixed(1)} KiB gzip / ${(budget / 1024).toFixed(0)} KiB budget`);
+console.log(
+  `Initial JS total: ${(total / 1024).toFixed(1)} KiB gzip / ${(budget / 1024).toFixed(0)} KiB budget`,
+);
 
 if (total > budget) {
   throw new Error(`Initial JavaScript gzip budget exceeded: ${total} > ${budget} bytes`);
