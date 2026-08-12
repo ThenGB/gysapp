@@ -54,7 +54,7 @@ jobs:
 
       - name: Secret scan (basic)
         run: |
-          if grep -rniE "rjnsfeygekniyfil|56983466|hatiku\.app@gmail\.com|password[ =:]+['\"][^'\"]{8,}" \
+          if grep -rniE "rjnsfeygekniyfil|56983466|hatiku\.app@gmail\.com|(^|[^[:alnum:]_])(password|passwd|pwd)[[:space:]]*[:=][[:space:]]*['\"][^'\"]{8,}" \
             --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.github \
             --exclude=pnpm-lock.yaml --exclude-dir=docs .; then
             echo "Potential secret found"; exit 1
