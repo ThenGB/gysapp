@@ -374,7 +374,7 @@ function ReaderPane({
 export function BiblePage() {
   const params = useParams();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const focusVerseValue = Number(searchParams.get('v'));
   const focusVerse =
     Number.isInteger(focusVerseValue) && focusVerseValue > 0 ? focusVerseValue : undefined;
@@ -387,7 +387,8 @@ export function BiblePage() {
   const bookId = Number(params.book ?? reading.last.bookId ?? 1);
   const chapterId = Number(params.chapter ?? reading.last.chapter ?? 1);
   const [version, setVersion] = useState<BiblePackCode>(reading.last.version ?? 'b_tb');
-  const [libraryOpen, setLibraryOpen] = useState(false);
+  const libraryRequested = searchParams.get('library') === '1';
+  const [libraryOpen, setLibraryOpen] = useState(libraryRequested);
   const primaryPort = getBiblePortForVersion(version);
   const primaryCatalog = useQuery({
     queryKey: ['bible-catalog', version],
@@ -416,6 +417,18 @@ export function BiblePage() {
   }, [version, bookId, chapterId, book]);
 
   useEffect(() => () => bibleTts.stop(), []);
+
+  useEffect(() => {
+    if (libraryRequested) setLibraryOpen(true);
+  }, [libraryRequested]);
+
+  const closeLibrary = () => {
+    setLibraryOpen(false);
+    if (!libraryRequested) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('library');
+    setSearchParams(next, { replace: true });
+  };
 
   const changeBook = (nextBookId: number) => navigate(`/bible/${nextBookId}/1`);
   const changeChapter = (nextChapter: number) => navigate(`/bible/${bookId}/${nextChapter}`);
@@ -665,7 +678,7 @@ export function BiblePage() {
         </div>
       )}
 
-      {libraryOpen && <BibleLibraryDialog onClose={() => setLibraryOpen(false)} />}
+      {libraryOpen && <BibleLibraryDialog onClose={closeLibrary} />}
     </div>
   );
 }

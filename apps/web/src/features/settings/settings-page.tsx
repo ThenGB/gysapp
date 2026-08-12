@@ -1,5 +1,7 @@
 import { useCallback, useState, useSyncExternalStore } from 'react';
+import { Link } from 'react-router-dom';
 import {
+  Books,
   Check,
   DownloadSimple,
   Eye,
@@ -393,6 +395,9 @@ export function SettingsPage() {
         <h2 className="settings-heading">Data</h2>
         <OfflineMediaSettings />
         <div className="settings-data-actions">
+          <Link className="btn-text" to="/bible?library=1">
+            <Books size={20} aria-hidden="true" /> Kelola versi Alkitab
+          </Link>
           <button type="button" className="btn-primary" onClick={() => setDialog('export')}>
             <DownloadSimple size={20} /> Ekspor backup
           </button>

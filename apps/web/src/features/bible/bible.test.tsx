@@ -89,6 +89,19 @@ describe('BiblePage (SQLite b_tb.db)', () => {
     );
     expect(await screen.findByRole('heading', { name: 'Yohanes 3' })).toBeInTheDocument();
   });
+
+  it('opens the Bible library from the Settings deep-link', async () => {
+    renderBible(
+      '/bible?library=1',
+      <Routes>
+        <Route path="/bible" element={<BiblePage />} />
+        <Route path="/bible/:book/:chapter" element={<BiblePage />} />
+      </Routes>,
+    );
+
+    expect(await screen.findByRole('dialog', { name: 'Kelola Alkitab' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Versi Alkitab' })).toBeInTheDocument();
+  });
 });
 
 describe('BibleSearchPage (search table dari DB)', () => {
