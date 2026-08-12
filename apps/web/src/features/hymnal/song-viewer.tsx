@@ -17,10 +17,12 @@ import {
   useHymnalPlayerState,
 } from './hymnal-player-store';
 import { midiEngine } from './midi-engine';
+import { LatestRequestGuard } from '../../lib/latest-request';
 import './song-viewer.css';
 
 type PdfJs = typeof import('pdfjs-dist');
 type PdfDocumentProxy = import('pdfjs-dist').PDFDocumentProxy;
+type PdfDocumentLoadingTask = import('pdfjs-dist').PDFDocumentLoadingTask;
 type Mode = 'pdf' | 'text';
 type PageMode = 1 | 2;
 type FitMode = 'page' | 'width';
@@ -178,6 +180,7 @@ export function SongViewer() {
   const canvasRefs = useRef<Array<HTMLCanvasElement | null>>([]);
   const pdfContainerRef = useRef<HTMLDivElement | null>(null);
   const pdfDocRef = useRef<{ url: string; doc: PdfDocumentProxy } | null>(null);
+  const pdfLoadGuardRef = useRef(new LatestRequestGuard());
   const snapshotRef = useRef<SongViewState>(initialSongState);
 
   snapshotRef.current = {
@@ -274,9 +277,15 @@ export function SongViewer() {
 
   // Load PDF + ekstraksi teks/chord hanya ketika lagu berubah. Resize/zoom tidak
   // mengulang pekerjaan mahal ini; render canvas ditangani effect terpisah.
+  // LatestRequestGuard mencegah PDF lama yang selesai belakangan mengambil alih
+  // viewer setelah user sudah berpindah lagu.
   useEffect(() => {
     if (!resolved) return;
     let cancelled = false;
+    let loadingTask: PdfDocumentLoadingTask | null = null;
+    let committedLoadingTask = false;
+    const loadToken = pdfLoadGuardRef.current.begin();
+    const isCurrent = () => !cancelled && pdfLoadGuardRef.current.isCurrent(loadToken);
 
     const load = async () => {
       setPdfError(null);
@@ -285,29 +294,43 @@ export function SongViewer() {
       try {
         const pdfjs: PdfJs = await import('pdfjs-dist');
         const moduleWorker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+        if (!isCurrent()) return;
         pdfjs.GlobalWorkerOptions.workerSrc = moduleWorker.default;
 
         let doc: PdfDocumentProxy;
         if (pdfDocRef.current?.url === resolved.pdfUrl) {
           doc = pdfDocRef.current.doc;
         } else {
+          loadingTask = pdfjs.getDocument({ url: resolved.pdfUrl });
+          const loadedDoc = await loadingTask.promise;
+          if (!isCurrent()) {
+            void loadedDoc.destroy().catch(() => undefined);
+            return;
+          }
+
           const previous = pdfDocRef.current;
-          doc = await pdfjs.getDocument({ url: resolved.pdfUrl }).promise;
-          pdfDocRef.current = { url: resolved.pdfUrl, doc };
-          if (previous) void previous.doc.cleanup().catch(() => undefined);
+          pdfDocRef.current = { url: resolved.pdfUrl, doc: loadedDoc };
+          committedLoadingTask = true;
+          doc = loadedDoc;
+          if (previous && previous.doc !== loadedDoc) {
+            void previous.doc.cleanup().catch(() => undefined);
+          }
         }
-        if (cancelled) return;
+        if (!isCurrent()) return;
 
         setPageCount(doc.numPages);
         setPdfRevision((value) => value + 1);
 
         const chordDoc = await loadChordDoc(book, song);
+        if (!isCurrent()) return;
         const nextLines: ChordedLine[] = [];
         for (let pageNo = 1; pageNo <= doc.numPages; pageNo += 1) {
-          if (cancelled) return;
+          if (!isCurrent()) return;
           const page = await doc.getPage(pageNo);
+          if (!isCurrent()) return;
           const logicalViewport = page.getViewport({ scale: 1 });
           const content = await page.getTextContent();
+          if (!isCurrent()) return;
           const items: Array<{ str: string; transform: number[]; width: number }> = [];
           for (const item of content.items) {
             if ('str' in item && 'transform' in item) {
@@ -335,15 +358,21 @@ export function SongViewer() {
           );
         }
 
-        if (!cancelled) setChordedLines(nextLines);
+        if (isCurrent()) setChordedLines(nextLines);
       } catch (err) {
-        if (!cancelled) setPdfError(err instanceof Error ? err.message : String(err));
+        if (isCurrent()) setPdfError(err instanceof Error ? err.message : String(err));
       }
     };
 
     void load();
     return () => {
       cancelled = true;
+      if (pdfLoadGuardRef.current.isCurrent(loadToken)) {
+        pdfLoadGuardRef.current.invalidate();
+      }
+      if (loadingTask && !committedLoadingTask) {
+        void loadingTask.destroy().catch(() => undefined);
+      }
     };
   }, [resolved, book, song]);
 
@@ -437,7 +466,7 @@ export function SongViewer() {
         }
       }
     };
-  }, [mode, pageMode, fitMode, zoom, viewerWidth, viewportHeight, pdfRevision]);
+  }, [mode, pageMode, fitMode, zoom, viewerWidth, viewportHeight, pdfRevision, resolved?.pdfUrl]);
 
   const changeAccidentalMode = (next: AccidentalMode) => {
     setAccidentalMode(next);
