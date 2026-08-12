@@ -92,7 +92,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s\n' 'confirm-modules-purge=false' > "$GITHUB_WORKSPACE/.npmrc"
+          printf '%s\n' 'confirmModulesPurge=false' > "$GITHUB_WORKSPACE/.npmrc"
 
       - name: Install frontend deps
         run: pnpm install --frozen-lockfile
@@ -111,8 +111,8 @@ jobs:
           test -d "$APPLE_DIR"
           grep -R --fixed-strings 'id.sch.kanaan.egys' "$APPLE_DIR" >/dev/null
           cp "$GITHUB_WORKSPACE/.npmrc" "$APPLE_DIR/.npmrc"
-          grep -Fx 'confirm-modules-purge=false' "$APPLE_DIR/.npmrc"
-          test "$(cd "$APPLE_DIR" && pnpm config get confirm-modules-purge)" = "false"
+          grep -Fx 'confirmModulesPurge=false' "$APPLE_DIR/.npmrc"
+          test "$(cd "$APPLE_DIR" && pnpm config get confirmModulesPurge)" = "false"
 
       - name: Build iOS simulator app
         shell: bash
