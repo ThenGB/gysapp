@@ -1,24 +1,32 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import type { ChordDocument } from '@gysapp/contracts';
 import type { ChordedLine } from '@gysapp/core';
 import { buildChordedLines, extractLyricLines, extractPageNotes } from '@gysapp/core';
-import { parseChordDocument } from '@gysapp/contracts';
+import { createHttpManifestFetcher, ChordLazyCache } from '@gysapp/core';
 import { assetUrl } from '../../lib/asset-url';
+import { IndexedDbBlobStore } from '../../platform/blob-stores/indexeddb';
 import { MiniMidiPlayer } from './midi-player';
 import './song-viewer.css';
 
 type PdfJs = typeof import('pdfjs-dist');
 
-/** Data demo: KR 001. Versi final: index lagu + lazy chord cache + asset manager. */
-const DEMO_CHORD_URL = assetUrl('/pdf/chords/KR_001.chord.json');
-
 type Mode = 'pdf' | 'text';
 
-async function loadChordDoc(url: string): Promise<ReturnType<typeof parseChordDocument> | null> {
+// Chord lazy cache (ADR-0002): manifest dari gyschordweb branch main
+// (CORS raw.githubusercontent), file diunduh hanya saat lagu dibuka,
+// blob immutable content-addressed di IndexedDB.
+const chordCache = new ChordLazyCache({
+  store: new IndexedDbBlobStore('gysapp-chords'),
+  fetchManifest: createHttpManifestFetcher({
+    url: 'https://raw.githubusercontent.com/gyspnk/gyschordweb/main/docs/assets-chord-manifest.json',
+  }),
+});
+
+async function loadChordDoc(book: string, song: string): Promise<ChordDocument | null> {
   try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    return parseChordDocument(await res.json());
+    const result = await chordCache.ensureChordForSong(book, song);
+    return result.document;
   } catch {
     return null;
   }
@@ -29,7 +37,7 @@ async function loadingTaskDestroy(_doc: unknown): Promise<void> {
 }
 
 export function SongViewer() {
-  const { song = '001' } = useParams();
+  const { book = 'KR', song = '001' } = useParams();
   const [mode, setMode] = useState<Mode>('pdf');
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [chordedLines, setChordedLines] = useState<ChordedLine[]>([]);
@@ -70,7 +78,7 @@ export function SongViewer() {
           height: viewport.height / 1.4,
         });
         const lyrics = extractLyricLines(items, viewport.width / 1.4);
-        const chordDoc = await loadChordDoc(DEMO_CHORD_URL);
+        const chordDoc = await loadChordDoc(book, song);
         const pageEntries = chordDoc?.pages['1'] ?? [];
         if (!cancelled) {
           setChordedLines(
@@ -91,12 +99,14 @@ export function SongViewer() {
     return () => {
       cancelled = true;
     };
-  }, [song, canvasRef]);
+  }, [book, song, canvasRef]);
 
   return (
     <div className="content-shell song-page">
       <div className="song-toolbar">
-        <h1>KR 001 â€” Pujilah Allah Yang Maha Esa</h1>
+        <h1>
+          {book} {song} — Pujilah Allah Yang Maha Esa
+        </h1>
         <div className="song-mode-tabs" role="group" aria-label="Mode tampilan">
           <button
             type="button"

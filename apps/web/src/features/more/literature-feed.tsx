@@ -3,6 +3,7 @@ import { ArrowLeft, CaretRight } from '@phosphor-icons/react';
 import { useQuery } from '@tanstack/react-query';
 import { parseTrueVoiceFeed, type TrueVoiceFeed } from '@gysapp/contracts';
 import { apiFetch } from '../../api/client';
+import { contentSource, fetchStaticContent } from '../../api/static-content';
 import '../more/more.css';
 
 const KINDS = ['kesaksian', 'warta', 'renungan', 'panduan'] as const;
@@ -10,9 +11,14 @@ export type LiteratureKind = (typeof KINDS)[number];
 
 export function useLiterature(kind: LiteratureKind, enabled: boolean) {
   return useQuery<TrueVoiceFeed>({
-    queryKey: ['literature', kind],
-    queryFn: async ({ signal }) =>
-      parseTrueVoiceFeed(await apiFetch<TrueVoiceFeed>(`/content/${kind}`, { signal })),
+    queryKey: ['literature', kind, contentSource()],
+    queryFn: async ({ signal }) => {
+      const raw =
+        contentSource() === 'bff'
+          ? await apiFetch<TrueVoiceFeed>(`/content/${kind}`, { signal })
+          : await fetchStaticContent<TrueVoiceFeed>(kind);
+      return parseTrueVoiceFeed(raw);
+    },
     staleTime: 10 * 60 * 1000,
     retry: 1,
     enabled,

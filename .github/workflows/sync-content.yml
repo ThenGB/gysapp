@@ -1,0 +1,59 @@
+name: sync-content
+
+on:
+  schedule:
+    # Tiap 6 jam: Sauh (harian), Suara Sejati, Kesaksian, Warta, Renungan.
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-content-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Sync content (tjc.org -> public/data/content)
+        run: pnpm exec tsx scripts/assets/sync-content.mts
+
+      - name: Commit and push if changed
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/web/public/data/content
+          if git diff --cached --quiet; then
+            echo "Content sudah up to date; tidak ada perubahan."
+            exit 0
+          fi
+          git commit -m "chore(content): refresh snapshot tjc.org [auto]"
+          REMOTE_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          for attempt in 1 2 3 4; do
+            if git push "$REMOTE_URL" "HEAD:${BRANCH}"; then
+              exit 0
+            fi
+            git fetch "$REMOTE_URL" "$BRANCH"
+            git rebase "FETCH_HEAD"
+          done
+          echo "Gagal push setelah 4 percobaan."
+          exit 1

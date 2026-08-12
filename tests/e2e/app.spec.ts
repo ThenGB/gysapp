@@ -3,10 +3,8 @@ import { expect, test } from '@playwright/test';
 test('home renders greeting and Sauh section', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Shalom' })).toBeVisible();
-  // BFF lokal tidak ada di CI dev server: state error + tombol Coba lagi.
-  await expect(page.getByRole('button', { name: 'Coba lagi' }).first()).toBeVisible({
-    timeout: 15_000,
-  });
+  // Sauh dimuat dari snapshot statis (data/content/sauh.json).
+  await expect(page.getByText('SAUH BAGI JIWA')).toBeVisible({ timeout: 15_000 });
 });
 
 test('navigation shell marks active tab and routes to bible reader', async ({ page }) => {

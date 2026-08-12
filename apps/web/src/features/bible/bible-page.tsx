@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CaretLeft, CaretRight } from '@phosphor-icons/react';
 import { useQuery } from '@tanstack/react-query';
 import { stripBibleTags } from '@gysapp/core';
-import { fixtureBiblePort } from '../../data/bible/fixture-bible-port';
+import { biblePort } from '../../data/bible/json-bible-port';
 import './bible.css';
 
 export function BiblePage() {
@@ -13,20 +13,20 @@ export function BiblePage() {
   const chapterId = Number(params.chapter ?? '1');
 
   const catalogQuery = useQuery({
-    queryKey: ['bible-catalog', fixtureBiblePort.code],
-    queryFn: () => fixtureBiblePort.loadCatalog(),
+    queryKey: ['bible-catalog', biblePort.code],
+    queryFn: () => biblePort.loadCatalog(),
     staleTime: Infinity,
   });
 
   const chapterQuery = useQuery({
-    queryKey: ['bible-chapter', fixtureBiblePort.code, bookId, chapterId],
-    queryFn: () => fixtureBiblePort.loadChapter(bookId, chapterId),
+    queryKey: ['bible-chapter', biblePort.code, bookId, chapterId],
+    queryFn: () => biblePort.loadChapter(bookId, chapterId),
     staleTime: Infinity,
   });
 
   const pericopeQuery = useQuery({
-    queryKey: ['bible-pericopes', fixtureBiblePort.code, bookId, chapterId],
-    queryFn: () => fixtureBiblePort.loadPericopes(bookId, chapterId),
+    queryKey: ['bible-pericopes', biblePort.code, bookId, chapterId],
+    queryFn: () => biblePort.loadPericopes(bookId, chapterId),
     staleTime: Infinity,
   });
 
@@ -102,7 +102,7 @@ export function BiblePage() {
           </p>
         ))}
         {chapter === null && chapterQuery.isSuccess && (
-          <p className="bible-empty">Pasal ini belum tersedia pada paket demo (4 pasal).</p>
+          <p className="bible-empty">Pasal ini tidak ditemukan.</p>
         )}
       </article>
     </div>

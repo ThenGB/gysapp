@@ -2,9 +2,10 @@ import { useDeferredValue, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, MagnifyingGlass } from '@phosphor-icons/react';
 import { useQuery } from '@tanstack/react-query';
-import type { BibleVerse } from '@gysapp/contracts';
-import { matchesTestamentFilter, searchChapter } from '@gysapp/core';
-import { FIXTURE_CHAPTERS, fixtureBiblePort } from '../../data/bible/fixture-bible-port';
+import type { BibleIndexEntry } from '@gysapp/core';
+import { decodeVerseId, searchBibleIndex } from '@gysapp/core';
+import { assetUrl } from '../../lib/asset-url';
+import { biblePort } from '../../data/bible/json-bible-port';
 import './bible.css';
 
 const TESTAMENTS = [
@@ -13,47 +14,50 @@ const TESTAMENTS = [
   { value: 'nt', label: 'Perjanjian Baru' },
 ] as const;
 
+function loadSearchIndex(): Promise<BibleIndexEntry[]> {
+  return fetch(assetUrl('/data/bible/search-index.json')).then(async (res) => {
+    if (!res.ok) throw new Error(`index fetch failed: ${res.status}`);
+    return (await res.json()) as BibleIndexEntry[];
+  });
+}
+
 export function BibleSearchPage() {
   const [term, setTerm] = useState('');
   const [testament, setTestament] = useState<'all' | 'ot' | 'nt'>('all');
   const deferredTerm = useDeferredValue(term);
 
   const catalogQuery = useQuery({
-    queryKey: ['bible-catalog', fixtureBiblePort.code],
-    queryFn: () => fixtureBiblePort.loadCatalog(),
+    queryKey: ['bible-catalog', biblePort.code],
+    queryFn: () => biblePort.loadCatalog(),
     staleTime: Infinity,
   });
 
-  // Paket demo: scan pasal yang tersedia. Versi final memakai index di worker.
+  // Index 31.172 ayat di-fetch lazily hanya saat halaman pencarian dibuka.
+  const indexQuery = useQuery({
+    queryKey: ['bible-search-index'],
+    queryFn: loadSearchIndex,
+    staleTime: Infinity,
+  });
+
   const results = useMemo(() => {
     const query = deferredTerm.trim();
-    if (!query || !catalogQuery.data) return [];
-    const out: Array<{
-      bookId: number;
-      chapterId: number;
-      verseId: number;
-      title: string;
-      text: string;
-      ranges: Array<{ start: number; end: number }>;
-    }> = [];
-    for (const entry of catalogQuery.data.chapterCounts) {
-      if (!matchesTestamentFilter(entry.b, testament)) continue;
-      const chapter = FIXTURE_CHAPTERS[`${entry.b}:${entry.c}`];
-      if (!chapter) continue;
-      const book = catalogQuery.data.books.find((b) => b.id === entry.b);
-      for (const hit of searchChapter(chapter as BibleVerse[], { term: query, testament: 'all' })) {
-        out.push({
-          bookId: entry.b,
-          chapterId: entry.c,
-          verseId: hit.verse.v,
-          title: `${book?.bl} ${entry.c}:${hit.verse.v}`,
-          text: hit.text,
-          ranges: hit.ranges,
-        });
-      }
-    }
-    return out.slice(0, 100);
-  }, [deferredTerm, testament, catalogQuery.data]);
+    if (!query || !indexQuery.data) return [];
+    const hits = searchBibleIndex(indexQuery.data, { term: query, testament });
+    return hits.slice(0, 100).map((hit) => {
+      const { bookId, chapterId, verseId } = decodeVerseId(hit.entry.id);
+      const book = catalogQuery.data?.books.find((b) => b.id === bookId);
+      return {
+        bookId,
+        chapterId,
+        verseId,
+        title: `${book?.bl ?? bookId} ${chapterId}:${verseId}`,
+        text: hit.entry.t,
+        ranges: hit.ranges,
+      };
+    });
+  }, [deferredTerm, testament, indexQuery.data, catalogQuery.data]);
+
+  const searching = deferredTerm.trim() !== '' && indexQuery.isLoading;
 
   return (
     <div className="content-shell bible-page">
@@ -90,7 +94,15 @@ export function BibleSearchPage() {
         ))}
       </div>
 
-      <p className="bible-search-hint">Pencarian berjalan pada paket demo (4 pasal).</p>
+      <p className="bible-search-hint">Pencarian di seluruh 1.189 pasal Alkitab Terjemahan Baru.</p>
+
+      {searching && <p aria-busy="true">Menyiapkan index…</p>}
+
+      {indexQuery.isError && (
+        <div className="feed-error" role="alert">
+          <p>Index Alkitab gagal dimuat.</p>
+        </div>
+      )}
 
       {results.length > 0 ? (
         <ul className="bible-results">
@@ -106,26 +118,18 @@ export function BibleSearchPage() {
           ))}
         </ul>
       ) : (
-        deferredTerm.trim() !== '' && (
-          <p className="bible-empty">Tidak ditemukan ayat yang cocok.</p>
-        )
+        !searching &&
+        deferredTerm.trim() !== '' && <p className="bible-empty">Tidak ditemukan ayat yang cocok.</p>
       )}
     </div>
   );
 }
 
-function HighlightedText({
-  text,
-  ranges,
-}: {
-  text: string;
-  ranges: Array<{ start: number; end: number }>;
-}) {
+function HighlightedText({ text, ranges }: { text: string; ranges: Array<{ start: number; end: number }> }) {
   const parts: Array<{ text: string; highlight: boolean }> = [];
   let cursor = 0;
   for (const range of ranges) {
-    if (range.start > cursor)
-      parts.push({ text: text.slice(cursor, range.start), highlight: false });
+    if (range.start > cursor) parts.push({ text: text.slice(cursor, range.start), highlight: false });
     parts.push({ text: text.slice(range.start, range.end), highlight: true });
     cursor = range.end;
   }
