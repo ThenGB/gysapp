@@ -11,6 +11,7 @@ import { midiEngine, type MidiStatus } from './midi-engine';
 import './song-viewer.css';
 
 type AccidentalMode = 'sharp' | 'flat';
+type TrackChangeHandler = () => boolean | Promise<boolean>;
 
 function formatTime(s: number): string {
   if (!Number.isFinite(s) || s < 0) return '0:00';
@@ -27,16 +28,24 @@ export function MiniMidiPlayer({
   accidentalMode = 'sharp',
   transposeStep = 0,
   compact = false,
+  previousDisabled = false,
+  nextDisabled = false,
   onAccidentalModeChange,
   onTransposeChange,
+  onPrevious,
+  onNext,
 }: {
   url: string | null;
   title: string;
   accidentalMode?: AccidentalMode;
   transposeStep?: number;
   compact?: boolean;
+  previousDisabled?: boolean;
+  nextDisabled?: boolean;
   onAccidentalModeChange?: (mode: AccidentalMode) => void;
   onTransposeChange?: (step: number) => void;
+  onPrevious?: TrackChangeHandler;
+  onNext?: TrackChangeHandler;
 }) {
   const [status, setStatus] = useState<MidiStatus>('idle');
   const [time, setTime] = useState(0);
@@ -47,6 +56,35 @@ export function MiniMidiPlayer({
   const [tempo, setTempo] = useState(120);
   const [detailsOpen, setDetailsOpen] = useState(!compact);
   const previousUrl = useRef(url);
+  const autoplayAfterTrackChange = useRef(false);
+  const transposeRef = useRef(transpose);
+  const onTransposeChangeRef = useRef(onTransposeChange);
+
+  transposeRef.current = transpose;
+  onTransposeChangeRef.current = onTransposeChange;
+
+  const loadTrack = useCallback((targetUrl: string, autoplay: boolean) => {
+    setError(null);
+    setLoadingPct(0);
+    return midiEngine
+      .loadMidi({
+        url: targetUrl,
+        autoplay,
+        transpose: transposeRef.current,
+        onProgress: setLoadingPct,
+      })
+      .then(({ duration: nextDuration }) => {
+        const nextTranspose = midiEngine.getTranspose();
+        setDuration(nextDuration);
+        setTime(0);
+        setTempo(midiEngine.getTempoBpm());
+        setTranspose(nextTranspose);
+        onTransposeChangeRef.current?.(nextTranspose);
+      })
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : String(err));
+      });
+  }, []);
 
   useEffect(() => {
     midiEngine.setStateListener(setStatus);
@@ -54,7 +92,8 @@ export function MiniMidiPlayer({
   }, []);
 
   useEffect(() => {
-    if (previousUrl.current && previousUrl.current !== url) midiEngine.stop();
+    const changed = Boolean(previousUrl.current && previousUrl.current !== url);
+    if (changed) midiEngine.stop();
     previousUrl.current = url;
     setStatus('idle');
     setTime(0);
@@ -62,8 +101,16 @@ export function MiniMidiPlayer({
     setLoadingPct(0);
     setError(null);
     setTempo(120);
+
+    if (changed && url && autoplayAfterTrackChange.current) {
+      autoplayAfterTrackChange.current = false;
+      void loadTrack(url, true);
+    }
+  }, [loadTrack, url]);
+
+  useEffect(() => {
     if (compact) setDetailsOpen(false);
-  }, [compact, url]);
+  }, [compact]);
 
   useEffect(() => {
     setTranspose(transposeStep);
@@ -89,18 +136,20 @@ export function MiniMidiPlayer({
       midiEngine.play();
       return;
     }
-    void midiEngine
-      .loadMidi({ url, autoplay: true, transpose, onProgress: setLoadingPct })
-      .then(({ duration: nextDuration }) => {
-        const nextTranspose = midiEngine.getTranspose();
-        setDuration(nextDuration);
-        setTime(0);
-        setTempo(midiEngine.getTempoBpm());
-        setTranspose(nextTranspose);
-        onTransposeChange?.(nextTranspose);
-      })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
-  }, [onTransposeChange, transpose, url]);
+    void loadTrack(url, true);
+  }, [loadTrack, url]);
+
+  const changeTrack = useCallback(async (handler: TrackChangeHandler | undefined) => {
+    if (!handler) return;
+    autoplayAfterTrackChange.current = midiEngine.getStatus() === 'playing';
+    try {
+      const changed = await handler();
+      if (!changed) autoplayAfterTrackChange.current = false;
+    } catch (err) {
+      autoplayAfterTrackChange.current = false;
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }, []);
 
   const onSeek = useCallback((value: number) => {
     midiEngine.seek(value);
@@ -239,7 +288,16 @@ export function MiniMidiPlayer({
         )}
       </div>
       <div className="midi-aux">
-        {compact ? (
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label="Lagu sebelumnya"
+          disabled={!onPrevious || previousDisabled || loading}
+          onClick={() => void changeTrack(onPrevious)}
+        >
+          <SkipBack size={20} aria-hidden="true" />
+        </button>
+        {compact && (
           <button
             type="button"
             className="icon-btn"
@@ -249,16 +307,16 @@ export function MiniMidiPlayer({
           >
             <SlidersHorizontal size={20} aria-hidden="true" />
           </button>
-        ) : (
-          <>
-            <button type="button" className="icon-btn" aria-label="Lagu sebelumnya" disabled>
-              <SkipBack size={20} aria-hidden="true" />
-            </button>
-            <button type="button" className="icon-btn" aria-label="Lagu berikutnya" disabled>
-              <SkipForward size={20} aria-hidden="true" />
-            </button>
-          </>
         )}
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label="Lagu berikutnya"
+          disabled={!onNext || nextDisabled || loading}
+          onClick={() => void changeTrack(onNext)}
+        >
+          <SkipForward size={20} aria-hidden="true" />
+        </button>
       </div>
     </div>
   );
