@@ -163,8 +163,8 @@ export function randomOtherSong(
 ): SongRef | null {
   const candidates = songs.filter((song) => songKey(song) !== currentKey);
   if (candidates.length === 0) return null;
-  const sample = Number.isFinite(random()) ? random() : 0;
-  const normalized = Math.max(0, Math.min(0.999999999, sample));
+  const sampled = random();
+  const normalized = Number.isFinite(sampled) ? Math.max(0, Math.min(0.999999999, sampled)) : 0;
   return candidates[Math.floor(normalized * candidates.length)] ?? null;
 }
 
