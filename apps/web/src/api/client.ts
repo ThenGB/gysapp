@@ -5,7 +5,6 @@ export async function apiFetch<T>(
   const base = options.baseUrl ?? import.meta.env.VITE_BFF_BASE ?? '/api';
   const res = await fetch(`${base}${path}`, {
     method: options.method ?? 'GET',
-    credentials: 'include',
     signal: options.signal,
     headers: options.body !== undefined ? { 'content-type': 'application/json' } : undefined,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
