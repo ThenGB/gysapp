@@ -23,8 +23,8 @@ export function GlobalMidiPlayerDock() {
 
   useEffect(() => {
     let cancelled = false;
+    setPlaylistPlayable([]);
     if (!activePlaylist) {
-      setPlaylistPlayable([]);
       return () => {
         cancelled = true;
       };
@@ -32,8 +32,12 @@ export function GlobalMidiPlayerDock() {
 
     void Promise.all(
       activePlaylist.songs.map(async (song) => {
-        const resolved = await hymnalCatalog.resolveSong(song.book, song.number);
-        return resolved?.midiUrl ? song : null;
+        try {
+          const resolved = await hymnalCatalog.resolveSong(song.book, song.number);
+          return resolved?.midiUrl ? song : null;
+        } catch {
+          return null;
+        }
       }),
     ).then((songs) => {
       if (!cancelled) setPlaylistPlayable(songs.filter((song): song is SongRef => song !== null));
@@ -47,23 +51,29 @@ export function GlobalMidiPlayerDock() {
   useEffect(() => {
     let cancelled = false;
     if (playlists.loopMode !== 'shuffle-all') return () => undefined;
-    void hymnalCatalog.loadPlayableSongs().then((songs) => {
-      if (!cancelled) setAllPlayable(songs);
-    });
+    void hymnalCatalog
+      .loadPlayableSongs()
+      .then((songs) => {
+        if (!cancelled) setAllPlayable(songs);
+      })
+      .catch(() => {
+        if (!cancelled) setAllPlayable([]);
+      });
     return () => {
       cancelled = true;
     };
   }, [playlists.loopMode]);
 
-  if (!player.track) return null;
+  const track = player.track;
+  if (!track) return null;
 
   const wrapPlaylist = playlists.loopMode === 'playlist';
   const orderedNavigation = playlists.loopMode === 'off' || playlists.loopMode === 'playlist';
   const previousSong = orderedNavigation
-    ? adjacentSong(playlistPlayable, player.track.key, 'previous', wrapPlaylist)
+    ? adjacentSong(playlistPlayable, track.key, 'previous', wrapPlaylist)
     : null;
   const nextSong = orderedNavigation
-    ? adjacentSong(playlistPlayable, player.track.key, 'next', wrapPlaylist)
+    ? adjacentSong(playlistPlayable, track.key, 'next', wrapPlaylist)
     : null;
 
   const switchToSong = async (song: SongRef | null): Promise<boolean> => {
@@ -86,10 +96,10 @@ export function GlobalMidiPlayerDock() {
   const movePrevious = () => switchToSong(previousSong);
   const moveNext = () => {
     if (playlists.loopMode === 'shuffle-playlist') {
-      return switchToSong(randomOtherSong(playlistPlayable, player.track.key));
+      return switchToSong(randomOtherSong(playlistPlayable, track.key));
     }
     if (playlists.loopMode === 'shuffle-all') {
-      return switchToSong(randomOtherSong(allPlayable, player.track.key));
+      return switchToSong(randomOtherSong(allPlayable, track.key));
     }
     return switchToSong(nextSong);
   };
@@ -99,10 +109,10 @@ export function GlobalMidiPlayerDock() {
   const nextDisabled = (() => {
     if (navigationLoading) return true;
     if (playlists.loopMode === 'shuffle-all') {
-      return allPlayable.filter((song) => songKey(song) !== player.track?.key).length === 0;
+      return allPlayable.filter((song) => songKey(song) !== track.key).length === 0;
     }
     if (playlists.loopMode === 'shuffle-playlist') {
-      return playlistPlayable.filter((song) => songKey(song) !== player.track?.key).length === 0;
+      return playlistPlayable.filter((song) => songKey(song) !== track.key).length === 0;
     }
     return nextSong === null;
   })();
@@ -111,8 +121,8 @@ export function GlobalMidiPlayerDock() {
     <aside className="global-midi-dock" aria-label="Pemutar pujian aktif">
       <MiniMidiPlayer
         compact
-        url={player.track.url}
-        title={player.track.title}
+        url={track.url}
+        title={track.title}
         accidentalMode={player.accidentalMode}
         transposeStep={player.transposeStep}
         previousDisabled={previousDisabled}
