@@ -40,12 +40,12 @@ jobs:
                   raise SystemExit('LatestRequestGuard import anchor not found')
               text = text.replace(guard_import, guard_import + cache_import, 1)
 
+          pdf_effect = text.index('// LatestRequestGuard mencegah PDF lama')
           controller_anchor = "    let committedLoadingTask = false;\n"
           controller_line = "    const mediaAbort = new AbortController();\n"
-          if controller_line not in text:
-              if controller_anchor not in text:
-                  raise SystemExit('PDF loading lifecycle anchor not found')
-              text = text.replace(controller_anchor, controller_anchor + controller_line, 1)
+          if controller_line not in text[pdf_effect:]:
+              controller_at = text.index(controller_anchor, pdf_effect) + len(controller_anchor)
+              text = text[:controller_at] + controller_line + text[controller_at:]
 
           old = "          loadingTask = pdfjs.getDocument({ url: resolved.pdfUrl });\n          const loadedDoc = await loadingTask.promise;"
           new = "          const pdfBytes = await offlineMediaCache.getOrFetch(resolved.pdfUrl, 'pdf', {\n            signal: mediaAbort.signal,\n          });\n          if (!isCurrent()) return;\n          loadingTask = pdfjs.getDocument({ data: new Uint8Array(pdfBytes) });\n          const loadedDoc = await loadingTask.promise;"
@@ -54,12 +54,13 @@ jobs:
           elif "offlineMediaCache.getOrFetch(resolved.pdfUrl, 'pdf'" not in text:
               raise SystemExit('PDF URL loading block not found')
 
+          pdf_effect = text.index('// LatestRequestGuard mencegah PDF lama')
+          load_call = text.index('    void load();', pdf_effect)
           cleanup_anchor = "    return () => {\n      cancelled = true;\n"
-          cleanup_new = "    return () => {\n      cancelled = true;\n      mediaAbort.abort();\n"
-          if "mediaAbort.abort();" not in text:
-              if cleanup_anchor not in text:
-                  raise SystemExit('PDF cleanup anchor not found')
-              text = text.replace(cleanup_anchor, cleanup_new, 1)
+          cleanup_at = text.index(cleanup_anchor, load_call)
+          if 'mediaAbort.abort();' not in text[cleanup_at:cleanup_at + 160]:
+              replacement = "    return () => {\n      cancelled = true;\n      mediaAbort.abort();\n"
+              text = text[:cleanup_at] + replacement + text[cleanup_at + len(cleanup_anchor):]
 
           path.write_text(text)
           PY
