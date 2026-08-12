@@ -11,7 +11,12 @@ import {
 import { createHttpManifestFetcher, ChordLazyCache } from '@gysapp/core';
 import { hymnalCatalog, type ResolvedSong } from '../../data/hymnal/hymnal-catalog';
 import { IndexedDbBlobStore } from '../../platform/blob-stores/indexeddb';
-import { MiniMidiPlayer } from './midi-player';
+import {
+  setHymnalPlayerTrack,
+  updateHymnalPlayerPrefs,
+  useHymnalPlayerState,
+} from './hymnal-player-store';
+import { midiEngine } from './midi-engine';
 import './song-viewer.css';
 
 type PdfJs = typeof import('pdfjs-dist');
@@ -152,6 +157,8 @@ export function SongViewer() {
   const { book = 'KR', song = '001' } = useParams();
   const initialPrefs = useRef(readViewerPrefs()).current;
   const initialSongState = useRef(readSongViewState(book, song, initialPrefs)).current;
+  const playerState = useHymnalPlayerState();
+  const currentTrackKey = `${book}:${song}`;
   const [mode, setMode] = useState<Mode>(initialSongState.mode);
   const [pageMode, setPageMode] = useState<PageMode>(initialSongState.pageMode);
   const [fitMode, setFitMode] = useState<FitMode>(initialSongState.fitMode);
@@ -230,6 +237,16 @@ export function SongViewer() {
   }, [accidentalMode]);
 
   useEffect(() => {
+    if (playerState.track?.key !== currentTrackKey) return;
+    if (playerState.accidentalMode !== accidentalMode) {
+      setAccidentalMode(playerState.accidentalMode);
+    }
+    if (playerState.transposeStep !== transposeStep) {
+      setTransposeStep(playerState.transposeStep);
+    }
+  }, [accidentalMode, currentTrackKey, playerState, transposeStep]);
+
+  useEffect(() => {
     let cancelled = false;
     setResolved(null);
     setMissing(false);
@@ -242,6 +259,18 @@ export function SongViewer() {
       cancelled = true;
     };
   }, [book, song]);
+
+  useEffect(() => {
+    if (!resolved?.midiUrl) return;
+    setHymnalPlayerTrack(
+      {
+        key: currentTrackKey,
+        url: resolved.midiUrl,
+        title: `${book} ${resolved.entry.number} — ${resolved.entry.title}`,
+      },
+      { accidentalMode, transposeStep },
+    );
+  }, [accidentalMode, book, currentTrackKey, resolved, transposeStep]);
 
   // Load PDF + ekstraksi teks/chord hanya ketika lagu berubah. Resize/zoom tidak
   // mengulang pekerjaan mahal ini; render canvas ditangani effect terpisah.
@@ -410,6 +439,22 @@ export function SongViewer() {
     };
   }, [mode, pageMode, fitMode, zoom, viewerWidth, viewportHeight, pdfRevision]);
 
+  const changeAccidentalMode = (next: AccidentalMode) => {
+    setAccidentalMode(next);
+    if (playerState.track?.key === currentTrackKey) {
+      updateHymnalPlayerPrefs({ accidentalMode: next });
+    }
+  };
+
+  const bumpTranspose = (delta: number) => {
+    const next = clampTranspose(transposeStep + delta);
+    setTransposeStep(next);
+    if (playerState.track?.key === currentTrackKey) {
+      updateHymnalPlayerPrefs({ transposeStep: next });
+      void Promise.resolve(midiEngine.setTranspose(next)).catch(() => undefined);
+    }
+  };
+
   if (missing) {
     return (
       <div className="content-shell song-page">
@@ -452,7 +497,7 @@ export function SongViewer() {
             type="button"
             className={`chip${accidentalMode === 'sharp' ? ' chip-active' : ''}`}
             aria-pressed={accidentalMode === 'sharp'}
-            onClick={() => setAccidentalMode('sharp')}
+            onClick={() => changeAccidentalMode('sharp')}
           >
             ♯ Sharp
           </button>
@@ -460,9 +505,29 @@ export function SongViewer() {
             type="button"
             className={`chip${accidentalMode === 'flat' ? ' chip-active' : ''}`}
             aria-pressed={accidentalMode === 'flat'}
-            onClick={() => setAccidentalMode('flat')}
+            onClick={() => changeAccidentalMode('flat')}
           >
             ♭ Mol
+          </button>
+        </div>
+
+        <div className="song-transpose-control" role="group" aria-label="Transpose pujian">
+          <button
+            type="button"
+            className="icon-btn mini"
+            aria-label="Turunkan nada pujian"
+            onClick={() => bumpTranspose(-1)}
+          >
+            −
+          </button>
+          <span>Nada {transposeStep > 0 ? `+${transposeStep}` : transposeStep}</span>
+          <button
+            type="button"
+            className="icon-btn mini"
+            aria-label="Naikkan nada pujian"
+            onClick={() => bumpTranspose(1)}
+          >
+            +
           </button>
         </div>
 
@@ -580,15 +645,6 @@ export function SongViewer() {
         ) : (
           <LyricsVerses verses={resolved?.entry.verses ?? []} />
         ))}
-
-      <MiniMidiPlayer
-        url={resolved?.midiUrl ?? null}
-        title={resolved ? `${book} ${resolved.entry.number} — ${resolved.entry.title}` : 'Pujian'}
-        accidentalMode={accidentalMode}
-        transposeStep={transposeStep}
-        onAccidentalModeChange={setAccidentalMode}
-        onTransposeChange={setTransposeStep}
-      />
     </div>
   );
 }
