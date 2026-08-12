@@ -129,6 +129,7 @@ export function GlobalMidiPlayerDock() {
         nextDisabled={nextDisabled}
         onPrevious={movePrevious}
         onNext={moveNext}
+        onEnded={nextDisabled ? undefined : moveNext}
         onAccidentalModeChange={(accidentalMode) => updateHymnalPlayerPrefs({ accidentalMode })}
         onTransposeChange={(transposeStep) => updateHymnalPlayerPrefs({ transposeStep })}
       />
