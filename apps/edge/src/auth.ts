@@ -176,12 +176,14 @@ export function createAuthApp(opts: {
     );
     setCookie(c, SESSION_COOKIE, token, {
       httpOnly: true,
-      sameSite: 'Lax',
+      sameSite: secureCookie ? 'None' : 'Lax',
       secure: secureCookie,
       path: '/',
       maxAge: SESSION_TTL_S,
     });
-    return c.redirect(redirectTarget ?? `${allowedOrigins[0] ?? 'http://localhost:5173'}/account`);
+    return c.redirect(
+      redirectTarget ?? `${allowedOrigins[0] ?? 'http://localhost:5173'}/account`,
+    );
   });
 
   app.get('/me', async (c) => {
