@@ -4,6 +4,7 @@ export * from './bible/verse-id';
 export * from './bible/chapter-store';
 export * from './bible/search';
 export * from './bible/search-index';
+export * from './bible/asset-manifest';
 export * from './faith/search';
 export * from './faith/pdf';
 export * from './pdf/types';
