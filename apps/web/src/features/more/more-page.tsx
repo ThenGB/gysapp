@@ -8,7 +8,6 @@ import {
   Gear,
   PaperPlaneTilt,
   PencilLine,
-  UserCircle,
   Broadcast,
   Headphones,
   InstagramLogo,
@@ -16,6 +15,7 @@ import {
   YoutubeLogo,
   SpotifyLogo,
   GlobeHemisphereWest,
+  SignIn,
 } from '@phosphor-icons/react';
 import './more.css';
 
@@ -27,6 +27,7 @@ const LITERATURE = [
 ];
 
 const EXTERNAL = [
+  { href: 'https://e.gys.or.id/login', label: 'e-GYS / Area Anggota', icon: SignIn },
   { href: 'https://Bible.tjc.org', label: 'eRhema', icon: GlobeHemisphereWest },
   { href: 'https://pelitakecil.com/', label: 'Pelita Kecil', icon: BookOpenText },
   {
@@ -130,12 +131,6 @@ export function MorePage() {
             <Link to="/settings" className="more-card">
               <Gear size={26} aria-hidden="true" />
               <span>Pengaturan</span>
-            </Link>
-          </li>
-          <li>
-            <Link to="/account" className="more-card">
-              <UserCircle size={26} aria-hidden="true" />
-              <span>Akun</span>
             </Link>
           </li>
           <li>
