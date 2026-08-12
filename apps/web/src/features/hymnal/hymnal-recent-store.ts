@@ -9,12 +9,13 @@ export interface HymnalRecentEntry {
 
 const STORAGE_KEY = 'gysapp.hymnal.recent.v1';
 const MAX_RECENT = 12;
+const INVALID_SNAPSHOT_RAW = '\u0000';
 const listeners = new Set<() => void>();
-let snapshotRaw = '';
+let snapshotRaw = INVALID_SNAPSHOT_RAW;
 let snapshot: HymnalRecentEntry[] = [];
 
 function emit(): void {
-  snapshotRaw = '';
+  snapshotRaw = INVALID_SNAPSHOT_RAW;
   for (const listener of listeners) listener();
 }
 
