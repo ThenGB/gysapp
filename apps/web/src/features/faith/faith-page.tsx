@@ -1,12 +1,6 @@
 import { useDeferredValue, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  BookOpenText,
-  Check,
-  CopySimple,
-  ShareNetwork,
-  X,
-} from '@phosphor-icons/react';
+import { BookOpenText, Check, CopySimple, ShareNetwork, X } from '@phosphor-icons/react';
 import { parseFaithData, type FaithLanguage } from '@gysapp/contracts';
 import { searchFaith } from '@gysapp/core';
 import faithRaw from '../../data/faith.json';
@@ -62,8 +56,11 @@ export function FaithPage() {
     () => language?.content.filter((point) => selected.has(point.number)) ?? [],
     [language, selected],
   );
-  const selectionText = selectedPoints.map((point) => `${point.number}. ${point.text}`).join('\n\n');
-  const allVisibleSelected = points.length > 0 && points.every((point) => selected.has(point.number));
+  const selectionText = selectedPoints
+    .map((point) => `${point.number}. ${point.text}`)
+    .join('\n\n');
+  const allVisibleSelected =
+    points.length > 0 && points.every((point) => selected.has(point.number));
 
   const togglePoint = (number: string) => {
     setSelected((current) => {
@@ -146,7 +143,12 @@ export function FaithPage() {
       </div>
 
       <div className="faith-selection-toolbar" aria-label="Pilihan pokok iman">
-        <button type="button" className="btn-text" onClick={toggleVisible} disabled={points.length === 0}>
+        <button
+          type="button"
+          className="btn-text"
+          onClick={toggleVisible}
+          disabled={points.length === 0}
+        >
           {allVisibleSelected ? 'Batal pilih hasil' : 'Pilih semua hasil'}
         </button>
         {selectedPoints.length > 0 && (
