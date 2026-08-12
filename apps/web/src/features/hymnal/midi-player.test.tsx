@@ -108,4 +108,57 @@ describe('MiniMidiPlayer', () => {
     fireEvent.click(group.querySelectorAll('button')[1] as HTMLButtonElement);
     expect(onAccidentalModeChange).toHaveBeenCalledWith('flat');
   });
+
+  it('exposes previous and next controls when handlers are available', async () => {
+    const onPrevious = vi.fn(() => true);
+    const onNext = vi.fn(() => true);
+    render(
+      <MiniMidiPlayer
+        compact
+        url="/x.mid"
+        title="X"
+        onPrevious={onPrevious}
+        onNext={onNext}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lagu sebelumnya' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Lagu berikutnya' }));
+    await act(async () => undefined);
+    expect(onPrevious).toHaveBeenCalledTimes(1);
+    expect(onNext).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps skip controls disabled at playlist boundaries', () => {
+    render(
+      <MiniMidiPlayer
+        compact
+        url="/x.mid"
+        title="X"
+        previousDisabled
+        nextDisabled
+        onPrevious={() => true}
+        onNext={() => true}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Lagu sebelumnya' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Lagu berikutnya' })).toBeDisabled();
+  });
+
+  it('continues playback automatically when skipping while playing', async () => {
+    mockEngine.getStatus.mockReturnValue('playing');
+    const onNext = vi.fn(() => true);
+    const { rerender } = render(
+      <MiniMidiPlayer compact url="/a.mid" title="A" onNext={onNext} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lagu berikutnya' }));
+    await act(async () => undefined);
+    rerender(<MiniMidiPlayer compact url="/b.mid" title="B" onNext={onNext} />);
+
+    expect(mockEngine.stop).toHaveBeenCalled();
+    expect(mockEngine.loadMidi).toHaveBeenCalledWith(
+      expect.objectContaining({ url: '/b.mid', autoplay: true }),
+    );
+  });
 });
