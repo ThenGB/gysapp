@@ -9,6 +9,7 @@ import {
   moveSong,
   parsePlaylistState,
   removeSongFromPlaylist,
+  renamePlaylist,
   setActivePlaylist,
   type PlaylistState,
   type SongRef,
@@ -18,12 +19,23 @@ const songA: SongRef = { book: 'KR', number: '001', title: 'Pujilah Allah' };
 const songB: SongRef = { book: 'KR', number: '002', title: 'Pujilah Yang Mahakudus' };
 
 describe('playlist core', () => {
-  it('creates playlists with unique ids and trims names', () => {
+  it('creates playlists with unique ids, trims names, and deduplicates names', () => {
     const state = createPlaylist(emptyPlaylistState(), '  Ibadah Pagi ');
     expect(state.playlists).toHaveLength(1);
     expect(state.playlists[0]?.name).toBe('Ibadah Pagi');
-    const state2 = createPlaylist(state, '');
-    expect(state2.playlists).toHaveLength(1);
+    expect(createPlaylist(state, '').playlists).toHaveLength(1);
+    expect(createPlaylist(state, 'ibadah pagi').playlists).toHaveLength(1);
+  });
+
+  it('renames without allowing a duplicate name', () => {
+    let state = createPlaylist(emptyPlaylistState(), 'Pagi');
+    state = createPlaylist(state, 'Malam');
+    const first = state.playlists[0]!.id;
+    const second = state.playlists[1]!.id;
+    state = renamePlaylist(state, first, 'Pagi Baru');
+    expect(state.playlists[0]?.name).toBe('Pagi Baru');
+    state = renamePlaylist(state, second, 'pagi baru');
+    expect(state.playlists[1]?.name).toBe('Malam');
   });
 
   it('adds songs without duplicates', () => {
