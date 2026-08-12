@@ -8,6 +8,7 @@ import {
 } from '@gysapp/core';
 import { assetUrl } from '../../lib/asset-url';
 import { LatestRequestGuard } from '../../lib/latest-request';
+import { offlineMediaCache } from '../../platform/offline-media-cache';
 
 export type MidiStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'ended';
 
@@ -241,9 +242,8 @@ export class MidiEngine {
     if (this.sfLoaded) return Promise.resolve();
     if (this.sfLoading) return this.sfLoading;
     this.sfLoading = (async () => {
-      const res = await fetch(this.soundfontUrl);
-      if (!res.ok) throw new Error(`soundfont fetch failed: ${res.status}`);
-      const buffer = await res.arrayBuffer();
+      const bytes = await offlineMediaCache.getOrFetch(this.soundfontUrl, 'soundfont');
+      const buffer = new Uint8Array(bytes).buffer;
       await this.request('loadSoundFont', { url: this.soundfontUrl, buffer }, 60_000, [buffer]);
     })().catch((err) => {
       this.sfLoading = null;
@@ -287,10 +287,7 @@ export class MidiEngine {
       if (!entry) {
         this.setStatus('loading');
         reportProgress(5);
-        const raw = await fetch(options.url).then(async (r) => {
-          if (!r.ok) throw new Error(`midi fetch failed: ${r.status}`);
-          return new Uint8Array(await r.arrayBuffer());
-        });
+        const raw = await offlineMediaCache.getOrFetch(options.url, 'midi');
         if (!isCurrent()) return inactive();
         reportProgress(15);
 
