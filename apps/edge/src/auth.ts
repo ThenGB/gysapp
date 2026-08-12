@@ -181,9 +181,7 @@ export function createAuthApp(opts: {
       path: '/',
       maxAge: SESSION_TTL_S,
     });
-    return c.redirect(
-      redirectTarget ?? `${allowedOrigins[0] ?? 'http://localhost:5173'}/account`,
-    );
+    return c.redirect(redirectTarget ?? `${allowedOrigins[0] ?? 'http://localhost:5173'}/account`);
   });
 
   app.get('/me', async (c) => {
