@@ -88,12 +88,11 @@ jobs:
           pod --version
           xcodebuild -version
 
-      - name: Configure pnpm for non-interactive Xcode build phases
+      - name: Configure pnpm for non-interactive CI
         shell: bash
         run: |
           set -euo pipefail
           printf '%s\n' 'confirm-modules-purge=false' > "$GITHUB_WORKSPACE/.npmrc"
-          grep -Fx 'confirm-modules-purge=false' "$GITHUB_WORKSPACE/.npmrc"
 
       - name: Install frontend deps
         run: pnpm install --frozen-lockfile
@@ -104,12 +103,16 @@ jobs:
       - name: Initialize iOS project
         run: pnpm --filter @gysapp/native tauri ios init --ci --skip-targets-install
 
-      - name: Verify iOS identity
+      - name: Verify iOS identity and Xcode pnpm config
         shell: bash
         run: |
           set -euo pipefail
-          test -d apps/native/src-tauri/gen/apple
-          grep -R --fixed-strings 'id.sch.kanaan.egys' apps/native/src-tauri/gen/apple >/dev/null
+          APPLE_DIR="$GITHUB_WORKSPACE/apps/native/src-tauri/gen/apple"
+          test -d "$APPLE_DIR"
+          grep -R --fixed-strings 'id.sch.kanaan.egys' "$APPLE_DIR" >/dev/null
+          cp "$GITHUB_WORKSPACE/.npmrc" "$APPLE_DIR/.npmrc"
+          grep -Fx 'confirm-modules-purge=false' "$APPLE_DIR/.npmrc"
+          test "$(cd "$APPLE_DIR" && pnpm config get confirm-modules-purge)" = "false"
 
       - name: Build iOS simulator app
         shell: bash
