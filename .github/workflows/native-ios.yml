@@ -88,6 +88,13 @@ jobs:
           pod --version
           xcodebuild -version
 
+      - name: Configure pnpm for non-interactive Xcode build phases
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm config set --global confirmModulesPurge false
+          test "$(pnpm config get --global confirmModulesPurge)" = "false"
+
       - name: Install frontend deps
         run: pnpm install --frozen-lockfile
 
@@ -116,6 +123,4 @@ jobs:
           pnpm --filter @gysapp/native tauri ios build \
             --debug \
             --target "$IOS_TARGET" \
-            --ci \
-            -- \
-            CI=true
+            --ci
