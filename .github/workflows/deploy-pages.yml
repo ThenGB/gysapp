@@ -42,13 +42,10 @@ jobs:
       - name: Build web
         env:
           GYSAPP_BASE: /gysapp/
+          # Optional. Jika kosong, fitur inti tetap build/berjalan dan konten remote
+          # yang memerlukan gateway memakai fallback offline/bundled.
           VITE_BFF_BASE: ${{ vars.VITE_BFF_BASE }}
-        run: |
-          if [ -z "$VITE_BFF_BASE" ]; then
-            echo 'Repository variable VITE_BFF_BASE belum diatur (contoh: https://gysapp-bff.<subdomain>.workers.dev/api).' >&2
-            exit 1
-          fi
-          pnpm --filter @gysapp/web build
+        run: pnpm --filter @gysapp/web build
 
       - uses: actions/configure-pages@v5
 
