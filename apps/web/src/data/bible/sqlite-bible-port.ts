@@ -7,11 +7,9 @@ import type {
   BibleRefsByChapter,
   ChapterCounts,
 } from '@gysapp/contracts';
-import type { BiblePort } from '@gysapp/core';
-import type { BibleIndexEntry } from '@gysapp/core';
+import type { BibleIndexEntry, BiblePackCode, BiblePort } from '@gysapp/core';
 import { assetUrl } from '../../lib/asset-url';
-
-const DB_URL = '/data/bible/b_tb/b_tb.db';
+import { biblePackManager } from './bible-pack-manager';
 
 interface SqlitePortState {
   db: Database;
@@ -21,38 +19,49 @@ interface SqlitePortState {
 export interface SqliteBiblePortOptions {
   /** Lokasi wasm sql.js; default public/vendor (browser). */
   locateFile?: (file: string) => string;
+  code?: BiblePackCode;
 }
 
+const LABELS: Record<BiblePackCode, string> = {
+  b_tb: 'Terjemahan Baru',
+  b_kjv: 'King James Version',
+  b_cuv: 'Chinese Union Version',
+};
+
 /**
- * BiblePort berbasis SQLite (sql.js WASM): SATU file DB menggantikan
- * 2.389 file JSON. Pencarian memakai tabel `search` (31.172 ayat) yang
- * di-cache di memori setelah inisialisasi.
+ * BiblePort berbasis SQLite (sql.js WASM). Database diambil dari BiblePackManager,
+ * sehingga versi hasil download dapat langsung dipakai tanpa reload aplikasi.
  */
 export class SqliteBiblePort implements BiblePort {
-  readonly code = 'b_tb';
-  readonly label = 'Terjemahan Baru';
+  readonly code: BiblePackCode;
+  readonly label: string;
 
   private state: Promise<SqlitePortState> | null = null;
   private catalogPromise: Promise<Awaited<ReturnType<BiblePort['loadCatalog']>>> | null = null;
 
-  constructor(private readonly options: SqliteBiblePortOptions = {}) {}
+  constructor(private readonly options: SqliteBiblePortOptions = {}) {
+    this.code = options.code ?? 'b_tb';
+    this.label = LABELS[this.code];
+  }
+
+  invalidate(): void {
+    void this.state?.then(({ db }) => db.close()).catch(() => undefined);
+    this.state = null;
+    this.catalogPromise = null;
+  }
 
   private async init(): Promise<SqlitePortState> {
     if (!this.state) {
       this.state = (async () => {
         const SQL = await initSqlJs({
-          // Nama file apa pun (sql-wasm.wasm / sql-wasm-browser.wasm) diarahkan
-          // ke vendor lokal — nol CDN.
           locateFile: this.options.locateFile ?? (() => assetUrl('/vendor/sql-wasm.wasm')),
         });
-        const res = await fetch(assetUrl(DB_URL));
-        if (!res.ok) throw new Error(`bible db fetch failed: ${res.status}`);
-        const buffer = await res.arrayBuffer();
-        const db = new SQL.Database(new Uint8Array(buffer));
+        const bytes = await biblePackManager.databaseBytes(this.code);
+        const db = new SQL.Database(bytes);
         const rows = db.exec('SELECT id, t FROM search ORDER BY id');
-        const searchIndex: BibleIndexEntry[] = (rows[0]?.values ?? []).map((r) => ({
-          id: r[0] as number,
-          t: r[1] as string,
+        const searchIndex: BibleIndexEntry[] = (rows[0]?.values ?? []).map((row) => ({
+          id: row[0] as number,
+          t: row[1] as string,
         }));
         return { db, searchIndex };
       })();
@@ -64,33 +73,37 @@ export class SqliteBiblePort implements BiblePort {
     if (!this.catalogPromise) {
       this.catalogPromise = this.init().then(({ db }) => {
         const books = (db.exec('SELECT id, bs, bl, c FROM books ORDER BY id')[0]?.values ?? []).map(
-          (r): BibleBook => ({
-            id: r[0] as number,
-            bs: r[1] as string,
-            bl: r[2] as string,
-            c: r[3] as number,
+          (row): BibleBook => ({
+            id: row[0] as number,
+            bs: row[1] as string,
+            bl: row[2] as string,
+            c: row[3] as number,
           }),
         );
         const chapterCounts = (
           db.exec('SELECT b, c, v FROM chapter_counts ORDER BY b, c')[0]?.values ?? []
-        ).map((r): ChapterCounts[number] => ({
-          b: r[0] as number,
-          c: r[1] as number,
-          v: r[2] as number,
+        ).map((row): ChapterCounts[number] => ({
+          b: row[0] as number,
+          c: row[1] as number,
+          v: row[2] as number,
         }));
         const refs: BibleRefsByChapter = {};
-        for (const r of db.exec('SELECT bc, id, sv, ev FROM refs')[0]?.values ?? []) {
-          const key = String(r[0]);
-          (refs[key] ??= []).push({ id: r[1] as number, sv: r[2] as number, ev: r[3] as number });
+        for (const row of db.exec('SELECT bc, id, sv, ev FROM refs')[0]?.values ?? []) {
+          const key = String(row[0]);
+          (refs[key] ??= []).push({
+            id: row[1] as number,
+            sv: row[2] as number,
+            ev: row[3] as number,
+          });
         }
         const paralels: BibleParalelsByChapter = {};
-        for (const r of db.exec('SELECT bc, id, id1, id2, t FROM paralels')[0]?.values ?? []) {
-          const key = String(r[0]);
+        for (const row of db.exec('SELECT bc, id, id1, id2, t FROM paralels')[0]?.values ?? []) {
+          const key = String(row[0]);
           (paralels[key] ??= []).push({
-            id: r[1] as number,
-            id1: r[2] as number,
-            id2: r[3] as number,
-            t: r[4] as string,
+            id: row[1] as number,
+            id1: row[2] as number,
+            id2: row[3] as number,
+            t: row[4] as string,
           });
         }
         return { books, chapterCounts, refs, paralels };
@@ -101,49 +114,66 @@ export class SqliteBiblePort implements BiblePort {
 
   async loadChapter(bookId: number, chapterId: number): Promise<BibleChapter | null> {
     const { db } = await this.init();
-    const res = db.exec(
+    const result = db.exec(
       'SELECT id, b, c, v, t, r, c1, v1 FROM bible WHERE b = ? AND c = ? ORDER BY v',
       [bookId, chapterId],
     );
-    if (!res[0]) return null;
-    return res[0].values.map((r) => ({
-      id: r[0] as number,
-      b: r[1] as number,
-      c: r[2] as number,
-      v: r[3] as number,
-      t: r[4] as string,
-      r: (r[5] as number | null) ?? null,
-      c1: (r[6] as number | null) ?? null,
-      v1: (r[7] as number | null) ?? null,
+    if (!result[0]) return null;
+    return result[0].values.map((row) => ({
+      id: row[0] as number,
+      b: row[1] as number,
+      c: row[2] as number,
+      v: row[3] as number,
+      t: row[4] as string,
+      r: (row[5] as number | null) ?? null,
+      c1: (row[6] as number | null) ?? null,
+      v1: (row[7] as number | null) ?? null,
     })) as BibleChapter;
   }
 
   async loadPericopes(bookId: number, chapterId: number): Promise<BiblePericopes | null> {
     const { db } = await this.init();
-    const res = db.exec('SELECT id, s, b, c, v, t FROM pericopes WHERE b = ? AND c = ?', [
+    const result = db.exec('SELECT id, s, b, c, v, t FROM pericopes WHERE b = ? AND c = ?', [
       bookId,
       chapterId,
     ]);
-    if (!res[0]) return null;
-    return res[0].values.map((r) => ({
-      id: r[0] as number,
-      s: r[1] as number,
-      b: r[2] as number,
-      c: r[3] as number,
-      v: r[4] as number,
-      t: r[5] as string,
+    if (!result[0]) return null;
+    return result[0].values.map((row) => ({
+      id: row[0] as number,
+      s: row[1] as number,
+      b: row[2] as number,
+      c: row[3] as number,
+      v: row[4] as number,
+      t: row[5] as string,
     })) as BiblePericopes;
   }
 
   async getSearchIndex(): Promise<BibleIndexEntry[]> {
-    const { searchIndex } = await this.init();
-    return searchIndex;
+    return (await this.init()).searchIndex;
   }
 }
 
-// Registry port: default sql.js (browser); test dapat menyuntikkan instance
-// dengan locateFile khusus (path fs untuk node/vitest).
-let activePort: BiblePort = new SqliteBiblePort();
+const versionPorts = new Map<BiblePackCode, SqliteBiblePort>();
+
+export function getBiblePortForVersion(code: BiblePackCode): SqliteBiblePort {
+  let port = versionPorts.get(code);
+  if (!port) {
+    port = new SqliteBiblePort({ code });
+    versionPorts.set(code, port);
+  }
+  return port;
+}
+
+export function invalidateBiblePort(code?: BiblePackCode): void {
+  if (code) {
+    versionPorts.get(code)?.invalidate();
+    return;
+  }
+  for (const port of versionPorts.values()) port.invalidate();
+}
+
+// Compatibility registry for search/tests and adapters that still expect one active port.
+let activePort: BiblePort = getBiblePortForVersion('b_tb');
 
 export function setBiblePort(port: BiblePort): void {
   activePort = port;
