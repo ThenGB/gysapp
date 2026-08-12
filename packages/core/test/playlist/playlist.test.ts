@@ -1,13 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   PLAYLIST_STORAGE_KEY,
   addSongToPlaylist,
+  adjacentSong,
   createPlaylist,
   cycleLoopMode,
   deletePlaylist,
   emptyPlaylistState,
   moveSong,
   parsePlaylistState,
+  randomOtherSong,
   removeSongFromPlaylist,
   renamePlaylist,
   setActivePlaylist,
@@ -17,6 +19,7 @@ import {
 
 const songA: SongRef = { book: 'KR', number: '001', title: 'Pujilah Allah' };
 const songB: SongRef = { book: 'KR', number: '002', title: 'Pujilah Yang Mahakudus' };
+const songC: SongRef = { book: 'KR', number: '003', title: 'Haleluya' };
 
 describe('playlist core', () => {
   it('creates playlists with unique ids, trims names, and deduplicates names', () => {
@@ -56,6 +59,30 @@ describe('playlist core', () => {
     expect(state.playlists[0]?.songs[0]?.number).toBe('002');
     state = removeSongFromPlaylist(state, id, songB);
     expect(state.playlists[0]?.songs).toHaveLength(1);
+  });
+
+  it('navigates ordered songs without wrapping in off mode', () => {
+    const songs = [songA, songB, songC];
+    expect(adjacentSong(songs, 'KR:002', 'previous')?.number).toBe('001');
+    expect(adjacentSong(songs, 'KR:002', 'next')?.number).toBe('003');
+    expect(adjacentSong(songs, 'KR:001', 'previous')).toBeNull();
+    expect(adjacentSong(songs, 'KR:003', 'next')).toBeNull();
+    expect(adjacentSong(songs, 'KR:999', 'next')).toBeNull();
+  });
+
+  it('wraps ordered songs only when requested', () => {
+    const songs = [songA, songB, songC];
+    expect(adjacentSong(songs, 'KR:003', 'next', true)?.number).toBe('001');
+    expect(adjacentSong(songs, 'KR:001', 'previous', true)?.number).toBe('003');
+    expect(adjacentSong([songA], 'KR:001', 'next', true)).toBeNull();
+  });
+
+  it('chooses a different song for shuffle with deterministic injected random', () => {
+    const random = vi.fn(() => 0.99);
+    const picked = randomOtherSong([songA, songB, songC], 'KR:002', random);
+    expect(picked?.number).toBe('003');
+    expect(random).toHaveBeenCalledTimes(1);
+    expect(randomOtherSong([songA], 'KR:001', () => 0)).toBeNull();
   });
 
   it('deletes playlists and clears active reference', () => {
