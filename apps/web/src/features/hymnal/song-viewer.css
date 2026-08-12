@@ -1,6 +1,6 @@
 .song-page {
   padding-top: var(--space-6);
-  padding-bottom: 120px;
+  padding-bottom: var(--space-6);
 }
 
 .song-toolbar {
@@ -32,7 +32,8 @@
   padding: var(--space-2) 0 var(--space-4);
 }
 
-.song-zoom-control {
+.song-zoom-control,
+.song-transpose-control {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -357,7 +358,8 @@
   }
 
   .song-mode-tabs,
-  .song-controlgroup {
+  .song-controlgroup,
+  .song-transpose-control {
     width: 100%;
   }
 
@@ -366,6 +368,11 @@
     flex: 1;
     justify-content: center;
     min-height: 44px;
+  }
+
+  .song-transpose-control {
+    justify-content: center;
+    padding-block: 2px;
   }
 
   .song-pdf {
