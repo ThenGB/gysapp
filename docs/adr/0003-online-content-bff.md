@@ -1,4 +1,4 @@
-# ADR-0003 — Backendless-first + optional content gateway
+# ADR-0003 — Backendless-first, static-snapshot-first, optional content gateway
 
 Status: Accepted (revised 2026-08-12)
 
@@ -6,30 +6,36 @@ Status: Accepted (revised 2026-08-12)
 
 GYSApp adalah aplikasi web-first/local-first. Mayoritas fitur tidak membutuhkan backend milik GYSApp:
 
-- chord dan manifest dapat dibaca langsung dari `gyschordweb`/GitHub;
+- chord dan manifest dibaca langsung dari `gyschordweb`/GitHub;
 - e-GYS adalah layanan eksternal dan autentikasi dilakukan langsung di `https://e.gys.or.id`;
-- PDF, buku, media, eRhema, dan situs TJC lain dapat dibuka langsung saat sumber mendukung akses browser/native opener;
-- data lokal, playlist, notes, settings, backup, Alkitab, MIDI, dan cache tidak memerlukan server.
+- PDF, MIDI, soundfont, Alkitab, playlist, notes, settings, dan backup berada di client/local storage;
+- situs dan dokumen eksternal dibuka melalui browser/system opener;
+- konten TJC yang perlu parsing sudah dapat dinormalisasi menjadi snapshot JSON saat build/scheduled sync, sehingga browser tidak perlu mem-parsing HTML lintas-origin.
 
-Beberapa halaman TJC masih membutuhkan parsing HTML/normalisasi server-side karena CORS atau struktur markup. Kirim masukan juga membutuhkan gateway bila webhook harus dirahasiakan.
+Sumber TJC saat ini terdiri dari WordPress REST untuk Sauh dan halaman HTML untuk Suara Sejati/literatur. Halaman HTML tetap merupakan upstream yang cocok diproses di lingkungan server/CI karena struktur markup dan kebijakan CORS dapat berubah. GYSApp tidak perlu menjadikan akses live tersebut sebagai dependency cold-start.
 
 ## Keputusan
 
 - Prinsip utama: **no backend unless necessary**.
-- Cloudflare Worker bukan backend akun dan bukan dependency untuk fitur inti.
-- Worker hanya menjadi **optional content gateway** untuk:
-  - `/api/content/*` yang memang membutuhkan parsing/CORS workaround;
-  - `/api/report` bila report diteruskan ke webhook rahasia.
+- Runtime web memakai **snapshot statis sebagai default**. `sync-content.yml` memperbarui Sauh, Suara Sejati, Kesaksian, Warta, dan Renungan dari `tjc.org` setiap 6 jam dan menyimpan hasil normalisasi di `apps/web/public/data/content`.
+- Snapshot menggunakan parser yang sama dengan `apps/edge`, sehingga kontrak parsing tetap satu sumber dan teruji.
+- Cloudflare Worker bukan backend akun dan bukan dependency fitur inti.
+- Worker hanya menjadi **optional content/report gateway** untuk:
+  - near-live content bila suatu deployment sengaja mengaktifkan `VITE_CONTENT_GATEWAY_BASE`;
+  - HTML/CORS normalization ketika snapshot berkala tidak cukup;
+  - `/api/report` bila laporan diteruskan ke webhook rahasia.
 - Tidak ada `/api/auth/*`, session GYSApp, Google OAuth, Apple OAuth, atau token e-GYS di Worker.
 - Tidak ada `/api/chords/*`; chord diambil langsung dari sumber publik `gyschordweb` dan dicache content-addressed di perangkat.
 - e-GYS dibuka sebagai layanan eksternal. GYSApp tidak mengekstrak, menyalin, atau menyimpan credential/session e-GYS.
-- Bila endpoint publik TJC kemudian mendukung CORS dan format stabil, route gateway tersebut boleh dihapus dan frontend beralih ke akses langsung.
-- Semua secret yang tersisa hanya secret integrasi server-side yang benar-benar diperlukan, misalnya `REPORT_WEBHOOK_URL`.
+- Browser tidak perlu melakukan direct fetch ke halaman HTML TJC untuk journey normal. Jika di masa depan endpoint publik menyediakan API/CORS yang stabil, scheduled sync atau optional gateway boleh disederhanakan lagi.
+- Secret yang tersisa hanya secret integrasi server-side yang benar-benar dipakai, misalnya `REPORT_WEBHOOK_URL` serta credential deployment Cloudflare bila gateway diaktifkan.
 
 ## Konsekuensi
 
-- Fitur inti tetap berjalan walau Worker tidak tersedia.
+- Fitur inti dan konten snapshot tetap tersedia walau Worker tidak pernah dideploy.
+- Cold-start dan navigasi konten tidak bergantung pada CORS/availability `tjc.org` saat itu.
+- Konten normal dapat tertinggal paling lama kira-kira satu interval sinkronisasi, dengan stale local cache sebagai fallback tambahan.
 - Surface area backend, secret, cookie, dan auth berkurang drastis.
-- Chord tidak melakukan hop tambahan melalui Cloudflare.
+- Chord/PDF/MIDI tidak melakukan hop tambahan melalui Cloudflare.
 - Login e-GYS mengikuti implementasi resmi situs e-GYS dan tidak diduplikasi di GYSApp.
-- Gateway dapat diperkecil atau dihapus bertahap jika seluruh sumber online sudah aman diakses langsung.
+- Worker dapat dihapus sepenuhnya dari suatu deployment jika report webhook dan near-live content tidak diperlukan.
