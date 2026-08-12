@@ -1,6 +1,6 @@
 # GYSApp Web/Tauri — Implementation Roadmap
 
-Audit: 12 Agustus 2026
+Audit: 13 Agustus 2026
 
 ## Target produk
 
@@ -35,8 +35,10 @@ Sudah tersedia dan terverifikasi:
 - Web Audio lifecycle nyata (`AudioBufferSourceNode.start`) + rapid-load guard;
 - PDF rapid-switch guard + stale loading-task cancellation;
 - persistent offline soundfont/MIDI/PDF cache dengan bounded LRU dan safe cleanup di Settings;
-- encrypted backup, settings/i18n, 10 Pokok Iman, literature/content surfaces;
-- snapshot konten TJC default yang disinkronkan GitHub Actions setiap 6 jam;
+- shared chord-cache cleanup + Settings storage navigation tanpa menghapus Bible/bookmark/history/playlist/notes;
+- Home resume untuk ayat terakhir dan recent hymn yang persisted;
+- encrypted backup, settings/i18n, 10 Pokok Iman + multi-select/copy/share, literature/content surfaces;
+- snapshot konten TJC default termasuk 14 Panduan Alkitab yang disinkronkan GitHub Actions setiap 6 jam;
 - optional Cloudflare near-live content/report gateway;
 - Windows Tauri compile gate;
 - Android ARM64 APK compile gate yang memverifikasi `id.sch.kanaan.egys` dan versionCode 134;
@@ -62,7 +64,6 @@ Sudah lolos gate:
 
 Masih untuk P1/release polish:
 
-- unified one-stop cache/data management surface;
 - final light/dark contrast + real-device accessibility soak.
 
 ### B. Hymnal finishing — verified core
@@ -87,13 +88,12 @@ Sudah masuk dan lolos regression gate:
 - persistent soundfont + MIDI cache;
 - persistent PDF cache yang tetap abortable saat rapid song switch;
 - 192 MB media budget dengan LRU untuk MIDI/PDF dan pinned soundfont;
-- Settings menampilkan ukuran/cache count dan dapat menghapus hanya media offline tanpa menyentuh Bible/bookmark/history/notes.
+- Settings menampilkan ukuran/cache count dan dapat menghapus media + chord offline tanpa menyentuh Bible/bookmark/history/playlist/notes.
 
 Sisa Hymnal untuk P1:
 
 - optional text/chord autofit bila golden screenshot menunjukkan overflow;
-- real-device long-song/performance soak;
-- current-song/history surface di Home.
+- real-device long-song/performance soak.
 
 ### C. e-GYS boundary — final
 
@@ -147,29 +147,24 @@ Arah visual: **minimal worship utility**, bukan dashboard SaaS.
 
 ### Bible / Settings
 
-- unified one-stop asset/cache/reset surface untuk Bible, chord, dan media;
-- final light/dark contrast audit dan real-device accessibility soak;
-- Home continue-reading/current-song polish.
+- final light/dark contrast audit dan real-device accessibility soak.
 
 ### Hymnal
 
 - optional text autofit algorithm dengan minimum readable size;
-- current-song/history surface di Home;
 - real-device long-song/performance soak.
 
 ### Literature / Faith / More
 
 - perluas i18n copy;
-- audit external links dengan platform opener yang sama;
-- sempurnakan Panduan Alkitab/remote catalog;
-- selesaikan selection/share parity di Iman.
+- audit external links dengan platform opener yang sama.
 
 ## Online content architecture — audited
 
 Runtime normal **tidak membutuhkan Cloudflare Worker** untuk membaca konten TJC.
 
 - `contentSource()` memakai snapshot statis bila `VITE_CONTENT_GATEWAY_BASE` tidak diset;
-- `sync-content.yml` mengambil Sauh, Suara Sejati, Kesaksian, Warta, dan Renungan dari `tjc.org` setiap 6 jam;
+- `sync-content.yml` mengambil Sauh, Suara Sejati, Kesaksian, Warta, Renungan, dan Panduan Alkitab dari `tjc.org` setiap 6 jam;
 - parser snapshot sama dengan parser edge;
 - browser tidak perlu mem-fetch/parse HTML TJC lintas-origin untuk cold-start/journey normal;
 - Worker tetap opsional untuk near-live content dan `/api/report` bila webhook perlu dirahasiakan.
@@ -222,12 +217,11 @@ Masih manual/real-device:
 
 ## Urutan eksekusi berikutnya
 
-1. Konsolidasikan unified cache/reset surface termasuk chord cache.
-2. Poles Home continue-reading/current-song dan optional text/chord autofit.
-3. Selesaikan Faith selection/share + Panduan Alkitab/i18n parity.
-4. Jalankan real-device accessibility/MIDI soak + production Web Vitals.
-5. Jalankan Android production signed upgrade smoke setelah legacy keystore + fingerprint tersedia.
-6. Tambahkan signed iOS distribution setelah provisioning/signing Apple tersedia.
+1. Poles optional text/chord autofit dan perluas i18n copy yang masih hard-coded.
+2. Jalankan final light/dark contrast + real-device accessibility/MIDI long-song soak.
+3. Ukur production Web Vitals dan jalankan final beta regression.
+4. Jalankan Android production signed upgrade smoke setelah legacy keystore + fingerprint tersedia.
+5. Tambahkan signed iOS distribution setelah provisioning/signing Apple tersedia.
 
 ## Definition of done
 

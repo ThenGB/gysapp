@@ -1,6 +1,6 @@
 # Parity Matrix GYSApp
 
-Sumber kontrak: `ThenGB/GYSAPP-Fork` (Flutter) dan `gyspnk/gyschordweb` (web chord/MIDI). Audit terakhir: **12 Agustus 2026**. Detail urutan implementasi ada di `docs/implementation-roadmap.md`.
+Sumber kontrak: `ThenGB/GYSAPP-Fork` (Flutter) dan `gyspnk/gyschordweb` (web chord/MIDI). Audit terakhir: **13 Agustus 2026**. Detail urutan implementasi ada di `docs/implementation-roadmap.md`.
 
 Status: `todo | in-progress | done | n/a`.
 
@@ -17,14 +17,14 @@ Status: `todo | in-progress | done | n/a`.
 
 ## Beranda
 
-| Fitur                          | Status      | Catatan                                                  |
-| ------------------------------ | ----------- | -------------------------------------------------------- |
-| Greeting + tanggal             | done        | Tidak membutuhkan akun/network untuk cold start          |
-| Sauh Bagi Jiwa                 | done        | Static snapshot default + optional gateway               |
-| Suara Sejati                   | done        | Static snapshot default + optional gateway               |
-| Task-first mobile Home         | done        | Prioritas aksi utama, dekorasi dikurangi                 |
-| Lanjut membaca / pujian        | in-progress | State reader/hymnal tersedia; surface Home masih dipoles |
-| Greeting berbasis profil e-GYS | n/a         | e-GYS adalah layanan eksternal                           |
+| Fitur                          | Status | Catatan                                                              |
+| ------------------------------ | ------ | -------------------------------------------------------------------- |
+| Greeting + tanggal             | done   | Tidak membutuhkan akun/network untuk cold start                      |
+| Sauh Bagi Jiwa                 | done   | Static snapshot default + optional gateway                           |
+| Suara Sejati                   | done   | Static snapshot default + optional gateway                           |
+| Task-first mobile Home         | done   | Prioritas aksi utama, dekorasi dikurangi                             |
+| Lanjut membaca / pujian        | done   | Ayat terakhir + recent hymn persisted dan dapat dilanjutkan langsung |
+| Greeting berbasis profil e-GYS | n/a    | e-GYS adalah layanan eksternal                                       |
 
 ## Alkitab
 
@@ -76,33 +76,33 @@ Status: `todo | in-progress | done | n/a`.
 
 ## Iman
 
-| Fitur                        | Status      | Catatan                                                  |
-| ---------------------------- | ----------- | -------------------------------------------------------- |
-| 10 Pokok Iman id/en/zh       | done        |                                                          |
-| Search                       | done        |                                                          |
-| PDF lanjutan + resume        | done        | Manifest + SHA verification                              |
-| Multi-select/copy/share/note | in-progress | Copy/search tersedia; selection/share parity belum final |
+| Fitur                        | Status | Catatan                                                                        |
+| ---------------------------- | ------ | ------------------------------------------------------------------------------ |
+| 10 Pokok Iman id/en/zh       | done   |                                                                                |
+| Search                       | done   |                                                                                |
+| PDF lanjutan + resume        | done   | Manifest + SHA verification                                                    |
+| Multi-select/copy/share/note | done   | Multi-select, pilih semua, copy, Web Share + clipboard fallback, catatan lokal |
 
 ## Literatur & layanan eksternal
 
-| Item                              | Status      | Catatan                                       |
-| --------------------------------- | ----------- | --------------------------------------------- |
-| Kesaksian                         | done        | Snapshot statis + optional near-live gateway  |
-| Warta/Manna Sejati                | done        | Snapshot statis + optional near-live gateway  |
-| Kumpulan Renungan                 | done        | Snapshot statis + optional near-live gateway  |
-| Panduan Alkitab                   | in-progress | Route ada; katalog masih diperkaya            |
-| e-GYS external launcher           | done        | Browser/system opener + E2E boundary verified |
-| App-owned e-GYS login/session     | n/a         | Sengaja dihapus                               |
-| Google Identity / token exchange  | n/a         | Sengaja dihapus                               |
-| e-GYS profile/member/branch fetch | n/a         | Sengaja dihapus                               |
-| Native e-GYS auth webview bridge  | n/a         | Remote service dibuka via system browser      |
-| Secure e-GYS token storage        | n/a         | Tidak ada token milik GYSApp                  |
-| Pujian/Paduan Suara               | done        | External access                               |
-| Buku                              | done        | External access                               |
-| Ibadah Online                     | done        | External access                               |
-| Audio/Video Khotbah               | done        | External access                               |
-| eRhema / Pelita Kecil             | done        | Dipertahankan dari menu legacy                |
-| Podcast / social media            | done        | Facebook / Instagram / YouTube / Spotify      |
+| Item                              | Status | Catatan                                                     |
+| --------------------------------- | ------ | ----------------------------------------------------------- |
+| Kesaksian                         | done   | Snapshot statis + optional near-live gateway                |
+| Warta/Manna Sejati                | done   | Snapshot statis + optional near-live gateway                |
+| Kumpulan Renungan                 | done   | Snapshot statis + optional near-live gateway                |
+| Panduan Alkitab                   | done   | Snapshot 14 panduan TJC + optional gateway; ikut sync 6-jam |
+| e-GYS external launcher           | done   | Browser/system opener + E2E boundary verified               |
+| App-owned e-GYS login/session     | n/a    | Sengaja dihapus                                             |
+| Google Identity / token exchange  | n/a    | Sengaja dihapus                                             |
+| e-GYS profile/member/branch fetch | n/a    | Sengaja dihapus                                             |
+| Native e-GYS auth webview bridge  | n/a    | Remote service dibuka via system browser                    |
+| Secure e-GYS token storage        | n/a    | Tidak ada token milik GYSApp                                |
+| Pujian/Paduan Suara               | done   | External access                                             |
+| Buku                              | done   | External access                                             |
+| Ibadah Online                     | done   | External access                                             |
+| Audio/Video Khotbah               | done   | External access                                             |
+| eRhema / Pelita Kecil             | done   | Dipertahankan dari menu legacy                              |
+| Podcast / social media            | done   | Facebook / Instagram / YouTube / Spotify                    |
 
 ## Backendless-first & optional gateway
 
@@ -120,17 +120,17 @@ Status: `todo | in-progress | done | n/a`.
 
 ## Settings & Data
 
-| Fitur                    | Status      | Catatan                                                                   |
-| ------------------------ | ----------- | ------------------------------------------------------------------------- |
-| Light/dark/system        | done        |                                                                           |
-| UI scale 5% step         | done        | Lebih halus untuk accessibility                                           |
-| Reader comfort modes     | in-progress | Automated reflow lolos; final visual/contrast soak tetap dilakukan        |
-| Backup `.gysapp` AES-GCM | done        |                                                                           |
-| PWA/offline shell        | done        |                                                                           |
-| Bible asset manager      | done        | Install/update/remove + verification                                      |
-| Media cache manager      | done        | Soundfont/MIDI/PDF bounded LRU + safe cleanup surface                     |
-| Unified reset/cache      | in-progress | Bible remove + media clear tersedia; chord/unified one-stop reset tersisa |
-| Sabat/reminder native    | todo        |                                                                           |
+| Fitur                    | Status      | Catatan                                                                            |
+| ------------------------ | ----------- | ---------------------------------------------------------------------------------- |
+| Light/dark/system        | done        |                                                                                    |
+| UI scale 5% step         | done        | Lebih halus untuk accessibility                                                    |
+| Reader comfort modes     | in-progress | Automated reflow lolos; final visual/contrast soak tetap dilakukan                 |
+| Backup `.gysapp` AES-GCM | done        |                                                                                    |
+| PWA/offline shell        | done        |                                                                                    |
+| Bible asset manager      | done        | Install/update/remove + verification                                               |
+| Media cache manager      | done        | Soundfont/MIDI/PDF bounded LRU + safe cleanup surface                              |
+| Unified reset/cache      | done        | Bible manager + media/chord cleanup tersedia; bookmark/history/playlist/notes aman |
+| Sabat/reminder native    | todo        |                                                                                    |
 
 ## Native / Distribution
 
