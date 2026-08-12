@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { MorePage } from './more-page';
 
 describe('MorePage', () => {
-  it('renders literature, notes, and settings sections', () => {
+  it('renders literature, notes, and storage/settings navigation', () => {
     render(
       <MemoryRouter>
         <MorePage />
@@ -16,5 +16,9 @@ describe('MorePage', () => {
     expect(screen.getByRole('link', { name: /Kesaksian/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Manna \/ Warta Sejati/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Kumpulan Renungan/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Unduhan & Penyimpanan' })).toHaveAttribute(
+      'href',
+      '/settings',
+    );
   });
 });
