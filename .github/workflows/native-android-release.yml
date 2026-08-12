@@ -17,6 +17,8 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      CI: 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -56,26 +58,50 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_CERT_SHA256: ${{ secrets.ANDROID_CERT_SHA256 }}
         run: |
           set -euo pipefail
-          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD ANDROID_STORE_PASSWORD; do
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD ANDROID_STORE_PASSWORD ANDROID_CERT_SHA256; do
             if [ -z "${!name:-}" ]; then
               echo "Missing required secret: $name" >&2
               exit 1
             fi
           done
 
-      - name: Configure Android signing
+      - name: Configure and verify Android signing identity
         shell: bash
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_CERT_SHA256: ${{ secrets.ANDROID_CERT_SHA256 }}
         run: |
           set -euo pipefail
           KEYSTORE="$RUNNER_TEMP/gysapp-release.keystore"
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+
+          EXPECTED="$(printf '%s' "$ANDROID_CERT_SHA256" | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')"
+          ACTUAL="$(keytool -list -v \
+            -keystore "$KEYSTORE" \
+            -alias "$ANDROID_KEY_ALIAS" \
+            -storepass "$ANDROID_STORE_PASSWORD" \
+            | awk '/SHA256:/{print $2; exit}' \
+            | tr -d ':[:space:]' \
+            | tr '[:lower:]' '[:upper:]')"
+
+          if [ -z "$ACTUAL" ]; then
+            echo 'Unable to read SHA-256 certificate fingerprint from release keystore.' >&2
+            exit 1
+          fi
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo 'Android signing certificate mismatch; refusing to break the existing upgrade path.' >&2
+            echo "Expected SHA-256: $EXPECTED" >&2
+            echo "Actual SHA-256:   $ACTUAL" >&2
+            exit 1
+          fi
+          echo "Verified Android signing certificate SHA-256: $ACTUAL"
+
           cat > apps/native/src-tauri/gen/android/keystore.properties <<EOF
           keyAlias=$ANDROID_KEY_ALIAS
           keyPassword=$ANDROID_KEY_PASSWORD
@@ -84,10 +110,10 @@ jobs:
           EOF
 
       - name: Build signed AAB
-        run: pnpm --filter @gysapp/native tauri android build --aab
+        run: pnpm --filter @gysapp/native tauri android build --aab --ci
 
       - name: Build signed APK
-        run: pnpm --filter @gysapp/native tauri android build --apk
+        run: pnpm --filter @gysapp/native tauri android build --apk --ci
 
       - name: Verify Android signatures
         shell: bash
