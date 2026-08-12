@@ -61,10 +61,7 @@ describe('PlaylistBar', () => {
             id: 'p1',
             name: 'Ibadah',
             createdAt: 1,
-            songs: [
-              song,
-              { book: 'KR', number: '002', title: 'Pujilah Yang Mahakudus' },
-            ],
+            songs: [song, { book: 'KR', number: '002', title: 'Pujilah Yang Mahakudus' }],
           },
         ],
         activeId: 'p1',

@@ -65,10 +65,7 @@ export function updateHymnalPlayerPrefs(
     transposeStep:
       prefs.transposeStep === undefined ? state.transposeStep : clampTranspose(prefs.transposeStep),
   };
-  if (
-    next.accidentalMode === state.accidentalMode &&
-    next.transposeStep === state.transposeStep
-  ) {
+  if (next.accidentalMode === state.accidentalMode && next.transposeStep === state.transposeStep) {
     return;
   }
   state = next;

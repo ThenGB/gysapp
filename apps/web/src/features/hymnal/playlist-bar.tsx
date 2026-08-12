@@ -1,14 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  ArrowDown,
-  ArrowUp,
-  Check,
-  ListPlus,
-  Plus,
-  Repeat,
-  Trash,
-} from '@phosphor-icons/react';
+import { ArrowDown, ArrowUp, Check, ListPlus, Plus, Repeat, Trash } from '@phosphor-icons/react';
 import {
   addSongToPlaylist,
   createPlaylist,

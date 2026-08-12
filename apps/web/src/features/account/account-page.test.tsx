@@ -17,7 +17,9 @@ describe('AccountPage', () => {
   it('explains that e-GYS authentication remains external', () => {
     render(<AccountPage />);
     expect(screen.getByRole('heading', { name: 'e-GYS' })).toBeInTheDocument();
-    expect(screen.getByText(/GYSApp tidak meminta, menerima, atau menyimpan password/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/GYSApp tidak meminta, menerima, atau menyimpan password/),
+    ).toBeInTheDocument();
   });
 
   it('opens the official e-GYS login in the system/browser opener', () => {

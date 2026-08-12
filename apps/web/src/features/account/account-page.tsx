@@ -1,4 +1,9 @@
-import { ArrowSquareOut, GlobeHemisphereWest, IdentificationCard, ShieldCheck } from '@phosphor-icons/react';
+import {
+  ArrowSquareOut,
+  GlobeHemisphereWest,
+  IdentificationCard,
+  ShieldCheck,
+} from '@phosphor-icons/react';
 import { openExternalUrl } from '../../platform/open-external';
 import './account.css';
 

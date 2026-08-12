@@ -147,7 +147,8 @@ export function MiniMidiPlayer({
       </button>
       <div className="midi-info">
         <span className="midi-title">
-          <MusicNotes size={16} aria-hidden="true" /> <span className="midi-title-text">{title}</span>
+          <MusicNotes size={16} aria-hidden="true" />{' '}
+          <span className="midi-title-text">{title}</span>
         </span>
         <div className="midi-seek">
           <input
