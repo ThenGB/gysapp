@@ -16,10 +16,13 @@ describe('MorePage', () => {
     expect(screen.getByRole('link', { name: /Kesaksian/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Manna \/ Warta Sejati/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Kumpulan Renungan/ })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Kelola Versi Alkitab' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Kelola versi Alkitab' })).toHaveAttribute(
       'href',
       '/bible?library=1',
     );
-    expect(screen.getByRole('link', { name: 'Pengaturan' })).toHaveAttribute('href', '/settings');
+    expect(screen.getByRole('link', { name: 'Pengaturan' })).toHaveAttribute(
+      'href',
+      '/settings',
+    );
   });
 });
