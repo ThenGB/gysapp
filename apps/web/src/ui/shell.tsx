@@ -4,6 +4,7 @@ import { House, BookOpenText, MusicNotes, Sparkle, SquaresFour } from '@phosphor
 import { useHymnalPlayerState } from '../features/hymnal/hymnal-player-store';
 import { useT } from '../i18n';
 import { assetUrl } from '../lib/asset-url';
+import { useRouteMotion } from './use-route-motion';
 import './shell.css';
 
 const GlobalMidiPlayerDock = lazy(() =>
@@ -51,6 +52,8 @@ export function AppShell() {
   const { locale, t } = useT();
   const player = useHymnalPlayerState();
   const a11y = SHELL_A11Y[locale];
+  useRouteMotion(pathname);
+
   const NAV_ITEMS = [
     { to: '/home', label: t('home'), icon: House },
     { to: '/bible', label: t('bible'), icon: BookOpenText },
