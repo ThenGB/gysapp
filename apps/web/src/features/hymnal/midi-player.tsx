@@ -39,7 +39,9 @@ function formatTime(s: number): string {
 
 function readInstrument(): number {
   try {
-    const value = Number(localStorage.getItem(MIDI_INSTRUMENT_KEY));
+    const raw = localStorage.getItem(MIDI_INSTRUMENT_KEY);
+    if (raw === null) return -1;
+    const value = Number(raw);
     return GENERAL_MIDI_INSTRUMENTS.some((item) => item.value === value) ? value : -1;
   } catch {
     return -1;
@@ -108,14 +110,26 @@ function useMidiMediaSession({
   onPrevious?: () => void;
   onNext?: () => void;
 }) {
+  const timeRef = useRef(time);
+  const durationRef = useRef(duration);
+  timeRef.current = time;
+  durationRef.current = duration;
+
   useEffect(() => {
     const session = navigator.mediaSession;
     if (!session) return;
     if (typeof MediaMetadata !== 'undefined') {
-      session.metadata = new MediaMetadata({ title, artist: 'GYS App', album: 'Pujian' });
+      session.metadata = new MediaMetadata({
+        title,
+        artist: 'GYS App',
+        album: 'Pujian',
+      });
     }
 
-    const setHandler = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
+    const setHandler = (
+      action: MediaSessionAction,
+      handler: MediaSessionActionHandler | null,
+    ) => {
       try {
         session.setActionHandler(action, handler);
       } catch {
@@ -130,8 +144,13 @@ function useMidiMediaSession({
     setHandler('seekto', (details) => {
       if (typeof details.seekTime === 'number') onSeek(details.seekTime);
     });
-    setHandler('seekbackward', (details) => onSeek(Math.max(0, time - (details.seekOffset ?? 10))));
-    setHandler('seekforward', (details) => onSeek(Math.min(duration || time + 10, time + (details.seekOffset ?? 10))));
+    setHandler('seekbackward', (details) => {
+      onSeek(Math.max(0, timeRef.current - (details.seekOffset ?? 10)));
+    });
+    setHandler('seekforward', (details) => {
+      const next = timeRef.current + (details.seekOffset ?? 10);
+      onSeek(Math.min(durationRef.current || next, next));
+    });
 
     return () => {
       setHandler('play', null);
@@ -142,13 +161,20 @@ function useMidiMediaSession({
       setHandler('seekbackward', null);
       setHandler('seekforward', null);
     };
-  }, [duration, onNext, onPause, onPlay, onPrevious, onSeek, time, title]);
+  }, [onNext, onPause, onPlay, onPrevious, onSeek, title]);
 
   useEffect(() => {
     const session = navigator.mediaSession;
     if (!session) return;
-    session.playbackState = status === 'playing' ? 'playing' : status === 'paused' ? 'paused' : 'none';
-    if (duration <= 0 || !Number.isFinite(duration) || typeof session.setPositionState !== 'function') return;
+    session.playbackState =
+      status === 'playing' ? 'playing' : status === 'paused' ? 'paused' : 'none';
+    if (
+      duration <= 0 ||
+      !Number.isFinite(duration) ||
+      typeof session.setPositionState !== 'function'
+    ) {
+      return;
+    }
     try {
       session.setPositionState({
         duration,
@@ -296,7 +322,8 @@ export function MiniMidiPlayer({
   const changeTrack = useCallback(
     async (handler: TrackChangeHandler | undefined, autoplayOverride?: boolean) => {
       if (!handler) return;
-      autoplayAfterTrackChange.current = autoplayOverride ?? midiEngine.getStatus() === 'playing';
+      autoplayAfterTrackChange.current =
+        autoplayOverride ?? midiEngine.getStatus() === 'playing';
       try {
         const changed = await handler();
         if (!changed) autoplayAfterTrackChange.current = false;
@@ -376,12 +403,12 @@ export function MiniMidiPlayer({
   const hasSong = duration > 0 && url !== null;
   const showDetails = !compact || detailsOpen;
 
-  const mediaPrevious = onPrevious && !previousDisabled && !loading
-    ? () => void changeTrack(onPrevious)
-    : undefined;
-  const mediaNext = onNext && !nextDisabled && !loading
-    ? () => void changeTrack(onNext)
-    : undefined;
+  const mediaPrevious =
+    onPrevious && !previousDisabled && !loading
+      ? () => void changeTrack(onPrevious)
+      : undefined;
+  const mediaNext =
+    onNext && !nextDisabled && !loading ? () => void changeTrack(onNext) : undefined;
 
   useMidiMediaSession({
     title,
@@ -408,7 +435,11 @@ export function MiniMidiPlayer({
         aria-label={playing ? 'Jeda' : 'Putar'}
         disabled={loading || !url}
       >
-        {playing ? <Pause size={22} aria-hidden="true" /> : <Play size={22} aria-hidden="true" />}
+        {playing ? (
+          <Pause size={22} aria-hidden="true" />
+        ) : (
+          <Play size={22} aria-hidden="true" />
+        )}
       </button>
       <div className="midi-info">
         <span className="midi-title">
@@ -426,21 +457,59 @@ export function MiniMidiPlayer({
             disabled={!hasSong}
             onChange={(e) => onSeek(Number(e.target.value))}
           />
-          {loading && <span className="midi-loading">memuat… {Math.round(loadingPct)}%</span>}
-          {error && <span className="midi-error" role="alert">{error}</span>}
-          <span className="midi-time">{formatTime(time)} / {formatTime(duration)}</span>
+          {loading && (
+            <span className="midi-loading">memuat… {Math.round(loadingPct)}%</span>
+          )}
+          {error && (
+            <span className="midi-error" role="alert">
+              {error}
+            </span>
+          )}
+          <span className="midi-time">
+            {formatTime(time)} / {formatTime(duration)}
+          </span>
         </div>
         {showDetails && (
           <div className="midi-param-row midi-v2-details">
             <div className="midi-param">
-              <button type="button" className="icon-btn mini" aria-label="Turunkan nada" onClick={() => bumpTranspose(-1)}>−</button>
-              <span className="midi-param-value">Nada {transpose > 0 ? `+${transpose}` : transpose}</span>
-              <button type="button" className="icon-btn mini" aria-label="Naikkan nada" onClick={() => bumpTranspose(1)}>+</button>
+              <button
+                type="button"
+                className="icon-btn mini"
+                aria-label="Turunkan nada"
+                onClick={() => bumpTranspose(-1)}
+              >
+                −
+              </button>
+              <span className="midi-param-value">
+                Nada {transpose > 0 ? `+${transpose}` : transpose}
+              </span>
+              <button
+                type="button"
+                className="icon-btn mini"
+                aria-label="Naikkan nada"
+                onClick={() => bumpTranspose(1)}
+              >
+                +
+              </button>
             </div>
             <div className="midi-param">
-              <button type="button" className="icon-btn mini" aria-label="Perlambat tempo" onClick={() => bumpTempo(-5)}>−</button>
+              <button
+                type="button"
+                className="icon-btn mini"
+                aria-label="Perlambat tempo"
+                onClick={() => bumpTempo(-5)}
+              >
+                −
+              </button>
               <span className="midi-param-value">{tempo} BPM</span>
-              <button type="button" className="icon-btn mini" aria-label="Percepat tempo" onClick={() => bumpTempo(5)}>+</button>
+              <button
+                type="button"
+                className="icon-btn mini"
+                aria-label="Percepat tempo"
+                onClick={() => bumpTempo(5)}
+              >
+                +
+              </button>
             </div>
             <label className="midi-v2-instrument">
               <span>Instrumen</span>
@@ -450,27 +519,65 @@ export function MiniMidiPlayer({
                 onChange={(event) => changeInstrument(Number(event.target.value))}
               >
                 {GENERAL_MIDI_INSTRUMENTS.map((item) => (
-                  <option key={item.value} value={item.value}>{item.label}</option>
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
                 ))}
               </select>
             </label>
-            <div className="midi-param midi-accidental-toggle" role="group" aria-label="Notasi chord MIDI">
-              <button type="button" className={`chip${accidentalMode === 'sharp' ? ' chip-active' : ''}`} aria-pressed={accidentalMode === 'sharp'} onClick={() => onAccidentalModeChange?.('sharp')}>♯</button>
-              <button type="button" className={`chip${accidentalMode === 'flat' ? ' chip-active' : ''}`} aria-pressed={accidentalMode === 'flat'} onClick={() => onAccidentalModeChange?.('flat')}>♭</button>
+            <div
+              className="midi-param midi-accidental-toggle"
+              role="group"
+              aria-label="Notasi chord MIDI"
+            >
+              <button
+                type="button"
+                className={`chip${accidentalMode === 'sharp' ? ' chip-active' : ''}`}
+                aria-pressed={accidentalMode === 'sharp'}
+                onClick={() => onAccidentalModeChange?.('sharp')}
+              >
+                ♯
+              </button>
+              <button
+                type="button"
+                className={`chip${accidentalMode === 'flat' ? ' chip-active' : ''}`}
+                aria-pressed={accidentalMode === 'flat'}
+                onClick={() => onAccidentalModeChange?.('flat')}
+              >
+                ♭
+              </button>
             </div>
           </div>
         )}
       </div>
       <div className="midi-aux">
-        <button type="button" className="icon-btn" aria-label="Lagu sebelumnya" disabled={!onPrevious || previousDisabled || loading} onClick={() => void changeTrack(onPrevious)}>
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label="Lagu sebelumnya"
+          disabled={!onPrevious || previousDisabled || loading}
+          onClick={() => void changeTrack(onPrevious)}
+        >
           <SkipBack size={20} aria-hidden="true" />
         </button>
         {compact && (
-          <button type="button" className="icon-btn" aria-label={detailsOpen ? 'Sembunyikan kontrol MIDI' : 'Tampilkan kontrol MIDI'} aria-expanded={detailsOpen} onClick={() => setDetailsOpen((value) => !value)}>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label={detailsOpen ? 'Sembunyikan kontrol MIDI' : 'Tampilkan kontrol MIDI'}
+            aria-expanded={detailsOpen}
+            onClick={() => setDetailsOpen((value) => !value)}
+          >
             <SlidersHorizontal size={20} aria-hidden="true" />
           </button>
         )}
-        <button type="button" className="icon-btn" aria-label="Lagu berikutnya" disabled={!onNext || nextDisabled || loading} onClick={() => void changeTrack(onNext)}>
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label="Lagu berikutnya"
+          disabled={!onNext || nextDisabled || loading}
+          onClick={() => void changeTrack(onNext)}
+        >
           <SkipForward size={20} aria-hidden="true" />
         </button>
       </div>
