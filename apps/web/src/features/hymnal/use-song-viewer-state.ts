@@ -14,14 +14,10 @@ import {
 
 export function useSongViewerState(book: string, song: string) {
   const saved = useMemo(() => readSavedView(book, song), [book, song]);
-  const [mode, setMode] = useState<ViewerMode>(
-    saved.mode ?? (book === 'KR' ? 'pdf' : 'text'),
-  );
+  const [mode, setMode] = useState<ViewerMode>(saved.mode ?? (book === 'KR' ? 'pdf' : 'text'));
   const [showChords, setShowChords] = useState(saved.showChords ?? true);
   const [pageMode, setPageMode] = useState<PageMode>(saved.pageMode === 2 ? 2 : 1);
-  const [fitMode, setFitMode] = useState<FitMode>(
-    saved.fitMode === 'width' ? 'width' : 'page',
-  );
+  const [fitMode, setFitMode] = useState<FitMode>(saved.fitMode === 'width' ? 'width' : 'page');
   const [zoom, setZoom] = useState(clampZoom(saved.zoom));
   const [pageStart, setPageStart] = useState(Math.max(1, saved.pageStart ?? 1));
   const [transposeStep, setTransposeStep] = useState(clampTranspose(saved.transposeStep));
