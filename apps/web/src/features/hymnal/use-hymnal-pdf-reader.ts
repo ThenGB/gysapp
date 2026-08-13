@@ -13,8 +13,16 @@ import {
 type PdfDocumentProxy = import('pdfjs-dist').PDFDocumentProxy;
 type PdfDocumentLoadingTask = import('pdfjs-dist').PDFDocumentLoadingTask;
 
+function physicalPage(logicalPage: number, sourcePageStart: number): number {
+  return sourcePageStart + logicalPage - 1;
+}
+
 export function useHymnalPdfReader({
   pdfUrl,
+  pdfFallbackUrl,
+  pdfBytes,
+  sourcePageStart,
+  sourcePageCount,
   mode,
   showChords,
   chordDoc,
@@ -25,6 +33,10 @@ export function useHymnalPdfReader({
   zoom,
 }: {
   pdfUrl: string | null;
+  pdfFallbackUrl?: string | null;
+  pdfBytes?: Uint8Array | null;
+  sourcePageStart?: number;
+  sourcePageCount?: number;
   mode: ViewerMode;
   showChords: boolean;
   chordDoc: ChordDocument | null;
@@ -43,9 +55,18 @@ export function useHymnalPdfReader({
   const [viewportHeight, setViewportHeight] = useState(() => window.innerHeight);
   const pdfWrapRef = useRef<HTMLDivElement | null>(null);
   const canvasRefs = useRef<Array<HTMLCanvasElement | null>>([]);
+  const firstSourcePage = Math.max(1, sourcePageStart ?? 1);
+  const requestedPageCount = Math.max(1, sourcePageCount ?? Number.MAX_SAFE_INTEGER);
 
   useEffect(() => {
-    if (!pdfUrl) return;
+    if (!pdfUrl && !pdfBytes) {
+      setPdfError(null);
+      setPageCount(0);
+      setPdfDoc(null);
+      setTextLines([]);
+      setPdfPoints({});
+      return;
+    }
     let cancelled = false;
     let task: PdfDocumentLoadingTask | null = null;
     const abort = new AbortController();
@@ -60,20 +81,39 @@ export function useHymnalPdfReader({
         const pdfjs = await import('pdfjs-dist');
         const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
         pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
-        const bytes = await offlineMediaCache.getOrFetch(pdfUrl, 'pdf', {
-          signal: abort.signal,
-        });
-        if (cancelled) return;
+        let bytes = pdfBytes ? new Uint8Array(pdfBytes) : null;
+        if (!bytes && pdfUrl) {
+          try {
+            bytes = await offlineMediaCache.getOrFetch(pdfUrl, 'pdf', {
+              signal: abort.signal,
+            });
+          } catch (primaryError) {
+            if (!pdfFallbackUrl || pdfFallbackUrl === pdfUrl || abort.signal.aborted) {
+              throw primaryError;
+            }
+            bytes = await offlineMediaCache.getOrFetch(pdfFallbackUrl, 'pdf', {
+              signal: abort.signal,
+            });
+          }
+        }
+        if (!bytes || cancelled) return;
         task = pdfjs.getDocument({ data: bytes });
         const doc = await task.promise;
         if (cancelled) {
           void doc.cleanup().catch(() => undefined);
           return;
         }
+        const availablePages = Math.max(0, doc.numPages - firstSourcePage + 1);
+        if (availablePages === 0) {
+          void doc.cleanup().catch(() => undefined);
+          throw new Error('Halaman partitur tidak tersedia di PDF ini.');
+        }
         setPdfDoc(doc);
-        setPageCount(doc.numPages);
+        setPageCount(Math.min(requestedPageCount, availablePages));
       } catch (error) {
-        if (!cancelled) setPdfError(error instanceof Error ? error.message : String(error));
+        if (!cancelled && !abort.signal.aborted) {
+          setPdfError(error instanceof Error ? error.message : String(error));
+        }
       }
     })();
 
@@ -82,7 +122,7 @@ export function useHymnalPdfReader({
       abort.abort();
       if (task) void task.destroy().catch(() => undefined);
     };
-  }, [pdfUrl]);
+  }, [firstSourcePage, pdfBytes, pdfFallbackUrl, pdfUrl, requestedPageCount]);
 
   useEffect(
     () => () => {
@@ -92,12 +132,17 @@ export function useHymnalPdfReader({
   );
 
   useEffect(() => {
-    if (!pdfDoc || !chordLoaded || mode !== 'text' || !showChords) return;
+    if (!pdfDoc || !chordLoaded || mode !== 'text' || !showChords || pageCount === 0) return;
     let cancelled = false;
     void (async () => {
       const next: ChordedLine[] = [];
-      for (let pageNo = 1; pageNo <= pdfDoc.numPages; pageNo += 1) {
-        const data = await extractPageChordData(pdfDoc, pageNo, chordDoc);
+      for (let logicalPage = 1; logicalPage <= pageCount; logicalPage += 1) {
+        const data = await extractPageChordData(
+          pdfDoc,
+          physicalPage(logicalPage, firstSourcePage),
+          chordDoc,
+          logicalPage,
+        );
         if (cancelled) return;
         next.push(...data.lines);
       }
@@ -108,21 +153,26 @@ export function useHymnalPdfReader({
     return () => {
       cancelled = true;
     };
-  }, [chordDoc, chordLoaded, mode, pdfDoc, showChords]);
+  }, [chordDoc, chordLoaded, firstSourcePage, mode, pageCount, pdfDoc, showChords]);
 
   useEffect(() => {
-    if (!pdfDoc || !chordDoc || mode !== 'pdf' || !showChords) {
+    if (!pdfDoc || !chordDoc || mode !== 'pdf' || !showChords || pageCount === 0) {
       setPdfPoints({});
       return;
     }
     let cancelled = false;
     void (async () => {
       const next: Record<number, PdfChordPoint[]> = {};
-      const end = Math.min(pdfDoc.numPages, pageStart + pageMode - 1);
-      for (let pageNo = pageStart; pageNo <= end; pageNo += 1) {
-        const data = await extractPageChordData(pdfDoc, pageNo, chordDoc);
+      const end = Math.min(pageCount, pageStart + pageMode - 1);
+      for (let logicalPage = pageStart; logicalPage <= end; logicalPage += 1) {
+        const data = await extractPageChordData(
+          pdfDoc,
+          physicalPage(logicalPage, firstSourcePage),
+          chordDoc,
+          logicalPage,
+        );
         if (cancelled) return;
-        next[pageNo] = data.points;
+        next[logicalPage] = data.points;
       }
       if (!cancelled) setPdfPoints(next);
     })().catch(() => {
@@ -131,7 +181,7 @@ export function useHymnalPdfReader({
     return () => {
       cancelled = true;
     };
-  }, [chordDoc, mode, pageMode, pageStart, pdfDoc, showChords]);
+  }, [chordDoc, firstSourcePage, mode, pageCount, pageMode, pageStart, pdfDoc, showChords]);
 
   useEffect(() => {
     if (mode !== 'pdf') return;
@@ -153,15 +203,12 @@ export function useHymnalPdfReader({
   }, [mode]);
 
   useEffect(() => {
-    if (!pdfDoc || mode !== 'pdf') return;
+    if (!pdfDoc || mode !== 'pdf' || pageCount === 0) return;
     let cancelled = false;
     const tasks: Array<{ cancel(): void }> = [];
 
     void (async () => {
-      const usableWidth = Math.max(
-        260,
-        viewerWidth - (window.innerWidth <= 680 ? 16 : 32),
-      );
+      const usableWidth = Math.max(260, viewerWidth - (window.innerWidth <= 680 ? 16 : 32));
       const portraitTwoPage =
         pageMode === 2 && window.innerWidth <= 860 && window.innerHeight >= window.innerWidth;
       const layoutWidth = portraitTwoPage ? Math.max(760, usableWidth) : usableWidth;
@@ -173,15 +220,15 @@ export function useHymnalPdfReader({
       const pixelRatio = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
 
       for (let slot = 0; slot < pageMode; slot += 1) {
-        const pageNo = pageStart + slot;
+        const logicalPage = pageStart + slot;
         const canvas = canvasRefs.current[slot];
         if (!canvas) continue;
-        if (pageNo > pdfDoc.numPages) {
+        if (logicalPage > pageCount) {
           canvas.style.display = 'none';
           continue;
         }
         canvas.style.display = 'block';
-        const page = await pdfDoc.getPage(pageNo);
+        const page = await pdfDoc.getPage(physicalPage(logicalPage, firstSourcePage));
         if (cancelled) return;
         const logical = page.getViewport({ scale: 1 });
         const widthScale = slotWidth / logical.width;
@@ -213,7 +260,18 @@ export function useHymnalPdfReader({
         }
       }
     };
-  }, [fitMode, mode, pageMode, pageStart, pdfDoc, viewerWidth, viewportHeight, zoom]);
+  }, [
+    firstSourcePage,
+    fitMode,
+    mode,
+    pageCount,
+    pageMode,
+    pageStart,
+    pdfDoc,
+    viewerWidth,
+    viewportHeight,
+    zoom,
+  ]);
 
   return { pageCount, pdfError, textLines, pdfPoints, pdfWrapRef, canvasRefs };
 }
