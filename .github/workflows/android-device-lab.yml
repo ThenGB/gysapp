@@ -1,0 +1,144 @@
+name: android-device-lab
+
+on:
+  workflow_dispatch:
+    inputs:
+      soak_minutes:
+        description: Foreground sampling duration on the real device
+        required: true
+        default: '30'
+        type: choice
+        options:
+          - '5'
+          - '15'
+          - '30'
+          - '60'
+          - '120'
+      cold_launch_iterations:
+        description: Number of force-stop + cold-launch measurements
+        required: true
+        default: '5'
+        type: choice
+        options:
+          - '3'
+          - '5'
+          - '10'
+      reset_app_data:
+        description: Clear com.gysid.gysapp data before the run (dedicated lab device only)
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-device-lab
+  cancel-in-progress: false
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/native/src-tauri
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK/NDK
+        shell: bash
+        run: |
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358'
+          echo "NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build ARM64 debug APK
+        run: >-
+          pnpm --filter @gysapp/native tauri android build
+          --debug
+          --target aarch64
+          --apk
+          --ci
+
+      - name: Stage APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$(find apps/native/src-tauri/gen/android/app/build/outputs/apk -type f -name '*.apk' | head -1)"
+          test -n "$APK" && test -f "$APK"
+          mkdir -p device-lab-apk
+          cp "$APK" device-lab-apk/GYSApp-android-debug-arm64.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-device-lab-apk-${{ github.sha }}
+          path: device-lab-apk/GYSApp-android-debug-arm64.apk
+          if-no-files-found: error
+          retention-days: 3
+
+  real-device-soak:
+    needs: build-apk
+    runs-on: [self-hosted, android-device-lab]
+    environment: android-device-lab
+    timeout-minutes: 180
+    env:
+      PACKAGE_NAME: com.gysid.gysapp
+      ADB_TARGET: ${{ vars.ANDROID_LAB_ADB_TARGET }}
+      APK_PATH: device-lab-apk/GYSApp-android-debug-arm64.apk
+      DEVICE_LAB_OUTPUT: dist/android-device-lab
+      SOAK_MINUTES: ${{ inputs.soak_minutes }}
+      COLD_LAUNCH_ITERATIONS: ${{ inputs.cold_launch_iterations }}
+      RESET_APP_DATA: ${{ inputs.reset_app_data }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-device-lab-apk-${{ github.sha }}
+          path: device-lab-apk
+
+      - name: Verify runner prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v python3
+          command -v adb
+          adb version
+          python3 --version
+
+      - name: Run real-device baseline and soak
+        shell: bash
+        run: python3 scripts/android-device-lab.py
+
+      - name: Upload device evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-device-lab-results-${{ github.sha }}-${{ github.run_id }}
+          path: dist/android-device-lab/**
+          if-no-files-found: warn
+          retention-days: 14

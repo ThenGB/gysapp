@@ -1,14 +1,22 @@
 # Real-device beta soak runbook
 
-Dokumen ini memindahkan sisa gate PR #4 dari daftar abstrak menjadi prosedur yang dapat diulang. Automated CI tetap menjadi source of truth untuk compile/regression; hasil di bawah ini adalah bukti manual yang memang tidak dapat digantikan emulator/Playwright.
+Dokumen ini memindahkan sisa gate PR #4 dari daftar abstrak menjadi prosedur yang dapat diulang. Automated CI tetap menjadi source of truth untuk compile/regression; hasil di bawah ini adalah bukti real-device yang memang tidak dapat digantikan emulator/Playwright.
+
+Identity aplikasi baru mengikuti ADR-0007: Android/iOS menggunakan `com.gysid.gysapp`. GYSApp baru **bukan** upgrade package `id.sch.kanaan.egys`.
 
 ## Prinsip
 
 - Uji artifact dari **SHA PR yang sama** dengan CI hijau.
-- Verifikasi `SHA256SUMS.txt` sebelum menjalankan artifact hasil Actions.
-- Android debug APK memakai package id production `id.sch.kanaan.egys`, tetapi ditandatangani debug key. **Jangan uninstall aplikasi production di perangkat yang berisi data penting hanya untuk memasang debug APK.** Gunakan perangkat uji/spare device atau profile yang aman.
-- Upgrade smoke terhadap aplikasi lama hanya sah bila artifact production ditandatangani dengan legacy production keystore yang sama dan fingerprint sudah diverifikasi oleh workflow release.
-- Jangan menandai gate sebagai lulus bila hanya diuji di browser desktop atau simulator.
+- Verifikasi `SOURCE_SHA.txt` dan `SHA256SUMS.txt` sebelum menjalankan artifact Actions.
+- Android debug APK memakai package `com.gysid.gysapp` dan debug signing; ia dapat hidup berdampingan dengan package legacy.
+- Jangan menandai gate lulus bila hanya diuji di browser desktop atau simulator.
+- Dedicated real-device automation dijelaskan di `docs/android-device-lab.md`.
+
+## Perimeter device utama
+
+Redmi Note 10 Pro dengan Snapdragon 732G dipakai sebagai baseline low-to-mid-range yang sengaja cukup tua untuk menangkap regression performa yang mungkin tidak terlihat di flagship baru.
+
+Baseline pertama minimal tiga run yang sebanding sebelum menetapkan budget hard untuk startup/memory/thermal.
 
 ## Artifact CI untuk soak
 
@@ -18,21 +26,39 @@ Workflow `native-android` menghasilkan:
 
 - `GYSApp-android-debug-arm64.apk`
 - `SHA256SUMS.txt`
+- `SOURCE_SHA.txt`
 
 Artifact disimpan 14 hari agar satu SHA dapat dipakai untuk rangkaian soak yang sama.
 
 ### Windows
 
-Workflow `native-windows` menghasilkan portable binary dari release no-bundle build:
+Workflow `native-windows` menghasilkan portable binary release no-bundle:
 
 - `GYSApp-windows-x64-portable.exe`
 - `SHA256SUMS.txt`
+- `SOURCE_SHA.txt`
 
-Artifact ini unsigned dan hanya ditujukan untuk internal beta/soak. Gunakan hanya artifact Actions dari repository ini dan cocokkan SHA-256 sebelum menjalankannya.
+Artifact ini unsigned dan hanya untuk internal beta/soak.
 
-## A. Accessibility + light/dark/system soak
+## A. Automated real-device baseline
 
-Lakukan minimal pada satu Android mid-range nyata dan satu Windows 10/11 machine. Bila iOS provisioning tersedia, ulangi journey yang sama pada iPhone/iPad nyata.
+Setelah self-hosted runner `android-device-lab` tersedia, jalankan workflow manual `android-device-lab`.
+
+Harness akan:
+
+1. build ARM64 debug APK dari SHA yang dipilih;
+2. install/reinstall `com.gysid.gysapp` pada device lab;
+3. melakukan force-stop + cold-launch berulang;
+4. sampling memory/CPU/thermal/battery;
+5. mengambil `gfxinfo`, package/activity dump, dan logcat;
+6. menandai package-scoped FATAL EXCEPTION / ANR;
+7. meng-upload evidence artifact 14 hari.
+
+`reset_app_data` default **false** dan hanya boleh diaktifkan secara sengaja pada dedicated test device.
+
+## B. Accessibility + light/dark/system soak
+
+Lakukan minimal pada Redmi Note 10 Pro nyata dan satu Windows 10/11 machine. Bila iOS provisioning tersedia, ulangi journey yang sama pada iPhone/iPad nyata.
 
 ### Matrix minimum
 
@@ -55,16 +81,14 @@ Lakukan minimal pada satu Android mid-range nyata dan satu Windows 10/11 machine
 
 ### Acceptance
 
-Gate lulus bila:
-
 - tidak ada teks/action penting yang terpotong atau tidak dapat diakses;
 - focus/reading order masuk akal;
 - control utama tetap dapat disentuh/dioperasikan pada UI besar;
-- theme system mengikuti perubahan OS setelah relaunch atau refresh state yang relevan;
-- tidak ada low-contrast regression yang terlihat pada state enabled/disabled/focus/error;
+- theme system mengikuti perubahan OS tanpa stale state;
+- tidak ada low-contrast regression yang terlihat;
 - tidak ada modal/dock/player yang menutup navigation atau primary action.
 
-## B. Scheduled notification soak
+## C. Scheduled notification soak
 
 Prioritaskan Android nyata karena browser/PWA memang tidak menjadwalkan recurring OS reminder.
 
@@ -82,7 +106,7 @@ Prioritaskan Android nyata karena browser/PWA memang tidak menjadwalkan recurrin
 
 1. Verifikasi setting Sabat tersimpan sebagai Jumat 17:00 lokal.
 2. Lakukan delivery test pada Jumat bila memungkinkan.
-3. Bila pengujian delivery penuh belum dapat dilakukan pada hari tersebut, jangan menandai gate delivery sebagai lulus hanya dari unit test; catat sebagai pending real-time observation.
+3. Bila pengujian delivery penuh belum dapat dilakukan pada hari tersebut, catat sebagai pending real-time observation.
 
 ### Acceptance
 
@@ -92,7 +116,7 @@ Prioritaskan Android nyata karena browser/PWA memang tidak menjadwalkan recurrin
 - timezone/local-time behavior konsisten setelah restart;
 - permission denied menghasilkan recovery state, bukan silent failure.
 
-## C. Long-song MIDI/PDF soak
+## D. Long-song MIDI/PDF soak
 
 Pilih lagu dengan PDF relatif panjang/berat dan MIDI berdurasi panjang dari catalog nyata.
 
@@ -106,15 +130,15 @@ Pilih lagu dengan PDF relatif panjang/berat dan MIDI berdurasi panjang dari cata
 
 ### Acceptance
 
-- tidak ada crash, freeze panjang, audio ganda, stale song, atau canvas salah lagu;
+- tidak ada crash, ANR, freeze panjang, audio ganda, stale song, atau canvas salah lagu;
 - seek/tempo state tetap masuk akal setelah route/background transition;
-- memory pressure tidak membuat UI terus memburuk sepanjang sesi;
+- memory pressure tidak terus memburuk sepanjang sesi;
 - cached/offline replay bekerja tanpa network untuk asset yang sudah tersimpan;
 - player tidak overlap navigation/content pada orientation/layout yang diuji.
 
-## D. Field Web Vitals setelah beta stabil
+## E. Field Web Vitals setelah beta stabil
 
-Automated production-preview guard tetap menangkap regression lab LCP/CLS. Field gate baru dinilai setelah beta memiliki traffic nyata.
+Automated production-preview guard tetap menangkap regression lab LCP/CLS. Field gate baru dinilai setelah beta memiliki traffic nyata dan analytics memang sengaja diaktifkan.
 
 Target release:
 
@@ -122,26 +146,24 @@ Target release:
 - INP p75 < 200 ms
 - CLS p75 < 0.1
 
-Catat source data, periode observasi, sample size, device/network mix, dan route dengan outlier. Jangan menyamakan satu Lighthouse run dengan field p75.
+Catat source data, periode observasi, sample size, device/network mix, dan route dengan outlier.
 
-## E. Android signed upgrade smoke
+## F. Android new-app signing smoke
 
-Gate ini **blocked** sampai legacy production keystore dan `ANDROID_CERT_SHA256` yang benar tersedia.
+Tidak ada lagi requirement legacy install-over-production. Sebelum publikasi pertama `com.gysid.gysapp`:
 
-Setelah tersedia:
+1. siapkan dedicated GYSApp release/upload keystore di GitHub Secrets;
+2. set `ANDROID_CERT_SHA256` ke fingerprint certificate key baru tersebut;
+3. jalankan signed Android workflow;
+4. pastikan workflow memverifikasi fingerprint input dan final APK/AAB;
+5. install signed APK pada clean/dedicated device dan pastikan seluruh journey utama normal;
+6. first Play Console upload dilakukan sebagai aplikasi baru.
 
-1. Jalankan signed Android workflow dan pastikan fingerprint validation lulus.
-2. Ambil device yang memiliki versi production lama dengan data yang boleh diuji.
-3. Backup data yang diperlukan.
-4. Install artifact baru sebagai upgrade tanpa uninstall versi lama.
-5. Pastikan application data penting tetap tersedia dan aplikasi dapat dibuka normal.
-6. Verifikasi package `id.sch.kanaan.egys` dan versionCode 134.
+Jika migrasi data user legacy diperlukan, validasi backup/export-import `.gysapp` secara eksplisit. Package baru tidak mewarisi private app data package lama secara otomatis.
 
-Jika install hanya berhasil setelah uninstall, upgrade continuity **gagal** dan release tidak boleh dianggap kompatibel dengan aplikasi lama.
+## G. iOS signed distribution smoke
 
-## F. iOS signed distribution smoke
-
-Tetap blocked sampai Apple signing/provisioning tersedia. Simulator compile CI bukan pengganti signed-device/App Store/TestFlight smoke.
+Tetap blocked sampai Apple signing/provisioning tersedia. Simulator compile CI bukan pengganti signed-device/App Store/TestFlight smoke. Bundle identifier target adalah `com.gysid.gysapp`.
 
 ## Evidence template
 
@@ -151,6 +173,7 @@ Untuk setiap sesi, catat:
 - platform + OS version;
 - device model;
 - artifact SHA-256;
+- package/bundle identifier;
 - theme/font/display configuration;
 - journey yang diuji;
 - pass/fail;
