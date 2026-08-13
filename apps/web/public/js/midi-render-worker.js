@@ -42,6 +42,24 @@ function extractPresets() {
   return presets;
 }
 
+function stereoPeak(left, right) {
+  var peak = 0;
+  for (var i = 0; i < left.length; i++) {
+    var l = Math.abs(left[i]);
+    var r = Math.abs(right[i]);
+    if (l > peak) peak = l;
+    if (r > peak) peak = r;
+  }
+  return peak;
+}
+
+function hasStereoSignal(left, right, threshold) {
+  for (var i = left.length - 1; i >= 0; i--) {
+    if (Math.abs(left[i]) > threshold || Math.abs(right[i]) > threshold) return true;
+  }
+  return false;
+}
+
 self.onmessage = function (e) {
   var msg = e.data;
   if (msg.type === 'init') {
@@ -87,17 +105,15 @@ function renderMidi(msg) {
       var silentS = 0;
       var hadSignal = false;
       var totalFrames = 0;
+      var maxFrames = sampleRate * MAX_DURATION_S;
 
-      var renderChunk = function () {
-        if (totalFrames >= sampleRate * MAX_DURATION_S) return Promise.resolve();
+      // Rendering sengaja iterative. Versi rekursif sebelumnya dapat membangun
+      // ribuan stack frame pada MIDI panjang walau pekerjaannya sendiri sinkron.
+      while (totalFrames < maxFrames) {
         var left = new Float32Array(CHUNK);
         var right = new Float32Array(CHUNK);
         synth.render([left, right]);
-        var chunkPeak = 0;
-        for (var i = 0; i < CHUNK; i++) {
-          var v = Math.abs(left[i]);
-          if (v > chunkPeak) chunkPeak = v;
-        }
+        var chunkPeak = stereoPeak(left, right);
         if (chunkPeak > peak) peak = chunkPeak;
         if (chunkPeak > 0.0001) {
           hadSignal = true;
@@ -108,78 +124,84 @@ function renderMidi(msg) {
         leftParts.push(left);
         rightParts.push(right);
         totalFrames += CHUNK;
-        if (hadSignal && silentS >= SILENCE_STOP_S) return Promise.resolve();
-        return renderChunk();
-      };
+        if (hadSignal && silentS >= SILENCE_STOP_S) break;
+      }
 
-      return renderChunk().then(function () {
-        // Tail reverb singkat.
-        var tail = Math.floor(sampleRate * TAIL_S);
-        if (totalFrames < sampleRate * MAX_DURATION_S) {
-          var tLeft = new Float32Array(tail);
-          var tRight = new Float32Array(tail);
-          synth.render([tLeft, tRight]);
-          leftParts.push(tLeft);
-          rightParts.push(tRight);
-          totalFrames += tail;
-        }
+      // Tail reverb singkat, tetap ikut perhitungan peak agar normalisasi tidak
+      // hanya aman untuk badan lagu tetapi juga untuk decay stereo di akhir.
+      var tail = Math.floor(sampleRate * TAIL_S);
+      if (totalFrames < maxFrames) {
+        var tLeft = new Float32Array(tail);
+        var tRight = new Float32Array(tail);
+        synth.render([tLeft, tRight]);
+        var tailPeak = stereoPeak(tLeft, tRight);
+        if (tailPeak > peak) peak = tailPeak;
+        leftParts.push(tLeft);
+        rightParts.push(tRight);
+        totalFrames += tail;
+      }
 
-        // Normalisasi puncak ke 0.94 (boost maks 8x, kontrak gyschordweb).
-        var gain = 1;
-        if (peak > 0) {
-          gain = Math.min(8, NORMALIZE_TARGET / peak);
-        }
-        if (Math.abs(gain - 1) > 1e-4) {
-          for (var p = 0; p < leftParts.length; p++) {
-            var l = leftParts[p];
-            var r = rightParts[p];
-            for (var i = 0; i < l.length; i++) {
-              l[i] *= gain;
-              r[i] *= gain;
-            }
+      // Normalisasi puncak ke 0.94 (boost maks 8x, kontrak gyschordweb).
+      var gain = 1;
+      if (peak > 0) gain = Math.min(8, NORMALIZE_TARGET / peak);
+      if (Math.abs(gain - 1) > 1e-4) {
+        for (var p = 0; p < leftParts.length; p++) {
+          var l = leftParts[p];
+          var r = rightParts[p];
+          for (var sample = 0; sample < l.length; sample++) {
+            l[sample] *= gain;
+            r[sample] *= gain;
           }
         }
+      }
 
-        // Trim silent trailing.
-        var trimThreshold = 0.0001;
-        var last = totalFrames;
-        for (var i = leftParts.length - 1; i >= 0; i--) {
-          var lc = leftParts[i];
-          var silent = true;
-          for (var j = lc.length - 1; j >= 0; j--) {
-            if (Math.abs(lc[j]) > trimThreshold) {
-              silent = false;
-              break;
-            }
-          }
-          if (silent) last -= lc.length;
-          else break;
+      // Trim trailing silence berdasarkan kedua kanal. Kanal kanan tidak boleh
+      // terpotong hanya karena kanal kiri kebetulan sudah senyap lebih dahulu.
+      var trimThreshold = 0.0001;
+      var last = totalFrames;
+      for (var part = leftParts.length - 1; part >= 0; part--) {
+        if (!hasStereoSignal(leftParts[part], rightParts[part], trimThreshold)) {
+          last -= leftParts[part].length;
+        } else {
+          break;
         }
+      }
 
-        var leftOut = new Float32Array(last);
-        var rightOut = new Float32Array(last);
-        var offset = 0;
-        for (var i = 0; i < leftParts.length && offset < last; i++) {
-          var chunk = leftParts[i];
-          var n = Math.min(chunk.length, last - offset);
-          leftOut.set(chunk.subarray(0, n), offset);
-          rightOut.set(rightParts[i].subarray(0, n), offset);
-          offset += n;
-        }
+      // Bentuk output satu kanal demi satu kanal dan lepaskan referensi chunk
+      // segera setelah disalin. Ini menurunkan worker peak memory dibanding
+      // mengalokasikan left+right output sekaligus saat semua chunk masih hidup.
+      var leftOut = new Float32Array(last);
+      var offset = 0;
+      for (var leftIndex = 0; leftIndex < leftParts.length && offset < last; leftIndex++) {
+        var leftChunk = leftParts[leftIndex];
+        var leftCount = Math.min(leftChunk.length, last - offset);
+        leftOut.set(leftChunk.subarray(0, leftCount), offset);
+        offset += leftCount;
+        leftParts[leftIndex] = null;
+      }
 
-        var buffers = [leftOut.buffer, rightOut.buffer];
-        postMessage(
-          {
-            type: 'rendered',
-            id: msg.id,
-            left: leftOut,
-            right: rightOut,
-            sampleRate: sampleRate,
-            duration: last / sampleRate,
-          },
-          buffers,
-        );
-      });
+      var rightOut = new Float32Array(last);
+      offset = 0;
+      for (var rightIndex = 0; rightIndex < rightParts.length && offset < last; rightIndex++) {
+        var rightChunk = rightParts[rightIndex];
+        var rightCount = Math.min(rightChunk.length, last - offset);
+        rightOut.set(rightChunk.subarray(0, rightCount), offset);
+        offset += rightCount;
+        rightParts[rightIndex] = null;
+      }
+
+      var buffers = [leftOut.buffer, rightOut.buffer];
+      postMessage(
+        {
+          type: 'rendered',
+          id: msg.id,
+          left: leftOut,
+          right: rightOut,
+          sampleRate: sampleRate,
+          duration: last / sampleRate,
+        },
+        buffers,
+      );
     })
     .catch(function (err) {
       postMessage({ type: 'error', id: msg.id, error: String((err && err.message) || err) });

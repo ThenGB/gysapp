@@ -186,7 +186,6 @@ export class MidiEngine {
       this.master.connect(comp);
       comp.connect(this.ctx.destination);
     }
-    void this.ctx.resume();
     return this.ctx;
   }
 
@@ -381,10 +380,22 @@ export class MidiEngine {
   }
 
   private putCache(key: string, entry: CacheEntry): void {
+    // A single oversized AudioBuffer must never defeat the advertised cache cap.
+    // The active deck still owns its buffer; this only prevents retaining it as
+    // history after the user moves to another song.
+    if (entry.bytes > CACHE_MAX_BYTES) return;
+
+    const previous = this.cache.get(key);
+    if (previous) {
+      this.cache.delete(key);
+      this.cacheBytes -= previous.bytes;
+    }
+
     this.cache.set(key, entry);
     this.cacheBytes += entry.bytes;
-    while (this.cacheBytes > CACHE_MAX_BYTES && this.cache.size > 1) {
-      const oldest = this.cache.keys().next().value as string;
+    while (this.cacheBytes > CACHE_MAX_BYTES && this.cache.size > 0) {
+      const oldest = this.cache.keys().next().value as string | undefined;
+      if (!oldest) break;
       const evicted = this.cache.get(oldest);
       if (!evicted) break;
       this.cache.delete(oldest);
@@ -434,6 +445,7 @@ export class MidiEngine {
   private startDeckSource(deck: Deck): void {
     if (deck.started || deck.ended) return;
     const ctx = this.ensureContext();
+    void ctx.resume();
     deck.startCtxTime = ctx.currentTime;
     deck.started = true;
     deck.manualStop = false;
@@ -465,7 +477,6 @@ export class MidiEngine {
   play(): void {
     let deck = this.deck;
     if (!deck) return;
-    void this.ensureContext().resume();
 
     if (deck.ended) {
       const offset = deck.startOffset >= deck.buffer.duration ? 0 : deck.startOffset;

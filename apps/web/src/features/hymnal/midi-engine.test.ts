@@ -95,6 +95,7 @@ type InternalMidiEngine = {
   tempoBpm: number;
   pending: Map<number, PendingRequest>;
   loadSoundFont: () => Promise<void>;
+  putCache: (key: string, entry: InternalCacheEntry) => void;
   onWorkerMessage: (msg: {
     type: string;
     id?: number;
@@ -115,6 +116,17 @@ function fakeBuffer(duration: number): AudioBuffer {
   } as AudioBuffer;
 }
 
+function cacheEntry(duration: number, baseBpm = 120): InternalCacheEntry {
+  const buffer = fakeBuffer(duration);
+  return {
+    buffer,
+    transpose: 0,
+    instrument: -1,
+    bytes: buffer.length * buffer.numberOfChannels * 4,
+    baseBpm,
+  };
+}
+
 function setupEngine() {
   const engine = new MidiEngine('/soundfont.sf2');
   const ctx = new FakeAudioContext();
@@ -131,14 +143,7 @@ function cacheSong(
   duration: number,
   baseBpm = 120,
 ): void {
-  const buffer = fakeBuffer(duration);
-  internal.cache.set(`${url}|0|-1`, {
-    buffer,
-    transpose: 0,
-    instrument: -1,
-    bytes: buffer.length * buffer.numberOfChannels * 4,
-    baseBpm,
-  });
+  internal.cache.set(`${url}|0|-1`, cacheEntry(duration, baseBpm));
 }
 
 function deferred() {
@@ -236,6 +241,30 @@ describe('MIDI worker transfer buffers', () => {
   });
 });
 
+describe('MidiEngine render cache bounds', () => {
+  it('does not retain a single rendered buffer larger than the 96 MiB cache budget', () => {
+    const { engine, internal } = setupEngine();
+    const huge = cacheEntry(300);
+
+    internal.putCache('/huge.mid|0|-1', huge);
+
+    expect(internal.cache.size).toBe(0);
+    expect(engine.cacheSizeBytes).toBe(0);
+  });
+
+  it('accounts for replacement entries instead of double-counting the same key', () => {
+    const { engine, internal } = setupEngine();
+    const first = cacheEntry(10);
+    const replacement = cacheEntry(20);
+
+    internal.putCache('/a.mid|0|-1', first);
+    internal.putCache('/a.mid|0|-1', replacement);
+
+    expect(internal.cache.size).toBe(1);
+    expect(engine.cacheSizeBytes).toBe(replacement.bytes);
+  });
+});
+
 describe('MidiEngine playback lifecycle', () => {
   it('actually starts the AudioBufferSourceNode when autoplay is requested', async () => {
     const { engine, ctx, internal } = setupEngine();
@@ -247,6 +276,19 @@ describe('MidiEngine playback lifecycle', () => {
     expect(ctx.sources).toHaveLength(1);
     expect(ctx.sources[0]?.starts).toEqual([{ when: 0, offset: 0 }]);
     expect(engine.getStatus()).toBe('playing');
+  });
+
+  it('does not resume AudioContext again while polling the current playback time', async () => {
+    const { engine, ctx, internal } = setupEngine();
+    cacheSong(internal, '/a.mid', 12);
+    await engine.loadMidi({ url: '/a.mid', autoplay: true });
+    const resumeCalls = ctx.resume.mock.calls.length;
+
+    ctx.currentTime = 2.5;
+    expect(engine.getTime()).toBe(2.5);
+    expect(engine.getTime()).toBe(2.5);
+
+    expect(ctx.resume).toHaveBeenCalledTimes(resumeCalls);
   });
 
   it('keeps a non-autoplay deck paused until play and resumes from the paused offset', async () => {
