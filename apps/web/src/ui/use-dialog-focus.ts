@@ -16,6 +16,9 @@ export function useDialogFocus<T extends HTMLElement>(
   const dialogRef = useRef<T | null>(null);
   const closeRef = useRef(onClose);
   const escapeDisabledRef = useRef(options.escapeDisabled === true);
+  const previousFocusRef = useRef<HTMLElement | null>(
+    document.activeElement instanceof HTMLElement ? document.activeElement : null,
+  );
   closeRef.current = onClose;
   escapeDisabledRef.current = options.escapeDisabled === true;
 
@@ -23,7 +26,6 @@ export function useDialogFocus<T extends HTMLElement>(
     const dialog = dialogRef.current;
     if (!dialog) return;
 
-    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const focusable = () =>
       Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
         (element) => !element.hasAttribute('disabled') && element.getAttribute('aria-hidden') !== 'true',
@@ -67,6 +69,7 @@ export function useDialogFocus<T extends HTMLElement>(
 
     return () => {
       dialog.removeEventListener('keydown', handleKeyDown);
+      const previousFocus = previousFocusRef.current;
       if (previousFocus?.isConnected) previousFocus.focus();
     };
   }, []);
