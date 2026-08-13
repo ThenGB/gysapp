@@ -28,7 +28,8 @@ export function useDialogFocus<T extends HTMLElement>(
 
     const focusable = () =>
       Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
-        (element) => !element.hasAttribute('disabled') && element.getAttribute('aria-hidden') !== 'true',
+        (element) =>
+          !element.hasAttribute('disabled') && element.getAttribute('aria-hidden') !== 'true',
       );
 
     const handleKeyDown = (event: KeyboardEvent) => {
