@@ -37,12 +37,14 @@ Sudah tersedia dan terverifikasi:
 - persistent offline soundfont/MIDI/PDF cache dengan bounded LRU dan safe cleanup di Settings;
 - shared chord-cache cleanup + Settings storage navigation tanpa menghapus Bible/bookmark/history/playlist/notes;
 - Home resume untuk ayat terakhir dan recent hymn yang persisted;
-- encrypted backup, settings/i18n, 10 Pokok Iman + multi-select/copy/share, literature/content surfaces;
+- encrypted backup, settings/i18n ID/EN/ZH untuk journey utama, 10 Pokok Iman + multi-select/copy/share, literature/content surfaces;
 - snapshot konten TJC default termasuk 14 Panduan Alkitab yang disinkronkan GitHub Actions setiap 6 jam;
-- optional Cloudflare near-live content/report gateway;
+- optional Cloudflare near-live content/report gateway; Kirim Masukan mendeteksi gateway yang tidak dikonfigurasi dan tidak mencoba `/api/report` yang rusak;
 - Windows Tauri compile gate;
 - Android ARM64 APK compile gate yang memverifikasi `id.sch.kanaan.egys` dan versionCode 134;
 - iOS Xcode simulator compile gate pada macOS;
+- semua external URL feature melewati `openExternalUrl()`; browser memakai `noopener,noreferrer`, Tauri memakai system opener;
+- pengingat Sabat Jumat 17:00 + pengingat baca Alkitab per-hari/waktu memakai scheduled native notification, persisted di Settings v2 dan ikut encrypted backup;
 - CI Playwright menjalankan artefak production `dist` melalui `vite preview`, dengan lab guard Home LCP <=2.5s dan CLS <=0.1.
 
 ## P0 — milestone PR #4
@@ -156,8 +158,9 @@ Arah visual: **minimal worship utility**, bukan dashboard SaaS.
 
 ### Literature / Faith / More
 
-- i18n ID/EN/ZH sudah mencakup Home, Faith, Literatur/Panduan, Lainnya, Settings/backup/cache, e-GYS, Kirim Masukan, Catatan, dan daftar Pujian; lanjutkan hanya generic chrome yang masih hard-coded;
-- audit external links dengan platform opener yang sama.
+- i18n ID/EN/ZH sudah mencakup journey utama termasuk Home, Bible chrome/context/search, Faith, Literatur/Panduan, Lainnya, Settings/backup/cache/reminder, e-GYS, Kirim Masukan, Catatan, serta daftar/playlist/viewer Pujian;
+- external links Home/Literatur/Lainnya/e-GYS memakai satu platform opener adapter;
+- Kirim Masukan adalah capability gateway opsional: deployment backendless menampilkan unavailable state yang eksplisit; deployment gateway menangani success serta 429/502/503 dengan recovery copy.
 
 ## Online content architecture — audited
 
@@ -167,7 +170,7 @@ Runtime normal **tidak membutuhkan Cloudflare Worker** untuk membaca konten TJC.
 - `sync-content.yml` mengambil Sauh, Suara Sejati, Kesaksian, Warta, Renungan, dan Panduan Alkitab dari `tjc.org` setiap 6 jam;
 - parser snapshot sama dengan parser edge;
 - browser tidak perlu mem-fetch/parse HTML TJC lintas-origin untuk cold-start/journey normal;
-- Worker tetap opsional untuk near-live content dan `/api/report` bila webhook perlu dirahasiakan.
+- Worker tetap opsional untuk near-live content dan `/api/report` bila webhook perlu dirahasiakan; tanpa gateway, UI Kirim Masukan dinonaktifkan secara eksplisit alih-alih jatuh ke `/api` lokal/404.
 
 Konsekuensinya, deployment tanpa Cloudflare tetap merupakan konfigurasi production yang valid. Detail keputusan ada di ADR-0003.
 
@@ -204,6 +207,7 @@ Sudah otomatis:
 Masih manual/real-device:
 
 - real-device light/dark/system contrast/accessibility soak;
+- real-device delivery/timing pengingat Sabat dan baca Alkitab pada OS target;
 - real-device long-song MIDI/PDF performance soak;
 - field/RUM Web Vitals (terutama INP dan p75) setelah deployment beta stabil;
 - Android signed upgrade/install smoke menggunakan signing identity lama;
@@ -219,11 +223,10 @@ Masih manual/real-device:
 
 ## Urutan eksekusi berikutnya
 
-1. Lanjutkan i18n hanya pada generic chrome Alkitab/Pujian yang masih hard-coded.
-2. Jalankan real-device light/dark/system accessibility dan MIDI/PDF long-song soak.
-3. Kumpulkan field/RUM Web Vitals setelah deployment beta stabil; production-preview lab regression sudah otomatis.
-4. Jalankan Android production signed upgrade smoke setelah legacy keystore + fingerprint tersedia.
-5. Tambahkan signed iOS distribution setelah provisioning/signing Apple tersedia.
+1. Jalankan real-device light/dark/system accessibility, scheduled-notification delivery, dan MIDI/PDF long-song soak.
+2. Kumpulkan field/RUM Web Vitals setelah deployment beta stabil; production-preview lab regression sudah otomatis.
+3. Jalankan Android production signed upgrade smoke setelah legacy keystore + fingerprint tersedia.
+4. Tambahkan signed iOS distribution setelah provisioning/signing Apple tersedia.
 
 ## Definition of done
 

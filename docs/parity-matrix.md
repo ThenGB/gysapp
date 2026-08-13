@@ -6,14 +6,14 @@ Status: `todo | in-progress | done | n/a`.
 
 ## Shell & Navigasi
 
-| Fitur                                   | Status | Catatan                                                          |
-| --------------------------------------- | ------ | ---------------------------------------------------------------- |
-| 5 menu utama                            | done   | Beranda / Alkitab / Pujian / Iman / Lainnya                      |
-| Bottom nav / rail / sidebar responsif   | done   | Navigasi selalu tersedia                                         |
-| i18n id/en/zh foundation                | done   | Journey utama + Settings/e-GYS/Notes/Hymnal list sudah localized |
-| Floating/bubble mobile dock             | done   | Label tetap terlihat, active indicator restrained                |
-| Global player tidak menutupi konten/nav | done   | App-level dock + reserved space lolos regression mobile          |
-| Reduced motion                          | done   | OS preference + deep-link Bible scroll dihormati                 |
+| Fitur                                   | Status | Catatan                                                            |
+| --------------------------------------- | ------ | ------------------------------------------------------------------ |
+| 5 menu utama                            | done   | Beranda / Alkitab / Pujian / Iman / Lainnya                        |
+| Bottom nav / rail / sidebar responsif   | done   | Navigasi selalu tersedia                                           |
+| i18n id/en/zh foundation                | done   | Journey utama termasuk Bible/Hymnal/Settings/e-GYS/Notes localized |
+| Floating/bubble mobile dock             | done   | Label tetap terlihat, active indicator restrained                  |
+| Global player tidak menutupi konten/nav | done   | App-level dock + reserved space lolos regression mobile            |
+| Reduced motion                          | done   | OS preference + deep-link Bible scroll dihormati                   |
 
 ## Beranda
 
@@ -85,52 +85,53 @@ Status: `todo | in-progress | done | n/a`.
 
 ## Literatur & layanan eksternal
 
-| Item                              | Status | Catatan                                                     |
-| --------------------------------- | ------ | ----------------------------------------------------------- |
-| Kesaksian                         | done   | Snapshot statis + optional near-live gateway                |
-| Warta/Manna Sejati                | done   | Snapshot statis + optional near-live gateway                |
-| Kumpulan Renungan                 | done   | Snapshot statis + optional near-live gateway                |
-| Panduan Alkitab                   | done   | Snapshot 14 panduan TJC + optional gateway; ikut sync 6-jam |
-| e-GYS external launcher           | done   | Browser/system opener + E2E boundary verified               |
-| App-owned e-GYS login/session     | n/a    | Sengaja dihapus                                             |
-| Google Identity / token exchange  | n/a    | Sengaja dihapus                                             |
-| e-GYS profile/member/branch fetch | n/a    | Sengaja dihapus                                             |
-| Native e-GYS auth webview bridge  | n/a    | Remote service dibuka via system browser                    |
-| Secure e-GYS token storage        | n/a    | Tidak ada token milik GYSApp                                |
-| Pujian/Paduan Suara               | done   | External access                                             |
-| Buku                              | done   | External access                                             |
-| Ibadah Online                     | done   | External access                                             |
-| Audio/Video Khotbah               | done   | External access                                             |
-| eRhema / Pelita Kecil             | done   | Dipertahankan dari menu legacy                              |
-| Podcast / social media            | done   | Facebook / Instagram / YouTube / Spotify                    |
+| Item                              | Status | Catatan                                                                                        |
+| --------------------------------- | ------ | ---------------------------------------------------------------------------------------------- |
+| Kesaksian                         | done   | Snapshot statis + optional near-live gateway                                                   |
+| Warta/Manna Sejati                | done   | Snapshot statis + optional near-live gateway                                                   |
+| Kumpulan Renungan                 | done   | Snapshot statis + optional near-live gateway                                                   |
+| Panduan Alkitab                   | done   | Snapshot 14 panduan TJC + optional gateway; ikut sync 6-jam                                    |
+| e-GYS external launcher           | done   | Browser/system opener + E2E boundary verified                                                  |
+| App-owned e-GYS login/session     | n/a    | Sengaja dihapus                                                                                |
+| Google Identity / token exchange  | n/a    | Sengaja dihapus                                                                                |
+| e-GYS profile/member/branch fetch | n/a    | Sengaja dihapus                                                                                |
+| Native e-GYS auth webview bridge  | n/a    | Remote service dibuka via system browser                                                       |
+| Secure e-GYS token storage        | n/a    | Tidak ada token milik GYSApp                                                                   |
+| Pujian/Paduan Suara               | done   | External access                                                                                |
+| Buku                              | done   | External access                                                                                |
+| Ibadah Online                     | done   | External access                                                                                |
+| Audio/Video Khotbah               | done   | External access                                                                                |
+| eRhema / Pelita Kecil             | done   | Dipertahankan dari menu legacy                                                                 |
+| Podcast / social media            | done   | Facebook / Instagram / YouTube / Spotify                                                       |
+| Unified external platform opener  | done   | Browser noopener/noreferrer; Tauri system opener; tidak ada direct window.open di feature code |
 
 ## Backendless-first & optional gateway
 
-| Fitur                         | Status      | Catatan                                                              |
-| ----------------------------- | ----------- | -------------------------------------------------------------------- |
-| GYSApp account backend        | n/a         | Tidak ada account backend                                            |
-| OAuth di Worker               | n/a         | Tidak diperlukan                                                     |
-| e-GYS token melalui Worker    | n/a         | Tidak ada token e-GYS di GYSApp                                      |
-| Chord proxy Worker            | n/a         | Direct public source                                                 |
-| Snapshot konten statis        | done        | Default runtime; GitHub Actions sync TJC setiap 6 jam                |
-| Kirim masukan via gateway     | in-progress | Hanya bila webhook perlu disembunyikan                               |
-| TJC HTML/CORS content gateway | done        | Opsional untuk near-live/normalization; bukan dependency runtime     |
-| Cloudflare deployment         | done        | Optional `gysapp-content-gateway`; credentials boleh tidak tersedia  |
-| Direct-source/gateway audit   | done        | Browser normal memakai snapshot; HTML live tetap di CI/optional edge |
+| Fitur                         | Status | Catatan                                                                        |
+| ----------------------------- | ------ | ------------------------------------------------------------------------------ |
+| GYSApp account backend        | n/a    | Tidak ada account backend                                                      |
+| OAuth di Worker               | n/a    | Tidak diperlukan                                                               |
+| e-GYS token melalui Worker    | n/a    | Tidak ada token e-GYS di GYSApp                                                |
+| Chord proxy Worker            | n/a    | Direct public source                                                           |
+| Snapshot konten statis        | done   | Default runtime; GitHub Actions sync TJC setiap 6 jam                          |
+| Kirim masukan via gateway     | done   | Gateway opsional; backendless state eksplisit, 429/502/503 punya recovery copy |
+| TJC HTML/CORS content gateway | done   | Opsional untuk near-live/normalization; bukan dependency runtime               |
+| Cloudflare deployment         | done   | Optional `gysapp-content-gateway`; credentials boleh tidak tersedia            |
+| Direct-source/gateway audit   | done   | Browser normal memakai snapshot; HTML live tetap di CI/optional edge           |
 
 ## Settings & Data
 
-| Fitur                    | Status      | Catatan                                                                            |
-| ------------------------ | ----------- | ---------------------------------------------------------------------------------- |
-| Light/dark/system        | done        |                                                                                    |
-| UI scale 5% step         | done        | Lebih halus untuk accessibility                                                    |
-| Reader comfort modes     | in-progress | Automated reflow lolos; final visual/contrast soak tetap dilakukan                 |
-| Backup `.gysapp` AES-GCM | done        |                                                                                    |
-| PWA/offline shell        | done        |                                                                                    |
-| Bible asset manager      | done        | Install/update/remove + verification                                               |
-| Media cache manager      | done        | Soundfont/MIDI/PDF bounded LRU + safe cleanup surface                              |
-| Unified reset/cache      | done        | Bible manager + media/chord cleanup tersedia; bookmark/history/playlist/notes aman |
-| Sabat/reminder native    | todo        |                                                                                    |
+| Fitur                    | Status      | Catatan                                                                                           |
+| ------------------------ | ----------- | ------------------------------------------------------------------------------------------------- |
+| Light/dark/system        | done        |                                                                                                   |
+| UI scale 5% step         | done        | Lebih halus untuk accessibility                                                                   |
+| Reader comfort modes     | in-progress | Automated reflow lolos; final visual/contrast soak tetap dilakukan                                |
+| Backup `.gysapp` AES-GCM | done        |                                                                                                   |
+| PWA/offline shell        | done        |                                                                                                   |
+| Bible asset manager      | done        | Install/update/remove + verification                                                              |
+| Media cache manager      | done        | Soundfont/MIDI/PDF bounded LRU + safe cleanup surface                                             |
+| Unified reset/cache      | done        | Bible manager + media/chord cleanup tersedia; bookmark/history/playlist/notes aman                |
+| Sabat/reminder native    | done        | Sabat Jumat 17:00 + baca Alkitab per hari/waktu; Settings v2/backup; browser graceful native-only |
 
 ## Native / Distribution
 
@@ -146,26 +147,26 @@ Status: `todo | in-progress | done | n/a`.
 
 ## Kualitas
 
-| Gate                                | Status      | Catatan                                                                   |
-| ----------------------------------- | ----------- | ------------------------------------------------------------------------- |
-| TypeScript strict                   | done        | Strictness tidak dilonggarkan                                             |
-| Unit/component tests                | done        | Bible context, notes, media cache, MIDI lifecycle, race guards            |
-| Native PR compile                   | done        | Windows + Android + iOS                                                   |
-| Playwright desktop/mobile           | done        | Production `dist` preview; 320–1920 + Bible/Hymnal/player/e-GYS           |
-| Browser zoom/reflow                 | done        | Effective CSS viewport equivalent 200% browser zoom                       |
-| Keyboard-only/focus visibility      | done        | Primary navigation journey + focus-ring regression                        |
-| Reduced motion                      | done        | Motion-duration regression + Bible deep-link auto-scroll                  |
-| Secret scan                         | done        | Credential legacy tidak dimigrasikan                                      |
-| Runtime third-party executable code | done        | App logic bundled/local                                                   |
-| Initial shell <250KB gzip           | done        | Production initial JS ~134 KiB gzip + hard CI budget 250 KiB              |
-| WCAG 2.2 AA journey utama           | in-progress | Automated reflow/keyboard/motion/contrast lolos; real-device soak tersisa |
-| Production web vitals               | in-progress | Production-preview LCP/CLS lab gate done; field/RUM INP+p75 tersisa       |
+| Gate                                | Status      | Catatan                                                                                        |
+| ----------------------------------- | ----------- | ---------------------------------------------------------------------------------------------- |
+| TypeScript strict                   | done        | Strictness tidak dilonggarkan                                                                  |
+| Unit/component tests                | done        | Bible context, notes, media cache, MIDI lifecycle, race guards, reminders, feedback capability |
+| Native PR compile                   | done        | Windows + Android + iOS                                                                        |
+| Playwright desktop/mobile           | done        | Production `dist` preview; 320–1920 + Bible/Hymnal/player/e-GYS                                |
+| Browser zoom/reflow                 | done        | Effective CSS viewport equivalent 200% browser zoom                                            |
+| Keyboard-only/focus visibility      | done        | Primary navigation journey + focus-ring regression                                             |
+| Reduced motion                      | done        | Motion-duration regression + Bible deep-link auto-scroll                                       |
+| Secret scan                         | done        | Credential legacy tidak dimigrasikan                                                           |
+| Runtime third-party executable code | done        | App logic bundled/local                                                                        |
+| Initial shell <250KB gzip           | done        | Production initial JS ~134 KiB gzip + hard CI budget 250 KiB                                   |
+| WCAG 2.2 AA journey utama           | in-progress | Automated reflow/keyboard/motion/contrast lolos; real-device soak tersisa                      |
+| Production web vitals               | in-progress | Production-preview LCP/CLS lab gate done; field/RUM INP+p75 tersisa                            |
 
 ## Blocker eksternal tersisa
 
 1. **Keystore production Android lama + fingerprint sertifikat yang benar** (dari keystore/Play Console) untuk signed upgrade smoke aplikasi `id.sch.kanaan.egys`; APK debug legacy bukan bukti fingerprint production.
 2. **Apple signing/provisioning** untuk signed IPA/App Store. macOS compile runner sudah tersedia dan hijau.
 3. Cloudflare account/token hanya jika optional near-live content/report gateway dipakai production.
-4. Report webhook secret hanya bila Kirim Masukan memakai webhook server-side.
+4. Report webhook secret hanya bila Kirim Masukan diaktifkan untuk delivery server-side; tanpa itu deployment backendless tetap valid.
 
 Tidak ada kebutuhan Google OAuth client/secret, Apple auth secret, `SESSION_SECRET`, atau credential e-GYS untuk fungsi e-GYS di GYSApp.
