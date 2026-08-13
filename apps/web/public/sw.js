@@ -1,12 +1,15 @@
-/* GYSApp service worker: offline shell.
+/* GYSApp service worker: bounded offline shell.
  * Strategi:
- * - File app lokal (js/css/html): network-first, fallback cache.
+ * - Navigasi + file app lokal (js/css/html): network-first, fallback cache.
  * - Konten besar (pdf/midi/soundfont/chord JSON): SELALU network (dikelola
  *   sendiri oleh IndexedDB / lazy cache, tidak pernah dobel di Cache API).
- * - Aset statis lain (font/icon/manifest): cache-first.
+ * - Aset statis lokal (font/icon/image/manifest): cache-first.
+ * - API, analytics, dan request lintas-origin tidak disimpan oleh shell cache.
  */
-const CACHE_NAME = 'gysapp-shell-v1';
+const CACHE_NAME = 'gysapp-shell-v2';
 const NEVER_CACHE = ['/pdf/', '/assets/midi/', '/assets/soundfont/', '.chord.json'];
+const STATIC_EXTENSIONS = /\.(?:avif|gif|ico|jpe?g|png|svg|webp|woff2?|webmanifest)$/i;
+const APP_EXTENSIONS = /\.(?:css|html|js|mjs)$/i;
 
 self.addEventListener('install', () => {
   self.skipWaiting();
@@ -17,7 +20,7 @@ self.addEventListener('activate', (event) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))),
+        Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))),
       )
       .then(() => self.clients.claim()),
   );
@@ -25,26 +28,29 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  const url = new URL(event.request.url);
-  if (NEVER_CACHE.some((prefix) => url.pathname.includes(prefix))) return;
 
+  const url = new URL(event.request.url);
+  // Keep the offline shell deliberately same-origin and static. Dynamic API and
+  // cross-origin data own their freshness/caching policy outside Cache Storage.
+  if (url.origin !== self.location.origin || url.pathname.includes('/api/')) return;
+  if (NEVER_CACHE.some((fragment) => url.pathname.includes(fragment))) return;
+
+  const isNavigation = event.request.mode === 'navigate';
   const isAppFile =
-    url.origin === self.location.origin &&
-    (url.pathname.endsWith('.js') ||
-      url.pathname.endsWith('.css') ||
-      url.pathname.endsWith('.html') ||
-      url.pathname.endsWith('.webmanifest') ||
-      url.pathname.endsWith('.svg') ||
-      url.pathname === '/' ||
-      url.pathname.endsWith('/'));
+    isNavigation ||
+    APP_EXTENSIONS.test(url.pathname) ||
+    url.pathname === '/' ||
+    url.pathname.endsWith('/');
 
   if (isAppFile) {
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) =>
         fetch(event.request)
-          .then((res) => {
-            if (res && res.status === 200) cache.put(event.request, res.clone());
-            return res;
+          .then((response) => {
+            if (response.status === 200) {
+              void cache.put(event.request, response.clone());
+            }
+            return response;
           })
           .catch(() => cache.match(event.request).then((cached) => cached || Response.error())),
       ),
@@ -52,17 +58,20 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  if (!STATIC_EXTENSIONS.test(url.pathname)) return;
+
   event.respondWith(
-    caches.match(event.request).then(
-      (cached) =>
-        cached ||
-        fetch(event.request).then((res) => {
-          if (res && (res.status === 200 || res.type === 'opaque')) {
-            const copy = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          }
-          return res;
-        }),
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.match(event.request).then(
+        (cached) =>
+          cached ||
+          fetch(event.request).then((response) => {
+            if (response.status === 200) {
+              void cache.put(event.request, response.clone());
+            }
+            return response;
+          }),
+      ),
     ),
   );
 });

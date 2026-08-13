@@ -1,0 +1,138 @@
+name: native-ios
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/web/**'
+      - 'apps/native/**'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/native-ios.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-ios:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/native/src-tauri
+
+      - name: Ensure Apple native tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ensure_brew_command() {
+            local formula="$1"
+            local command_name="$2"
+
+            if command -v "$command_name" >/dev/null 2>&1; then
+              return 0
+            fi
+
+            if brew list "$formula" >/dev/null 2>&1; then
+              brew link --overwrite "$formula" >/dev/null 2>&1 || true
+            fi
+
+            if command -v "$command_name" >/dev/null 2>&1; then
+              return 0
+            fi
+
+            local attempt
+            for attempt in 1 2 3; do
+              if brew install "$formula"; then
+                break
+              fi
+              if [ "$attempt" -eq 3 ]; then
+                echo "Failed to install $formula after $attempt attempts." >&2
+                return 1
+              fi
+              sleep $((attempt * 10))
+            done
+
+            brew link --overwrite "$formula" >/dev/null 2>&1 || true
+            command -v "$command_name" >/dev/null 2>&1
+          }
+
+          ensure_brew_command xcodegen xcodegen
+          ensure_brew_command libimobiledevice idevice_id
+          ensure_brew_command cocoapods pod
+
+          xcodegen --version
+          pod --version
+          xcodebuild -version
+
+      - name: Install frontend deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        run: pnpm --filter @gysapp/web build
+
+      - name: Initialize iOS project
+        run: pnpm --filter @gysapp/native tauri ios init --ci --skip-targets-install
+
+      - name: Verify iOS identity and inject Xcode CI setting
+        shell: bash
+        run: |
+          set -euo pipefail
+          APPLE_DIR="$GITHUB_WORKSPACE/apps/native/src-tauri/gen/apple"
+          PBXPROJ="$APPLE_DIR/gysapp.xcodeproj/project.pbxproj"
+          test -f "$PBXPROJ"
+          grep -R --fixed-strings 'com.gysid.gysapp' "$APPLE_DIR" >/dev/null
+
+          PBXPROJ="$PBXPROJ" python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          path = Path(os.environ['PBXPROJ'])
+          text = path.read_text()
+          needle = '\t\t\t\tENABLE_BITCODE = NO;'
+          count = text.count(needle)
+          if count < 1:
+              raise SystemExit('Unable to locate target build settings in generated Xcode project')
+          text = text.replace(needle, '\t\t\t\tCI = true;\n' + needle)
+          path.write_text(text)
+          print(f'Injected CI=true into {count} Xcode build configuration(s).')
+          PY
+
+          grep -F 'CI = true;' "$PBXPROJ" >/dev/null
+
+      - name: Build iOS simulator app
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$(uname -m)" = "arm64" ]; then
+            IOS_TARGET=aarch64-sim
+          else
+            IOS_TARGET=x86_64
+          fi
+          pnpm --filter @gysapp/native tauri ios build \
+            --debug \
+            --target "$IOS_TARGET" \
+            --ci

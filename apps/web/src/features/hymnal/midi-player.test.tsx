@@ -12,6 +12,7 @@ const { mockEngine } = vi.hoisted(() => ({
     loadMidi: vi.fn(),
     play: vi.fn(),
     pause: vi.fn(),
+    stop: vi.fn(),
     seek: vi.fn(),
     setTranspose: vi.fn(),
     setTempoBpm: vi.fn(),
@@ -53,6 +54,14 @@ describe('MiniMidiPlayer', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Putar' }));
     expect(mockEngine.loadMidi).toHaveBeenCalledWith(
       expect.objectContaining({ url: '/data/hymnal/midi/kr/001_Test.mid', autoplay: true }),
+    );
+  });
+
+  it('loads with the restored transpose value', () => {
+    render(<MiniMidiPlayer url="/x.mid" title="X" transposeStep={-3} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Putar' }));
+    expect(mockEngine.loadMidi).toHaveBeenCalledWith(
+      expect.objectContaining({ url: '/x.mid', autoplay: true, transpose: -3 }),
     );
   });
 
@@ -98,5 +107,70 @@ describe('MiniMidiPlayer', () => {
     const group = screen.getByRole('group', { name: 'Notasi chord MIDI' });
     fireEvent.click(group.querySelectorAll('button')[1] as HTMLButtonElement);
     expect(onAccidentalModeChange).toHaveBeenCalledWith('flat');
+  });
+
+  it('exposes previous and next controls when handlers are available', async () => {
+    const onPrevious = vi.fn(() => true);
+    const onNext = vi.fn(() => true);
+    render(
+      <MiniMidiPlayer compact url="/x.mid" title="X" onPrevious={onPrevious} onNext={onNext} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lagu sebelumnya' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Lagu berikutnya' }));
+    await act(async () => undefined);
+    expect(onPrevious).toHaveBeenCalledTimes(1);
+    expect(onNext).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps skip controls disabled at playlist boundaries', () => {
+    render(
+      <MiniMidiPlayer
+        compact
+        url="/x.mid"
+        title="X"
+        previousDisabled
+        nextDisabled
+        onPrevious={() => true}
+        onNext={() => true}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Lagu sebelumnya' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Lagu berikutnya' })).toBeDisabled();
+  });
+
+  it('continues playback automatically when skipping while playing', async () => {
+    mockEngine.getStatus.mockReturnValue('playing');
+    const onNext = vi.fn(() => true);
+    const { rerender } = render(<MiniMidiPlayer compact url="/a.mid" title="A" onNext={onNext} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lagu berikutnya' }));
+    await act(async () => undefined);
+    rerender(<MiniMidiPlayer compact url="/b.mid" title="B" onNext={onNext} />);
+
+    expect(mockEngine.stop).toHaveBeenCalled();
+    expect(mockEngine.loadMidi).toHaveBeenCalledWith(
+      expect.objectContaining({ url: '/b.mid', autoplay: true }),
+    );
+  });
+
+  it('auto-advances once when the MIDI engine reports ended', async () => {
+    const onEnded = vi.fn(() => true);
+    const { rerender } = render(
+      <MiniMidiPlayer compact url="/a.mid" title="A" onEnded={onEnded} />,
+    );
+
+    emitStatus('ended');
+    await act(async () => undefined);
+    expect(onEnded).toHaveBeenCalledTimes(1);
+
+    emitStatus('ended');
+    await act(async () => undefined);
+    expect(onEnded).toHaveBeenCalledTimes(1);
+
+    rerender(<MiniMidiPlayer compact url="/b.mid" title="B" onEnded={onEnded} />);
+    expect(mockEngine.loadMidi).toHaveBeenCalledWith(
+      expect.objectContaining({ url: '/b.mid', autoplay: true }),
+    );
   });
 });

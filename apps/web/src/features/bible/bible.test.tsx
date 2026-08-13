@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import 'fake-indexeddb/auto';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -87,6 +88,19 @@ describe('BiblePage (SQLite b_tb.db)', () => {
       </Routes>,
     );
     expect(await screen.findByRole('heading', { name: 'Yohanes 3' })).toBeInTheDocument();
+  });
+
+  it('opens the Bible library from the Settings deep-link', async () => {
+    renderBible(
+      '/bible?library=1',
+      <Routes>
+        <Route path="/bible" element={<BiblePage />} />
+        <Route path="/bible/:book/:chapter" element={<BiblePage />} />
+      </Routes>,
+    );
+
+    expect(await screen.findByRole('dialog', { name: 'Kelola Alkitab' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Versi Alkitab' })).toBeInTheDocument();
   });
 });
 

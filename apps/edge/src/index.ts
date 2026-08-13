@@ -4,12 +4,13 @@ import { parseSauhResult, parseTrueVoiceFeed } from '@gysapp/contracts';
 import { createReportApp } from './report';
 import { normalizeSauhPosts } from './content/sauh';
 import { extractAuthorFromHtml, parseSuaraSejatiPage } from './content/suara-sejati';
-import { parseTableLinks } from './content/literature';
+import { parseBibleGuideLinks, parseTableLinks } from './content/literature';
 
 const TJC_WP_POSTS = 'https://tjc.org/id/wp-json/wp/v2/posts';
 const TJC_SUARA_SEJATI = 'https://tjc.org/id/suarasejati/';
 const TJC_LITERATUR = 'https://tjc.org/id/literatur/';
 const TJC_WARTA = 'https://tjc.org/id/literatur/warta-sejati/';
+const TJC_BIBLE_GUIDES = 'https://tjc.org/id/literatur/bsg/';
 const KESAKSIAN_SELECTOR = '#posts-table-1 > tbody > tr > td > a';
 const RENUNGAN_SELECTOR = '#posts-table-3 > tbody > tr > td > a';
 
@@ -148,6 +149,12 @@ export function createApp(
   literatureFeed('/api/content/warta', TJC_WARTA, 'warta-unavailable', parseSuaraSejatiPage);
   literatureFeed('/api/content/renungan', TJC_LITERATUR, 'renungan-unavailable', (html) =>
     parseTableLinks(html, RENUNGAN_SELECTOR),
+  );
+  literatureFeed(
+    '/api/content/panduan',
+    TJC_BIBLE_GUIDES,
+    'panduan-unavailable',
+    parseBibleGuideLinks,
   );
 
   return app;

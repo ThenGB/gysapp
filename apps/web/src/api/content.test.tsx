@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cachedSauh, useSauh } from './content';
 import type { SauhResult } from '@gysapp/contracts';
 
+const cacheKey = 'gysapp.content.cache.v1';
 const dateKey = '2026-08-11';
 const sauhResult: SauhResult = {
   isToday: true,
@@ -48,9 +49,9 @@ describe('useSauh offline fallback', () => {
     expect(cachedSauh(dateKey)?.items[0]?.title).toBe('Konten offline');
   });
 
-  it('falls back to stale cache when network fails', async () => {
+  it('shows stale cached content immediately while revalidating in the background', async () => {
     localStorage.setItem(
-      'gysapp.content.cache.v1',
+      cacheKey,
       JSON.stringify({ sauh: { [dateKey]: sauhResult }, suaraSejati: null }),
     );
     const fetchMock = vi.fn(async () => {
@@ -59,8 +60,57 @@ describe('useSauh offline fallback', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const { result } = renderHook(() => useSauh(new Date(2026, 7, 11)), { wrapper: wrapper() });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.isFetching).toBe(true);
     expect(result.current.data?.items[0]?.title).toBe('Konten offline');
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(result.current.isSuccess).toBe(true);
+  });
+
+  it('keeps a fresh static snapshot without another network request', async () => {
+    const fresh = { ...sauhResult, fetchedAt: new Date().toISOString() };
+    localStorage.setItem(
+      cacheKey,
+      JSON.stringify({ sauh: { [dateKey]: fresh }, suaraSejati: null }),
+    );
+    const fetchMock = vi.fn(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useSauh(new Date(2026, 7, 11)), { wrapper: wrapper() });
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.isFetching).toBe(false);
+    expect(result.current.data?.items[0]?.title).toBe('Konten offline');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('bounds the persisted daily Sauh cache to the newest fourteen dates', async () => {
+    const olderEntries = Object.fromEntries(
+      Array.from({ length: 16 }, (_, index) => {
+        const day = (index + 1).toString().padStart(2, '0');
+        return [`2026-07-${day}`, sauhResult];
+      }),
+    );
+    localStorage.setItem(cacheKey, JSON.stringify({ sauh: olderEntries, suaraSejati: null }));
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify(sauhResult), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useSauh(new Date(2026, 7, 11)), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const persisted = JSON.parse(localStorage.getItem(cacheKey) ?? '{}') as {
+      sauh?: Record<string, SauhResult>;
+    };
+    const keys = Object.keys(persisted.sauh ?? {});
+    expect(keys).toHaveLength(14);
+    expect(keys).toContain(dateKey);
+    expect(keys).not.toContain('2026-07-01');
   });
 });

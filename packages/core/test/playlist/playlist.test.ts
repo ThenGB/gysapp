@@ -1,14 +1,17 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   PLAYLIST_STORAGE_KEY,
   addSongToPlaylist,
+  adjacentSong,
   createPlaylist,
   cycleLoopMode,
   deletePlaylist,
   emptyPlaylistState,
   moveSong,
   parsePlaylistState,
+  randomOtherSong,
   removeSongFromPlaylist,
+  renamePlaylist,
   setActivePlaylist,
   type PlaylistState,
   type SongRef,
@@ -16,14 +19,26 @@ import {
 
 const songA: SongRef = { book: 'KR', number: '001', title: 'Pujilah Allah' };
 const songB: SongRef = { book: 'KR', number: '002', title: 'Pujilah Yang Mahakudus' };
+const songC: SongRef = { book: 'KR', number: '003', title: 'Haleluya' };
 
 describe('playlist core', () => {
-  it('creates playlists with unique ids and trims names', () => {
+  it('creates playlists with unique ids, trims names, and deduplicates names', () => {
     const state = createPlaylist(emptyPlaylistState(), '  Ibadah Pagi ');
     expect(state.playlists).toHaveLength(1);
     expect(state.playlists[0]?.name).toBe('Ibadah Pagi');
-    const state2 = createPlaylist(state, '');
-    expect(state2.playlists).toHaveLength(1);
+    expect(createPlaylist(state, '').playlists).toHaveLength(1);
+    expect(createPlaylist(state, 'ibadah pagi').playlists).toHaveLength(1);
+  });
+
+  it('renames without allowing a duplicate name', () => {
+    let state = createPlaylist(emptyPlaylistState(), 'Pagi');
+    state = createPlaylist(state, 'Malam');
+    const first = state.playlists[0]!.id;
+    const second = state.playlists[1]!.id;
+    state = renamePlaylist(state, first, 'Pagi Baru');
+    expect(state.playlists[0]?.name).toBe('Pagi Baru');
+    state = renamePlaylist(state, second, 'pagi baru');
+    expect(state.playlists[1]?.name).toBe('Malam');
   });
 
   it('adds songs without duplicates', () => {
@@ -44,6 +59,30 @@ describe('playlist core', () => {
     expect(state.playlists[0]?.songs[0]?.number).toBe('002');
     state = removeSongFromPlaylist(state, id, songB);
     expect(state.playlists[0]?.songs).toHaveLength(1);
+  });
+
+  it('navigates ordered songs without wrapping in off mode', () => {
+    const songs = [songA, songB, songC];
+    expect(adjacentSong(songs, 'KR:002', 'previous')?.number).toBe('001');
+    expect(adjacentSong(songs, 'KR:002', 'next')?.number).toBe('003');
+    expect(adjacentSong(songs, 'KR:001', 'previous')).toBeNull();
+    expect(adjacentSong(songs, 'KR:003', 'next')).toBeNull();
+    expect(adjacentSong(songs, 'KR:999', 'next')).toBeNull();
+  });
+
+  it('wraps ordered songs only when requested', () => {
+    const songs = [songA, songB, songC];
+    expect(adjacentSong(songs, 'KR:003', 'next', true)?.number).toBe('001');
+    expect(adjacentSong(songs, 'KR:001', 'previous', true)?.number).toBe('003');
+    expect(adjacentSong([songA], 'KR:001', 'next', true)).toBeNull();
+  });
+
+  it('chooses a different song for shuffle with deterministic injected random', () => {
+    const random = vi.fn(() => 0.99);
+    const picked = randomOtherSong([songA, songB, songC], 'KR:002', random);
+    expect(picked?.number).toBe('003');
+    expect(random).toHaveBeenCalledTimes(1);
+    expect(randomOtherSong([songA], 'KR:001', () => 0)).toBeNull();
   });
 
   it('deletes playlists and clears active reference', () => {

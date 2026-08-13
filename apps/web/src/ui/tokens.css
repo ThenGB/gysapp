@@ -1,15 +1,18 @@
 :root {
   --font-scale: 1;
-  /* Palette "Ruang Ibadah Tenang" — quiet liturgical editorial */
+  --reader-scale: 1;
+  /* Quiet Liturgical Editorial: warm neutral canvas, restrained brand accents. */
   --color-ivory-50: #faf9f7;
   --color-ivory-100: #f4f1ec;
-  --color-ivory-200: #eae4da;
+  --color-ivory-200: #e4dfd7;
   --color-charcoal-900: #211d18;
   --color-charcoal-700: #3d372f;
-  --color-charcoal-500: #6b6358;
+  --color-charcoal-500: #655e55;
   --color-charcoal-300: #a89f92;
   --color-gys-blue: #3b82f6;
   --color-gys-blue-deep: #1d4ed8;
+  --color-church-green: #367549;
+  --color-church-green-deep: #285b38;
   --color-gold: #b08d4f;
   --color-error: #b3261e;
   --color-success: #2e7d32;
@@ -22,10 +25,12 @@
   --text-secondary: var(--color-charcoal-700);
   --text-tertiary: var(--color-charcoal-500);
   --accent: var(--color-gys-blue);
-  --accent-contrast: #ffffff;
-  --focus-ring: var(--color-gys-blue);
+  --accent-text: var(--color-gys-blue-deep);
+  --accent-contrast: #10151f;
+  --brand-church: var(--color-church-green);
+  --brand-church-text: var(--color-church-green-deep);
+  --focus-ring: var(--color-gys-blue-deep);
 
-  /* Typography (font files di fase berikutnya; stack sistem sementara) */
   --font-ui: 'Atkinson Hyperlegible Next', system-ui, 'Segoe UI', Roboto, sans-serif;
   --font-reader: 'Literata', Georgia, 'Times New Roman', serif;
   --text-xs: 0.875rem;
@@ -33,10 +38,9 @@
   --text-md: 1.125rem;
   --text-lg: 1.375rem;
   --text-xl: 1.75rem;
-  --reader-size: 1.25rem;
+  --reader-size: calc(1.25rem * var(--reader-scale));
   --reader-line-height: 1.7;
 
-  /* Spacing */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -45,25 +49,27 @@
   --space-8: 2rem;
   --space-12: 3rem;
 
-  /* Shape & elevation (hierarchy via border, bukan shadow) */
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
   --border-thin: 1px solid var(--surface-border);
-  --shadow-raised: 0 1px 2px rgba(33, 29, 24, 0.06);
+  --shadow-raised: 0 1px 2px rgba(33, 29, 24, 0.045);
 
-  /* Touch & density */
   --target-min: 48px;
-  --nav-height: 68px;
+  --nav-height: 70px;
   --rail-width: 88px;
   --sidebar-width: 280px;
   --content-max: 1080px;
   --reader-max: 720px;
 
-  /* Motion */
   --duration-fast: 120ms;
   --duration-base: 220ms;
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
+}
+
+:root[data-large-targets='true'] {
+  --target-min: 56px;
+  --nav-height: 76px;
 }
 
 html {
@@ -72,32 +78,45 @@ html {
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --surface: #1a1713;
-    --surface-raised: #211d18;
-    --surface-muted: #262219;
-    --surface-border: #37322a;
+    --surface: #1a1815;
+    --surface-raised: #211f1b;
+    --surface-muted: #28251f;
+    --surface-border: #3b372f;
     --text-primary: #f2ede4;
     --text-secondary: #d8d1c4;
-    --text-tertiary: #a89f92;
+    --text-tertiary: #b5aa9b;
     --accent: #7aa7f8;
+    --accent-text: #a9c5ff;
     --accent-contrast: #10151f;
-    --focus-ring: #7aa7f8;
-    --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --brand-church: #79a984;
+    --brand-church-text: #a5ceb0;
+    --focus-ring: #9abbff;
+    --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.28);
   }
 }
 
 :root[data-theme='dark'] {
-  --surface: #1a1713;
-  --surface-raised: #211d18;
-  --surface-muted: #262219;
-  --surface-border: #37322a;
+  --surface: #1a1815;
+  --surface-raised: #211f1b;
+  --surface-muted: #28251f;
+  --surface-border: #3b372f;
   --text-primary: #f2ede4;
   --text-secondary: #d8d1c4;
-  --text-tertiary: #a89f92;
+  --text-tertiary: #b5aa9b;
   --accent: #7aa7f8;
+  --accent-text: #a9c5ff;
   --accent-contrast: #10151f;
-  --focus-ring: #7aa7f8;
-  --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --brand-church: #79a984;
+  --brand-church-text: #a5ceb0;
+  --focus-ring: #9abbff;
+  --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+
+:root[data-high-contrast='true'] {
+  --surface-border: color-mix(in srgb, var(--text-primary) 38%, var(--surface));
+  --text-secondary: var(--text-primary);
+  --text-tertiary: color-mix(in srgb, var(--text-primary) 78%, var(--surface));
+  --border-thin: 1px solid var(--surface-border);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -109,10 +128,17 @@ html {
   }
 }
 
+:root[data-reduce-motion='true'] *,
+:root[data-reduce-motion='true'] *::before,
+:root[data-reduce-motion='true'] *::after {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
 * {
   box-sizing: border-box;
 }
-
 html,
 body {
   margin: 0;
@@ -135,14 +161,12 @@ body {
 }
 
 a {
-  color: var(--accent);
+  color: var(--accent-text);
 }
-
 button {
   font-family: inherit;
 }
 
-/* Content shell */
 .content-shell {
   max-width: var(--content-max);
   margin-inline: auto;
@@ -160,8 +184,8 @@ button {
 
 .section-title::before {
   content: '';
-  width: 3px;
+  width: 2px;
   align-self: stretch;
   border-radius: 2px;
-  background: var(--accent);
+  background: var(--brand-church);
 }

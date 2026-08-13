@@ -17,6 +17,8 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      CI: 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -49,33 +51,57 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Validate legacy signing secrets
+      - name: Validate Android signing secrets
         shell: bash
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_CERT_SHA256: ${{ secrets.ANDROID_CERT_SHA256 }}
         run: |
           set -euo pipefail
-          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD ANDROID_STORE_PASSWORD; do
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD ANDROID_STORE_PASSWORD ANDROID_CERT_SHA256; do
             if [ -z "${!name:-}" ]; then
               echo "Missing required secret: $name" >&2
               exit 1
             fi
           done
 
-      - name: Configure Android signing
+      - name: Configure and verify Android signing identity
         shell: bash
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_CERT_SHA256: ${{ secrets.ANDROID_CERT_SHA256 }}
         run: |
           set -euo pipefail
           KEYSTORE="$RUNNER_TEMP/gysapp-release.keystore"
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+
+          EXPECTED="$(printf '%s' "$ANDROID_CERT_SHA256" | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')"
+          ACTUAL="$(keytool -list -v \
+            -keystore "$KEYSTORE" \
+            -alias "$ANDROID_KEY_ALIAS" \
+            -storepass "$ANDROID_STORE_PASSWORD" \
+            | awk '/SHA256:/{print $2; exit}' \
+            | tr -d ':[:space:]' \
+            | tr '[:lower:]' '[:upper:]')"
+
+          if [ -z "$ACTUAL" ]; then
+            echo 'Unable to read SHA-256 certificate fingerprint from release keystore.' >&2
+            exit 1
+          fi
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo 'Android signing certificate mismatch; refusing to publish with an unexpected GYSApp signing identity.' >&2
+            echo "Expected SHA-256: $EXPECTED" >&2
+            echo "Actual SHA-256:   $ACTUAL" >&2
+            exit 1
+          fi
+          echo "Verified Android signing certificate SHA-256: $ACTUAL"
+
           cat > apps/native/src-tauri/gen/android/keystore.properties <<EOF
           keyAlias=$ANDROID_KEY_ALIAS
           keyPassword=$ANDROID_KEY_PASSWORD
@@ -84,25 +110,59 @@ jobs:
           EOF
 
       - name: Build signed AAB
-        run: pnpm --filter @gysapp/native tauri android build --aab
+        run: pnpm --filter @gysapp/native tauri android build --aab --ci
 
       - name: Build signed APK
-        run: pnpm --filter @gysapp/native tauri android build --apk
+        run: pnpm --filter @gysapp/native tauri android build --apk --ci
 
-      - name: Verify Android signatures
+      - name: Verify signed artifact identity
         shell: bash
+        env:
+          ANDROID_CERT_SHA256: ${{ secrets.ANDROID_CERT_SHA256 }}
         run: |
           set -euo pipefail
           AAB="$(find apps/native/src-tauri/gen/android/app/build/outputs/bundle -type f -name '*.aab' | head -1)"
           APK="$(find apps/native/src-tauri/gen/android/app/build/outputs/apk -type f -name '*.apk' | head -1)"
           test -n "$AAB" && test -f "$AAB"
           test -n "$APK" && test -f "$APK"
-          jarsigner -verify -verbose -certs "$AAB" >/dev/null
+
           BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          EXPECTED="$(printf '%s' "$ANDROID_CERT_SHA256" | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')"
+
+          jarsigner -verify -verbose -certs "$AAB" >/dev/null
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
+
+          AAB_CERT="$(keytool -printcert -jarfile "$AAB" \
+            | awk '/SHA256:/{print $2; exit}' \
+            | tr -d ':[:space:]' \
+            | tr '[:lower:]' '[:upper:]')"
+          APK_CERT="$("$BUILD_TOOLS/apksigner" verify --print-certs "$APK" \
+            | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print $2; exit}' \
+            | tr -d ':[:space:]' \
+            | tr '[:lower:]' '[:upper:]')"
+
+          if [ -z "$AAB_CERT" ] || [ "$AAB_CERT" != "$EXPECTED" ]; then
+            echo 'Final AAB signing certificate does not match the configured GYSApp release identity.' >&2
+            echo "Expected SHA-256: $EXPECTED" >&2
+            echo "AAB SHA-256:      ${AAB_CERT:-unavailable}" >&2
+            exit 1
+          fi
+          if [ -z "$APK_CERT" ] || [ "$APK_CERT" != "$EXPECTED" ]; then
+            echo 'Final APK signing certificate does not match the configured GYSApp release identity.' >&2
+            echo "Expected SHA-256: $EXPECTED" >&2
+            echo "APK SHA-256:      ${APK_CERT:-unavailable}" >&2
+            exit 1
+          fi
+
+          "$BUILD_TOOLS/aapt" dump badging "$APK" \
+            | grep -F "package: name='com.gysid.gysapp'" \
+            | grep -F "versionCode='134'"
+
           mkdir -p dist/android
           cp "$AAB" dist/android/GYSApp-android-release.aab
           cp "$APK" dist/android/GYSApp-android-release.apk
+          printf '%s\n' "$GITHUB_SHA" > dist/android/SOURCE_SHA.txt
+          printf '%s\n' "$EXPECTED" > dist/android/SIGNING_CERT_SHA256.txt
           (cd dist/android && sha256sum *.aab *.apk > SHA256SUMS.txt)
 
       - uses: actions/upload-artifact@v4

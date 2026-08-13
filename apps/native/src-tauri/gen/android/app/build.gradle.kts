@@ -28,11 +28,11 @@ val hasReleaseSigning = keystorePropertiesFile.exists() &&
 
 android {
     compileSdk = 36
-    namespace = "id.sch.kanaan.egys"
+    namespace = "com.gysid.gysapp"
 
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
-        applicationId = "id.sch.kanaan.egys"
+        applicationId = "com.gysid.gysapp"
         minSdk = 24
         targetSdk = 36
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "134").toInt()

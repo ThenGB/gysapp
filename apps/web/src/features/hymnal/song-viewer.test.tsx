@@ -23,12 +23,26 @@ describe('ChordedTextLines (mode teks)', () => {
     expect(screen.getByText('Pujilah Allah Yang Maha Esa')).toBeInTheDocument();
   });
 
-  it('positions badges by percentage of line width', () => {
-    render(<ChordedTextLines lines={lines} />);
-    const badges = screen.getAllByText(/^(C|G|Am)$/);
-    const lefts = badges.map((b) => (b as HTMLElement).style.left);
-    // jsdom menormalkan serialisasi CSS ('5.00%' -> '5%').
-    expect(lefts).toEqual(['5%', '30%', '55%']);
+  it('keeps chord badges inside the readable row at both edges', () => {
+    render(
+      <ChordedTextLines
+        lines={[
+          {
+            text: 'Nada tepi',
+            chords: [
+              { chord: 'C', pos: 0 },
+              { chord: 'G', pos: 1 },
+            ],
+          },
+        ]}
+      />,
+    );
+    const badges = [screen.getByText('C'), screen.getByText('G')];
+    const lefts = badges.map((badge) => (badge as HTMLElement).style.left);
+    expect(lefts[0]).toContain('clamp(1.75rem');
+    expect(lefts[0]).toContain('0%');
+    expect(lefts[1]).toContain('100%');
+    expect(lefts[1]).toContain('100% - 1.75rem');
   });
 
   it('renders enharmonic flat names when mol mode is selected', () => {

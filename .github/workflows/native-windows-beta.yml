@@ -1,0 +1,72 @@
+name: native-windows-beta
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-windows-beta-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-installer:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install frontend deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/native/src-tauri
+
+      - name: Build unsigned NSIS beta installer
+        run: pnpm --filter @gysapp/native tauri build --bundles nsis
+
+      - name: Stage beta installer with provenance
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $bundleDir = 'apps/native/src-tauri/target/release/bundle/nsis'
+          $installer = Get-ChildItem -Path $bundleDir -Filter '*-setup.exe' -File | Select-Object -First 1
+          if (-not $installer) {
+            throw "Expected NSIS installer not found in $bundleDir"
+          }
+
+          New-Item -ItemType Directory -Force -Path 'dist/windows-beta' | Out-Null
+          $target = 'dist/windows-beta/GYSApp-windows-x64-beta-setup.exe'
+          Copy-Item $installer.FullName $target
+
+          $hash = (Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  GYSApp-windows-x64-beta-setup.exe" | Set-Content -NoNewline 'dist/windows-beta/SHA256SUMS.txt'
+          '${{ github.sha }}' | Set-Content -NoNewline 'dist/windows-beta/SOURCE_SHA.txt'
+          @'
+          INTERNAL BETA ONLY
+
+          This Windows installer is intentionally unsigned and is produced only for real-device beta/soak testing.
+          Verify SHA256SUMS.txt and SOURCE_SHA.txt before running it.
+          Do not treat this artifact as the production distribution channel.
+          '@ | Set-Content 'dist/windows-beta/UNSIGNED_INTERNAL_BETA.txt'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gysapp-windows-beta-${{ github.sha }}
+          path: dist/windows-beta/*
+          if-no-files-found: error
+          retention-days: 14

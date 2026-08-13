@@ -1,21 +1,45 @@
+import { lazy, Suspense } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { House, BookOpenText, MusicNotes, Sparkle, SquaresFour } from '@phosphor-icons/react';
+import { useHymnalPlayerState } from '../features/hymnal/hymnal-player-store';
 import { useT } from '../i18n';
+import { assetUrl } from '../lib/asset-url';
 import './shell.css';
+
+const GlobalMidiPlayerDock = lazy(() =>
+  import('../features/hymnal/global-midi-player').then((module) => ({
+    default: module.GlobalMidiPlayerDock,
+  })),
+);
+
+const SHELL_A11Y = {
+  id: {
+    skip: 'Lewati ke konten utama',
+    navigation: 'Navigasi utama',
+    home: 'GYSApp Beranda',
+  },
+  en: {
+    skip: 'Skip to main content',
+    navigation: 'Main navigation',
+    home: 'GYSApp Home',
+  },
+  zh: {
+    skip: '跳到主要内容',
+    navigation: '主导航',
+    home: 'GYSApp 首页',
+  },
+} as const;
 
 function useNavActive(pathname: string, to: string): boolean {
   if (to === '/home') return pathname === '/home';
   return pathname === to || pathname.startsWith(`${to}/`);
 }
 
-/**
- * App shell responsif: bottom nav <600px, rail 600-959px, sidebar >=960px.
- * Navigasi TIDAK pernah auto-hide (kebutuhan pengguna lanjut usia).
- */
 export function AppShell() {
   const { pathname } = useLocation();
-  const { t } = useT();
-
+  const { locale, t } = useT();
+  const player = useHymnalPlayerState();
+  const a11y = SHELL_A11Y[locale];
   const NAV_ITEMS = [
     { to: '/home', label: t('home'), icon: House },
     { to: '/bible', label: t('bible'), icon: BookOpenText },
@@ -27,15 +51,14 @@ export function AppShell() {
   const renderNavItem = (item: (typeof NAV_ITEMS)[number], variant: 'nav' | 'dock') => {
     const isActive = useNavActive(pathname, item.to);
     const Icon = item.icon;
-    const className = `${variant}-item${isActive ? ` ${variant}-item-active` : ''}`;
     return (
       <Link
         key={item.to}
         to={item.to}
-        className={className}
+        className={`${variant}-item${isActive ? ` ${variant}-item-active` : ''}`}
         aria-current={isActive ? 'page' : undefined}
       >
-        <Icon size={variant === 'dock' ? 28 : 26} weight="regular" aria-hidden="true" />
+        <Icon size={variant === 'dock' ? 26 : 25} weight="regular" aria-hidden="true" />
         <span>{item.label}</span>
       </Link>
     );
@@ -43,15 +66,43 @@ export function AppShell() {
 
   return (
     <div className="app-shell">
-      <aside className="shell-sidebar" aria-label="Navigasi utama">
+      <a
+        className="skip-link"
+        href="#main-content"
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById('main-content')?.focus();
+        }}
+      >
+        {a11y.skip}
+      </a>
+
+      <aside className="shell-sidebar" aria-label={a11y.navigation}>
+        <Link to="/home" className="shell-brand" aria-label={a11y.home}>
+          <img src={assetUrl('/brand/tjc-logo-indonesia-color.png')} alt="" />
+          <span>
+            <strong>GYSApp</strong>
+            <small>Gereja Yesus Sejati</small>
+          </span>
+        </Link>
         <nav className="shell-nav">{NAV_ITEMS.map((item) => renderNavItem(item, 'nav'))}</nav>
       </aside>
 
-      <main className="shell-content">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className={`shell-content${player.track ? ' shell-content-with-player' : ''}`}
+      >
         <Outlet />
       </main>
 
-      <nav className="shell-dock" aria-label="Navigasi utama">
+      {player.track && (
+        <Suspense fallback={null}>
+          <GlobalMidiPlayerDock />
+        </Suspense>
+      )}
+
+      <nav className="shell-dock" aria-label={a11y.navigation}>
         {NAV_ITEMS.map((item) => renderNavItem(item, 'dock'))}
       </nav>
     </div>

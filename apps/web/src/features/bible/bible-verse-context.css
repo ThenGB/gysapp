@@ -1,0 +1,121 @@
+.bible-context {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0.55rem 0 1rem;
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface) 95%, var(--accent) 5%);
+}
+
+.bible-context-header,
+.bible-context-actions,
+.bible-context-note > div {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.bible-context-header {
+  justify-content: space-between;
+}
+
+.bible-context-header > div {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.bible-context-header span,
+.bible-context-reference span,
+.bible-context-status {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.bible-context-actions {
+  flex-wrap: wrap;
+}
+
+.bible-context-actions .btn-text {
+  min-height: 44px;
+  padding-inline: 0.7rem;
+  border-radius: 12px;
+}
+
+.bible-context-note-active {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.bible-context-note {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.bible-context-note textarea {
+  width: 100%;
+  min-height: 7.5rem;
+  resize: vertical;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.55;
+}
+
+.bible-context-note textarea:focus-visible,
+.bible-context-reference:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 2px;
+}
+
+.bible-context-related {
+  display: grid;
+  gap: 0.55rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--line);
+}
+
+.bible-context-related-list {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.bible-context-reference {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 44px;
+  padding: 0.55rem 0.65rem;
+  border-radius: 12px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.bible-context-reference:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.bible-context-reference span {
+  min-width: 3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 520px) {
+  .bible-context {
+    margin-inline: -0.15rem;
+    border-radius: 16px;
+  }
+
+  .bible-context-actions .btn-text {
+    flex: 1 1 calc(50% - 0.45rem);
+    justify-content: center;
+  }
+
+  .bible-context-note > div {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

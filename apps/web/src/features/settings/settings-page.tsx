@@ -1,29 +1,79 @@
-import { useCallback, useState, useSyncExternalStore } from 'react';
-import { Check, DownloadSimple, UploadSimple, Trash } from '@phosphor-icons/react';
+import { useCallback, useEffect, useId, useState, useSyncExternalStore } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  Bell,
+  Books,
+  CalendarDots,
+  Check,
+  DownloadSimple,
+  Eye,
+  HandTap,
+  MoonStars,
+  UploadSimple,
+  Trash,
+  WaveSine,
+} from '@phosphor-icons/react';
 import { decryptBackup, encryptBackup, type BackupEnvelope } from '@gysapp/core';
 import {
+  applyComfortPreset,
   applySettings,
   getSettingsSnapshot,
   loadSettings,
   subscribeSettings,
   updateSettings,
   type AppSettings,
+  type ComfortPreset,
   type Locale,
   type ThemeMode,
 } from './settings-store';
-import { useLocale, useT } from '../../i18n';
+import { useLocale, useT, type TranslationKey } from '../../i18n';
+import { OfflineMediaSettings } from './offline-media-settings';
+import { type BibleReminderSchedule, type IsoWeekday } from '../../lib/reminder-schedule';
+import {
+  applyNativeReminderSettings,
+  cancelAllGysReminders,
+  isNativeReminderAvailable,
+  type ReminderNotificationCopy,
+} from '../../platform/scheduled-notifications';
+import { useDialogFocus } from '../../ui/use-dialog-focus';
 import './settings.css';
 
-const THEMES: Array<{ value: ThemeMode; label: string }> = [
-  { value: 'system', label: 'Sistem' },
-  { value: 'light', label: 'Terang' },
-  { value: 'dark', label: 'Gelap' },
+const THEMES: Array<{ value: ThemeMode; labelKey: TranslationKey }> = [
+  { value: 'system', labelKey: 'themeSystem' },
+  { value: 'light', labelKey: 'themeLight' },
+  { value: 'dark', labelKey: 'themeDark' },
 ];
 
 const LOCALES: Array<{ value: Locale; label: string }> = [
   { value: 'id', label: 'Bahasa Indonesia' },
   { value: 'en', label: 'English' },
   { value: 'zh', label: '中文' },
+];
+
+const WEEKDAYS: Array<{ value: IsoWeekday; labelKey: TranslationKey }> = [
+  { value: 1, labelKey: 'weekdayMonday' },
+  { value: 2, labelKey: 'weekdayTuesday' },
+  { value: 3, labelKey: 'weekdayWednesday' },
+  { value: 4, labelKey: 'weekdayThursday' },
+  { value: 5, labelKey: 'weekdayFriday' },
+  { value: 6, labelKey: 'weekdaySaturday' },
+  { value: 7, labelKey: 'weekdaySunday' },
+];
+
+const PRESETS: Array<{
+  value: ComfortPreset;
+  labelKey: TranslationKey;
+  hintKey: TranslationKey;
+  sample: string;
+}> = [
+  { value: 'standard', labelKey: 'presetStandard', hintKey: 'presetBalanced', sample: 'Aa' },
+  {
+    value: 'comfortable',
+    labelKey: 'presetComfortable',
+    hintKey: 'presetLarger',
+    sample: 'Aa',
+  },
+  { value: 'large', labelKey: 'presetLarge', hintKey: 'presetEasiestRead', sample: 'Aa' },
 ];
 
 function PasswordDialog({
@@ -37,10 +87,12 @@ function PasswordDialog({
   onConfirm: (password: string) => Promise<void>;
   onCancel: () => void;
 }) {
+  const { t } = useT();
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+  const titleId = useId();
+  const dialogRef = useDialogFocus<HTMLDivElement>(onCancel, { escapeDisabled: busy });
   const submit = useCallback(async () => {
     if (!password) return;
     setBusy(true);
@@ -56,20 +108,26 @@ function PasswordDialog({
   }, [password, onConfirm, onCancel]);
 
   return (
-    <div className="dialog-backdrop" role="dialog" aria-modal="true" aria-label={title}>
+    <div
+      ref={dialogRef}
+      className="dialog-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      aria-busy={busy || undefined}
+      tabIndex={-1}
+    >
       <div className="dialog-card">
-        <h3>{title}</h3>
+        <h3 id={titleId}>{title}</h3>
         <input
           type="password"
           className="faith-search"
           value={password}
-          placeholder="Kata sandi backup"
-          aria-label="Kata sandi backup"
+          placeholder={t('backupPassword')}
+          aria-label={t('backupPassword')}
           autoFocus
-          onChange={(e) => setPassword(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') void submit();
-          }}
+          onChange={(event) => setPassword(event.target.value)}
+          onKeyDown={(event) => event.key === 'Enter' && void submit()}
         />
         {error && (
           <p className="midi-error" role="alert">
@@ -78,7 +136,7 @@ function PasswordDialog({
         )}
         <div className="dialog-actions">
           <button type="button" className="btn-text" onClick={onCancel} disabled={busy}>
-            Batal
+            {t('cancel')}
           </button>
           <button
             type="button"
@@ -94,12 +152,54 @@ function PasswordDialog({
   );
 }
 
+function SettingSwitch({
+  id,
+  label,
+  checked,
+  icon,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  checked: boolean;
+  icon: React.ReactNode;
+  onChange: () => void;
+}) {
+  return (
+    <div className="settings-comfort-row">
+      <span className="settings-row-icon" aria-hidden="true">
+        {icon}
+      </span>
+      <label htmlFor={id}>{label}</label>
+      <button
+        id={id}
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        className={`switch${checked ? ' switch-on' : ''}`}
+        onClick={onChange}
+      >
+        <span className="switch-thumb" />
+      </button>
+    </div>
+  );
+}
+
 export function SettingsPage() {
   const { t } = useT();
   const locale = useLocale();
   const settings = useSyncExternalStore(subscribeSettings, getSettingsSnapshot);
   const [dialog, setDialog] = useState<'export' | 'import' | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [reminderFeedback, setReminderFeedback] = useState<string | null>(null);
+  const [reminderBusy, setReminderBusy] = useState(false);
+  const nativeReminderAvailable = isNativeReminderAvailable();
+  const reminderCopy: ReminderNotificationCopy = {
+    sabatTitle: t('sabatNotificationTitle'),
+    sabatBody: t('sabatNotificationBody'),
+    bibleTitle: t('bibleNotificationTitle'),
+    bibleBody: t('bibleNotificationBody'),
+  };
 
   const applyAndSave = useCallback((partial: Partial<AppSettings>) => {
     const next = { ...loadSettings(), ...partial };
@@ -107,23 +207,85 @@ export function SettingsPage() {
     applySettings(next);
   }, []);
 
-  const exportBackup = useCallback(async (password: string) => {
-    const envelope: BackupEnvelope = {
-      schemaVersion: 1,
-      appVersion: '0.1.0',
-      exportedAt: new Date().toISOString(),
-      data: { settings: loadSettings() },
-    };
-    const bytes = await encryptBackup(password, envelope);
-    const blob = new Blob([bytes as BlobPart], { type: 'application/octet-stream' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `gysapp-backup-${new Date().toISOString().slice(0, 10)}.gysapp`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setFeedback('Backup berhasil diunduh.');
+  const selectPreset = useCallback((preset: ComfortPreset) => {
+    applySettings(applyComfortPreset(preset));
   }, []);
+
+  useEffect(() => {
+    if (!nativeReminderAvailable) return;
+    void applyNativeReminderSettings(loadSettings(), reminderCopy, false).catch(() => undefined);
+    // Reconcile persisted schedules on mount and whenever notification copy language changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale, nativeReminderAvailable]);
+
+  const commitReminderSettings = useCallback(
+    async (partial: Pick<Partial<AppSettings>, 'sabatReminder' | 'bibleReminders'>) => {
+      const current = loadSettings();
+      const next: AppSettings = {
+        ...current,
+        ...partial,
+        sabatReminder: partial.sabatReminder ?? current.sabatReminder,
+        bibleReminders: partial.bibleReminders ?? current.bibleReminders,
+      };
+      setReminderBusy(true);
+      setReminderFeedback(null);
+      try {
+        if (!nativeReminderAvailable) {
+          const enablingSabat = !current.sabatReminder && next.sabatReminder;
+          const changingOrAddingBible = Object.entries(next.bibleReminders).some(
+            ([weekday, time]) => current.bibleReminders[Number(weekday) as IsoWeekday] !== time,
+          );
+          if (enablingSabat || changingOrAddingBible) {
+            setReminderFeedback(t('nativeReminderOnly'));
+            return false;
+          }
+          applyAndSave(partial);
+          setReminderFeedback(t('reminderSaved'));
+          return true;
+        }
+
+        const status = await applyNativeReminderSettings(next, reminderCopy, true);
+        if (status === 'permission-denied') {
+          setReminderFeedback(t('reminderPermissionDenied'));
+          return false;
+        }
+        if (status === 'unsupported') {
+          setReminderFeedback(t('nativeReminderOnly'));
+          return false;
+        }
+        applyAndSave(partial);
+        setReminderFeedback(t('reminderSaved'));
+        return true;
+      } catch {
+        setReminderFeedback(t('reminderScheduleFailed'));
+        return false;
+      } finally {
+        setReminderBusy(false);
+      }
+    },
+    [applyAndSave, nativeReminderAvailable, reminderCopy, t],
+  );
+
+  const exportBackup = useCallback(
+    async (password: string) => {
+      const envelope: BackupEnvelope = {
+        schemaVersion: 1,
+        appVersion: '0.1.0',
+        exportedAt: new Date().toISOString(),
+        data: { settings: loadSettings() },
+      };
+      const bytes = await encryptBackup(password, envelope);
+      const blob = new Blob([bytes as BlobPart], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `gysapp-backup-${new Date().toISOString().slice(0, 10)}.gysapp`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      setFeedback(t('backupDownloaded'));
+    },
+    [t],
+  );
 
   const importBackup = useCallback(
     async (password: string) => {
@@ -135,31 +297,159 @@ export function SettingsPage() {
         input.click();
       });
       if (!file) return;
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      const { envelope } = await decryptBackup(bytes, password);
+      const { envelope } = await decryptBackup(new Uint8Array(await file.arrayBuffer()), password);
       const data = envelope.data as { settings?: Partial<AppSettings> };
       if (data.settings) {
         applyAndSave(data.settings);
-        setFeedback('Backup berhasil dipulihkan.');
+        const restored = loadSettings();
+        if (nativeReminderAvailable) {
+          void applyNativeReminderSettings(restored, reminderCopy, false).catch(() => undefined);
+        }
+        setFeedback(t('backupRestored'));
       }
     },
-    [applyAndSave],
+    [applyAndSave, nativeReminderAvailable, reminderCopy, t],
   );
 
-  const resetAll = useCallback(() => {
-    if (!window.confirm('Hapus semua data lokal dan kembali ke awal?')) return;
+  const resetAll = useCallback(async () => {
+    if (!window.confirm(t('resetAllConfirm'))) return;
+    await cancelAllGysReminders().catch(() => undefined);
     localStorage.clear();
     location.reload();
-  }, []);
+  }, [t]);
 
   return (
     <div className="content-shell settings-page">
-      <h1 className="section-title">{t('settings')}</h1>
+      <header className="settings-header">
+        <p>{t('personalize')}</p>
+        <h1>{t('settings')}</h1>
+        <span>{t('settingsLead')}</span>
+      </header>
 
-      <section aria-label="Tampilan">
-        <h2 className="settings-heading">Tampilan</h2>
+      <section className="settings-section" aria-label={t('comfortableDisplay')}>
+        <div className="settings-section-title">
+          <div>
+            <h2>{t('comfortableDisplay')}</h2>
+            <p>{t('choosePresetHint')}</p>
+          </div>
+        </div>
+        <div className="comfort-presets" role="group" aria-label={t('comfortableDisplay')}>
+          {PRESETS.map((preset) => (
+            <button
+              key={preset.value}
+              type="button"
+              className={`comfort-preset${settings.comfortPreset === preset.value ? ' comfort-preset-active' : ''}`}
+              aria-pressed={settings.comfortPreset === preset.value}
+              onClick={() => selectPreset(preset.value)}
+            >
+              <span className={`comfort-sample comfort-sample-${preset.value}`}>
+                {preset.sample}
+              </span>
+              <strong>{t(preset.labelKey)}</strong>
+              <small>{t(preset.hintKey)}</small>
+            </button>
+          ))}
+        </div>
+        <div className="comfort-preview" aria-label={t('preview')}>
+          <span>{t('preview')}</span>
+          <p>{t('previewVerse')}</p>
+          <small>{t('previewVerseReference')}</small>
+        </div>
+      </section>
+
+      <section className="settings-section" aria-label={t('readingComfort')}>
+        <h2 className="settings-heading">{t('readingComfort')}</h2>
+        <div className="settings-slider-row">
+          <label id="ui-scale-label">{t('interfaceSize')}</label>
+          <div className="font-control" role="group" aria-labelledby="ui-scale-label">
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label={t('decreaseFont')}
+              disabled={settings.uiScale <= 0.9}
+              onClick={() =>
+                applyAndSave({
+                  comfortPreset: 'standard',
+                  uiScale: Math.round((settings.uiScale - 0.05) * 100) / 100,
+                })
+              }
+            >
+              A−
+            </button>
+            <span className="font-value">{Math.round(settings.uiScale * 100)}%</span>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label={t('increaseFont')}
+              disabled={settings.uiScale >= 1.3}
+              onClick={() =>
+                applyAndSave({
+                  comfortPreset: 'standard',
+                  uiScale: Math.round((settings.uiScale + 0.05) * 100) / 100,
+                })
+              }
+            >
+              A+
+            </button>
+          </div>
+        </div>
+        <div className="settings-slider-row">
+          <label id="reader-scale-label">{t('readerTextSize')}</label>
+          <div className="font-control" role="group" aria-labelledby="reader-scale-label">
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label={t('decreaseReaderText')}
+              disabled={settings.readerScale <= 0.9}
+              onClick={() =>
+                applyAndSave({ readerScale: Math.round((settings.readerScale - 0.1) * 10) / 10 })
+              }
+            >
+              A−
+            </button>
+            <span className="font-value">{Math.round(settings.readerScale * 100)}%</span>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label={t('increaseReaderText')}
+              disabled={settings.readerScale >= 1.6}
+              onClick={() =>
+                applyAndSave({ readerScale: Math.round((settings.readerScale + 0.1) * 10) / 10 })
+              }
+            >
+              A+
+            </button>
+          </div>
+        </div>
+        <SettingSwitch
+          id="contrast-toggle"
+          label={t('highContrast')}
+          checked={settings.highContrast}
+          icon={<Eye size={20} />}
+          onChange={() => applyAndSave({ highContrast: !settings.highContrast })}
+        />
+        <SettingSwitch
+          id="targets-toggle"
+          label={t('largeTouchTargets')}
+          checked={settings.largeTargets}
+          icon={<HandTap size={20} />}
+          onChange={() => applyAndSave({ largeTargets: !settings.largeTargets })}
+        />
+        <SettingSwitch
+          id="motion-toggle"
+          label={t('reduceMotion')}
+          checked={settings.reduceMotion}
+          icon={<WaveSine size={20} />}
+          onChange={() => applyAndSave({ reduceMotion: !settings.reduceMotion })}
+        />
+      </section>
+
+      <section className="settings-section" aria-label={t('themeAndLanguage')}>
+        <h2 className="settings-heading">{t('themeAndLanguage')}</h2>
         <div className="settings-row">
-          <label id="theme-label">Tema</label>
+          <label id="theme-label">
+            <MoonStars size={20} aria-hidden="true" /> {t('theme')}
+          </label>
           <div className="faith-lang-tabs" role="group" aria-labelledby="theme-label">
             {THEMES.map((theme) => (
               <button
@@ -169,121 +459,151 @@ export function SettingsPage() {
                 aria-pressed={settings.theme === theme.value}
                 onClick={() => applyAndSave({ theme: theme.value })}
               >
-                {theme.label}
+                {t(theme.labelKey)}
               </button>
             ))}
           </div>
         </div>
-
         <div className="settings-row">
-          <label id="font-label">Ukuran huruf</label>
-          <div className="font-control" role="group" aria-labelledby="font-label">
-            <button
-              type="button"
-              className="icon-btn"
-              aria-label="Perkecil huruf"
-              disabled={settings.fontSize <= 0.9}
-              onClick={() =>
-                applyAndSave({ fontSize: Math.round((settings.fontSize - 0.1) * 10) / 10 })
-              }
-            >
-              A−
-            </button>
-            <span className="font-value">{Math.round(settings.fontSize * 100)}%</span>
-            <button
-              type="button"
-              className="icon-btn"
-              aria-label="Perbesar huruf"
-              disabled={settings.fontSize >= 1.5}
-              onClick={() =>
-                applyAndSave({ fontSize: Math.round((settings.fontSize + 0.1) * 10) / 10 })
-              }
-            >
-              A+
-            </button>
-          </div>
-        </div>
-
-        <div className="settings-row">
-          <label id="locale-label">Bahasa</label>
+          <label id="locale-label">{t('language')}</label>
           <select
             className="bible-book-select"
             aria-labelledby="locale-label"
             value={locale}
-            onChange={(e) => {
-              updateSettings({ locale: e.target.value as Locale });
+            onChange={(event) => {
+              updateSettings({ locale: event.target.value as Locale });
               applySettings(loadSettings());
             }}
           >
-            {LOCALES.map((l) => (
-              <option key={l.value} value={l.value}>
-                {l.label}
+            {LOCALES.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
               </option>
             ))}
           </select>
         </div>
       </section>
 
-      <section aria-label="Notifikasi">
-        <h2 className="settings-heading">Notifikasi</h2>
-        <div className="settings-row">
-          <label htmlFor="sabat-toggle">Pengingat Sabat (Jumat 17:00)</label>
+      <section className="settings-section" aria-label={t('notifications')}>
+        <h2 className="settings-heading">{t('notifications')}</h2>
+        <div className="settings-row settings-reminder-summary">
+          <span className="settings-row-icon" aria-hidden="true">
+            <Bell size={20} />
+          </span>
+          <div className="settings-row-main">
+            <label htmlFor="sabat-toggle">{t('sabatReminder')}</label>
+            <small>{t('sabatReminderLead')}</small>
+          </div>
           <button
             id="sabat-toggle"
             type="button"
             role="switch"
             aria-checked={settings.sabatReminder}
+            disabled={reminderBusy || (!nativeReminderAvailable && !settings.sabatReminder)}
             className={`switch${settings.sabatReminder ? ' switch-on' : ''}`}
-            onClick={() => {
-              applyAndSave({ sabatReminder: !settings.sabatReminder });
-              if (!settings.sabatReminder) {
-                void Notification.requestPermission();
-              }
-            }}
+            onClick={() => void commitReminderSettings({ sabatReminder: !settings.sabatReminder })}
           >
             <span className="switch-thumb" />
           </button>
         </div>
-        <p className="settings-hint">
-          Pengingat OS penuh (bahkan saat aplikasi tertutup) tersedia pada versi Android/Windows
-          melalui wrapper Tauri.
-        </p>
+
+        <div className="settings-reminder-block">
+          <div className="settings-reminder-heading">
+            <CalendarDots size={20} aria-hidden="true" />
+            <div>
+              <strong>{t('bibleReminder')}</strong>
+              <small>{t('bibleReminderLead')}</small>
+            </div>
+          </div>
+          <div className="settings-reminder-days">
+            {WEEKDAYS.map((weekday) => {
+              const active = Boolean(settings.bibleReminders[weekday.value]);
+              const time = settings.bibleReminders[weekday.value] ?? '07:00';
+              const weekdayLabel = t(weekday.labelKey);
+              return (
+                <div key={weekday.value} className="settings-reminder-day">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-label={`${t('bibleReminder')} ${weekdayLabel}`}
+                    aria-checked={active}
+                    disabled={reminderBusy || (!nativeReminderAvailable && !active)}
+                    className={`switch${active ? ' switch-on' : ''}`}
+                    onClick={() => {
+                      const next: BibleReminderSchedule = { ...settings.bibleReminders };
+                      if (active) delete next[weekday.value];
+                      else next[weekday.value] = '07:00';
+                      void commitReminderSettings({ bibleReminders: next });
+                    }}
+                  >
+                    <span className="switch-thumb" />
+                  </button>
+                  <span>{weekdayLabel}</span>
+                  <input
+                    type="time"
+                    value={time}
+                    aria-label={`${t('reminderTime')} ${weekdayLabel}`}
+                    disabled={!active || reminderBusy || !nativeReminderAvailable}
+                    onChange={(event) => {
+                      const next: BibleReminderSchedule = {
+                        ...settings.bibleReminders,
+                        [weekday.value]: event.target.value,
+                      };
+                      void commitReminderSettings({ bibleReminders: next });
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {!nativeReminderAvailable && (
+          <p className="settings-reminder-note">{t('nativeReminderOnly')}</p>
+        )}
+        {reminderFeedback && (
+          <p className="settings-action-status" role="status">
+            {reminderFeedback}
+          </p>
+        )}
       </section>
 
-      <section aria-label="Data">
-        <h2 className="settings-heading">Data</h2>
-        <div className="settings-row">
+      <section className="settings-section" aria-label={t('data')}>
+        <h2 className="settings-heading">{t('data')}</h2>
+        <OfflineMediaSettings />
+        <div className="settings-data-actions">
+          <Link className="btn-text" to="/bible?library=1">
+            <Books size={20} aria-hidden="true" /> {t('manageBibleVersions')}
+          </Link>
           <button type="button" className="btn-primary" onClick={() => setDialog('export')}>
-            <DownloadSimple size={20} aria-hidden="true" /> Ekspor backup
+            <DownloadSimple size={20} /> {t('exportBackup')}
           </button>
           <button type="button" className="btn-text" onClick={() => setDialog('import')}>
-            <UploadSimple size={20} aria-hidden="true" /> Pulihkan backup
+            <UploadSimple size={20} /> {t('restoreBackup')}
           </button>
-        </div>
-        <div className="settings-row">
-          <button type="button" className="btn-danger" onClick={resetAll}>
-            <Trash size={20} aria-hidden="true" /> Reset semua data
+          <button type="button" className="btn-danger" onClick={() => void resetAll()}>
+            <Trash size={20} /> {t('resetAllData')}
           </button>
         </div>
         {feedback && (
           <p className="settings-feedback" role="status">
-            <Check size={16} aria-hidden="true" /> {feedback}
+            <Check size={16} /> {feedback}
           </p>
         )}
       </section>
 
       {dialog === 'export' && (
         <PasswordDialog
-          title="Ekspor backup terenkripsi"
-          confirmLabel="Ekspor"
+          title={t('encryptedBackupExport')}
+          confirmLabel={t('export')}
           onConfirm={exportBackup}
           onCancel={() => setDialog(null)}
         />
       )}
       {dialog === 'import' && (
         <PasswordDialog
-          title="Pulihkan backup"
-          confirmLabel="Pulihkan"
+          title={t('restoreBackup')}
+          confirmLabel={t('restore')}
           onConfirm={importBackup}
           onCancel={() => setDialog(null)}
         />

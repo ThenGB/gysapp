@@ -1,250 +1,233 @@
 # GYSApp Web/Tauri — Implementation Roadmap
 
-Audit: 12 Agustus 2026
+Audit: 13 Agustus 2026
 
 ## Target produk
 
-GYSApp menjadi satu codebase web-native yang dapat berjalan sebagai PWA serta dibungkus Tauri untuk Windows, Android, iOS, dan desktop lain tanpa mengulang business logic per platform. Flutter lama (`GYSAPP-Fork`) dipakai sebagai kontrak fitur dan sumber aset; `gyschordweb` dipakai sebagai referensi utama untuk chord/PDF/MIDI karena sudah web-native.
+GYSApp menjadi satu codebase web-native untuk PWA, Windows, Android, dan iOS. React/TypeScript menjadi product surface utama; Tauri hanya menyediakan bridge platform. `GYSAPP-Fork` adalah kontrak parity/asset legacy, sedangkan `gyspnk/gyschordweb` menjadi referensi web-native untuk PDF/chord/MIDI.
 
 ## Prinsip arsitektur
 
-1. **Web-first, wrapper-thin.** Semua feature utama berada di `apps/web` + `packages/core`; `apps/native` hanya bridge platform.
-2. **Backendless-first, bukan auth-less.** Fitur inti lokal tidak membutuhkan backend GYSApp. e-GYS tetap identity/member service resmi dan diakses langsung melalui adapter client.
-3. **Pure core.** Parser, cache policy, search, transpose, playlist, backup, profile normalization, dan transformasi data berupa fungsi/port TypeScript yang dapat dites tanpa DOM.
-4. **Ports/adapters.** IndexedDB untuk aset web, filesystem/SQLite Tauri untuk native; kontrak business logic sama.
-5. **Tidak ada secret di client.** Public OAuth client ID boleh berada di client; client secret, password, webhook, dan credential rahasia tidak boleh.
-6. **Token e-GYS tidak melewati Cloudflare.** Optional content gateway hanya untuk parsing/CORS konten publik dan report webhook.
-7. **Executable code lokal by default.** Google Identity SDK adalah pengecualian sempit khusus identity web; business logic aplikasi tetap dibundel lokal.
-8. **Progressive data.** Instalasi awal ringan; aset besar dipasang atau dicache saat dibutuhkan.
+1. **Web-first, wrapper-thin.** Feature utama berada di `apps/web` + `packages/core`.
+2. **Backendless-first.** Local reading/worship feature tidak bergantung server GYSApp.
+3. **Static-snapshot-first untuk konten online.** Runtime normal membaca JSON lokal; sync server-side memperbarui konten berkala.
+4. **Remote services stay remote.** e-GYS dibuka sebagai situs eksternal; GYSApp tidak memiliki token/profile/session e-GYS.
+5. **Pure core.** Parser, cache, search, transpose, playlist, backup, dan transformasi data dapat dites tanpa DOM.
+6. **Ports/adapters.** IndexedDB/filesystem/SQLite/platform opener disembunyikan di adapter.
+7. **Progressive assets.** Aset besar dipasang/cached saat dibutuhkan dan diverifikasi sebelum aktivasi.
+8. **No legacy secrets.** Credential rahasia Flutter lama tidak boleh disalin ke source baru.
+9. **Accessibility is product behavior.** Target sentuh, keyboard, contrast, reduced motion, dan large UI bukan add-on.
 
-## Status audit saat ini
+## Status fondasi
 
-### Sudah ada dan perlu dipertahankan
+Sudah tersedia dan terverifikasi:
 
-- Monorepo pnpm: `apps/web`, `apps/edge`, `apps/native`, `packages/core`, `packages/contracts`.
-- React + TypeScript strict, Vite, Vitest, Playwright.
-- Shell responsif bottom-nav / rail / sidebar dan redesign floating dock berjalan.
-- PWA + GitHub Pages.
-- Alkitab TB SQLite 1 file + pencarian seluruh Alkitab.
-- Katalog pujian penuh, PDF/MIDI KR, fallback lirik buku lain.
-- Chord lazy cache content-addressed langsung dari `gyschordweb`.
-- Parser PDF/chord web-native dan mode teks/chord.
-- MIDI engine WebAudio/WASM, seek, tempo, transpose, instrument.
-- Playlist, loop, shuffle.
-- 10 Pokok Iman + PDF lanjutan.
-- Snapshot Sauh/Suara Sejati/konten literatur dengan fallback offline.
-- Settings, tema, skala font, i18n dasar, backup terenkripsi.
-- e-GYS profile contract + normalization untuk Jemaat/Simpatisan dan Cabang/Wilayah.
-- Report route + optional content gateway foundation.
-- Tauri Windows dan Android foundation.
+- pnpm monorepo `apps/web`, `apps/edge`, `apps/native`, `packages/core`, `packages/contracts`;
+- React + TypeScript strict, Vite, Vitest, Playwright;
+- shell responsif mobile dock / tablet rail / desktop sidebar;
+- route-level lazy loading; initial production JavaScript sekitar **134 KiB gzip**, dipagari hard budget 250 KiB;
+- PWA + GitHub Pages;
+- Bible SQLite + TB/KJV/CUV asset manager, SHA-256, cancel/retry/resume, split reader, history/bookmark, TTS;
+- contextual Bible refs/paralel dengan nama kitab, dedup, deep-link ayat, copy/bookmark/read actions, dan inline contextual notes;
+- accessibility regression: 320–1920, effective 200% browser-zoom reflow, keyboard focus, reduced motion, serta automated light/dark WCAG contrast checks;
+- full Hymnal catalog, KR PDF/MIDI, web-native chord extraction, lazy immutable chord cache;
+- app-level MIDI player + playlist previous/next, loop/shuffle, auto-advance;
+- Web Audio lifecycle nyata (`AudioBufferSourceNode.start`) + rapid-load guard;
+- PDF rapid-switch guard + stale loading-task cancellation;
+- persistent offline soundfont/MIDI/PDF cache dengan bounded LRU dan safe cleanup di Settings;
+- shared chord-cache cleanup + Settings storage navigation tanpa menghapus Bible/bookmark/history/playlist/notes;
+- Home resume untuk ayat terakhir dan recent hymn yang persisted;
+- encrypted backup, settings/i18n ID/EN/ZH untuk journey utama, 10 Pokok Iman + multi-select/copy/share, literature/content surfaces;
+- snapshot konten TJC default termasuk 14 Panduan Alkitab yang disinkronkan GitHub Actions setiap 6 jam;
+- optional Cloudflare near-live content/report gateway; Kirim Masukan mendeteksi gateway yang tidak dikonfigurasi dan tidak mencoba `/api/report` yang rusak;
+- Windows Tauri compile gate;
+- Android ARM64 APK compile gate yang memverifikasi `id.sch.kanaan.egys` dan versionCode 134;
+- iOS Xcode simulator compile gate pada macOS;
+- semua external URL feature melewati `openExternalUrl()`; browser memakai `noopener,noreferrer`, Tauri memakai system opener;
+- pengingat Sabat Jumat 17:00 + pengingat baca Alkitab per-hari/waktu memakai scheduled native notification, persisted di Settings v2 dan ikut encrypted backup;
+- CI Playwright menjalankan artefak production `dist` melalui `vite preview`, dengan lab guard Home LCP <=2.5s dan CLS <=0.1.
 
-## P0 — parity dan keamanan sebelum beta publik
+## P0 — milestone PR #4
 
-### 1. Integrasi e-GYS langsung
+### A. Bible/mobile stability — verified
 
-- e-GYS adalah identity/member service; jangan membuat database akun atau session backend GYSApp.
-- Web: Google Identity credential ditukar langsung ke endpoint e-GYS yang digunakan GYSAPP-Fork.
-- Web token hanya `sessionStorage`, tidak `localStorage`, IndexedDB, backup, analytics, atau log.
-- Profil dibaca langsung dari `https://e.gys.or.id/api/v1/users/profile` dengan bearer e-GYS.
-- Normalizer canonical wajib menangani variasi `member_type`, `jenis_anggota`, `baptized`, `branchname`, `wilayah`, `region`, dan nested profile variants.
-- `ACTIVE`, `VERIFIED`, atau status akun generik tidak boleh dianggap sebagai jenis anggota.
-- Native: login melalui isolated e-GYS auth webview; remote auth window tidak mendapat capability Tauri umum.
-- Tambahkan secure persistence native menggunakan OS-backed secret storage setelah auth handoff terbukti stabil. Sampai itu selesai, sesi native bersifat session-only.
-- Production web perlu memvalidasi bahwa deployed origin diizinkan oleh konfigurasi Google/e-GYS; `VITE_EGYS_GOOGLE_CLIENT_ID` dapat override public client ID bila diperlukan.
-- Apple tetap mengikuti hosted flow e-GYS pada native; web Apple dapat ditambahkan hanya bila e-GYS memberi konfigurasi web yang resmi.
+Sudah lolos gate:
 
-### 2. Backendless-first / content gateway minim
+- fixture/typecheck/unit/build/format/Playwright/secret scan;
+- reader 1/2 panel pada mobile/tablet landscape;
+- state reader, history/bookmark/last-location;
+- download pack cancel/retry/resume + atomic activation;
+- TTS voice matching/controller;
+- contextual refs/paralel dengan deep-link langsung ke target ayat;
+- contextual note create/update/delete tanpa duplikasi target;
+- viewport matrix 320, 360, 390, 600, 768, 1024, 1440, 1920;
+- effective CSS viewport equivalent browser zoom 200%;
+- keyboard-only primary navigation + visible focus ring;
+- reduced-motion regression dan deep-link scroll tanpa forced smooth animation.
 
-- Audit tiap source online: direct browser fetch/open lebih dulu; Worker hanya jika CORS/parsing/secret memang memerlukan server.
-- Worker tidak memiliki login, session, Google OAuth, Apple OAuth, atau token e-GYS.
-- Chord tidak melewati Worker; manifest/file publik diambil langsung dari `gyschordweb`.
-- Gateway yang tersisa hanya `/api/content/*` yang perlu normalisasi dan `/api/report` bila webhook rahasia dipakai.
-- GitHub Pages memakai `VITE_CONTENT_GATEWAY_BASE` hanya untuk feature gateway tersebut; fitur inti tidak boleh tergantung gateway.
+Masih untuk P1/release polish:
 
-### 3. Android continuity
+- real-device light/dark/system accessibility/WCAG soak. Automated contrast regression sudah aktif dan hijau.
 
-- Pertahankan application id Flutter lama: `id.sch.kanaan.egys`.
-- Version code berikutnya minimal 134 (Flutter terakhir `2.1.0+133`).
-- Gunakan **keystore release yang sama** dengan Flutter lama agar APK/AAB baru dapat meng-update instalasi yang sudah ada.
-- Jangan membuat key baru kecuali sengaja memutus upgrade path.
-- Secret GitHub repo lama tidak dapat dibaca/copy otomatis oleh workflow; material keystore yang sama harus dipasang sebagai secret di repo baru.
+### B. Hymnal finishing — verified core
 
-### 4. Chord update policy
+Sudah masuk dan lolos regression gate:
 
-- Instalasi baru: nol file chord lokal.
-- Saat lagu dibuka: conditional check manifest `gyschordweb` langsung dari sumber publik.
-- Jika SHA sama: tidak download ulang.
-- Jika SHA berubah: download blob baru, validasi size/SHA/schema, baru pindahkan pointer aktif.
-- Blob lama tidak ditimpa; GC dilakukan idle/LRU setelah grace period.
-- Offline selalu memakai pointer aktif terakhir yang valid.
+- true PDF autofit berdasarkan container + viewport;
+- DPR-aware canvas rendering;
+- 1/2 page + fit page/width + zoom 70–200%;
+- portrait/landscape guidance;
+- restore per lagu: mode/page/fit/zoom/transpose/scroll;
+- chord extraction terpisah dari canvas rerender;
+- sharp/mol + transpose sync viewer/player;
+- app-level MIDI dock lintas route tanpa overlap nav/content;
+- playlist shared state, create/activate/rename/dedup/add/remove/reorder;
+- previous/next mengikuti active playlist;
+- loop/shuffle semantics + auto-advance;
+- actual Web Audio source playback, pause/resume/seek;
+- tempo reset antartrack dan stale MIDI load guard;
+- stale PDF loading task cancellation saat rapid song switch;
+- Playwright viewport/orientation/player persistence regression;
+- persistent soundfont + MIDI cache;
+- persistent PDF cache yang tetap abortable saat rapid song switch;
+- 192 MB media budget dengan LRU untuk MIDI/PDF dan pinned soundfont;
+- Settings menampilkan ukuran/cache count dan dapat menghapus media + chord offline tanpa menyentuh Bible/bookmark/history/playlist/notes;
+- mode teks/chord dipagari narrow-width regression 320px: chord badge di-clamp ke baris, emergency wrapping tersedia, dan font lirik tetap >=16px.
 
-### 5. e-GYS + media parity
+Sisa Hymnal untuk P1:
 
-- Akun e-GYS mempunyai halaman terintegrasi untuk nama, cabang/wilayah, dan status Jemaat/Simpatisan.
-- Tetap sediakan tombol membuka situs e-GYS penuh.
-- Wajib ada akses eRhema, Pelita Kecil, Pujian/Paduan Suara, Buku, Ibadah Online, Audio Khotbah, Video Khotbah, Podcast, Facebook, Instagram, YouTube, Spotify.
-- Link online dibuka via adapter platform; pada Tauri gunakan opener/native webview hanya sesuai kebutuhan.
+- real-device long-song MIDI/PDF performance soak. Automated narrow-width text/chord fitting sudah selesai tanpa aggressive font shrinking.
 
-### 6. Security cleanup legacy
+### C. e-GYS boundary — final
 
-- Credential rahasia legacy yang pernah tersimpan di source Flutter tidak boleh disalin.
-- Public OAuth client ID bukan secret, tetapi harus dapat dioverride melalui build config.
-- Rotasi credential rahasia lama yang masih aktif.
-- Token/provider credential tidak boleh masuk log.
+- e-GYS = external service di `https://e.gys.or.id`;
+- GYSApp tidak melakukan Google Identity, token exchange, profile fetch, atau session persistence;
+- tidak ada auth webview bridge pada Tauri;
+- web membuka external surface; Tauri memakai system browser melalui opener;
+- tidak ada kebutuhan Cloudflare/OAuth/secure-token storage untuk e-GYS;
+- E2E memastikan surface e-GYS tetap berada di luar app-owned auth boundary.
 
-## P1 — reader dan worship parity
+Jika suatu hari fitur inti membutuhkan API e-GYS, integrasi harus dimulai dengan requirement dan ADR baru.
 
-### Alkitab
+### D. Android continuity
 
-- Multi-version asset manager: TB/KJV/CUV dengan manifest size + SHA-256.
-- Install/update/delete pack tanpa reload aplikasi.
-- Split view 1/2 pane, header swipe/tahan pilih kitab, sinkron scroll opsional.
-- Ref silang, perikop paralel, bookmark, history.
-- Notes rich text dengan backup/export.
-- Bacaan harian dan restore posisi terakhir.
-- TTS system/native terlebih dahulu; cloud TTS hanya melalui gateway bila benar-benar dibutuhkan.
-- Download manager dengan progress, cancel, retry, dan refresh library otomatis setelah selesai.
+Sudah:
 
-### Pujian — status setelah batch ini
+- identifier `id.sch.kanaan.egys`;
+- versionCode 134 setelah Flutter `+133`;
+- PR compile gate menghasilkan debug ARM64 APK dan memverifikasi identity/versionCode;
+- signed-release workflow hanya menerima keystore/password melalui GitHub Secrets;
+- signed-release workflow mewajibkan `ANDROID_CERT_SHA256` dan menolak keystore dengan sertifikat berbeda.
 
-Sudah masuk pada PR:
+Masih eksternal-blocked:
 
-- PDF 1 halaman / 2 halaman.
-- fit page / fit width.
-- zoom 70–200% dan preferensi viewer tersimpan.
-- landscape hint untuk 2 halaman pada layar kecil.
-- mode teks centered horizontal + vertical.
-- extraction chord/lyric lintas halaman PDF.
-- sharp/mol di toolbar viewer **dan** MIDI player.
-- transpose MIDI disinkronkan ke display chord text menggunakan formatter core dari `gyschordweb`.
+- production signed AAB/APK + upgrade/install smoke membutuhkan keystore production lama dan fingerprint sertifikat yang benar dari keystore/Play Console;
+- jangan membuat signing key baru kecuali sengaja memutus application identity.
 
-Masih perlu:
+### E. Native CI — verified compile gates
 
-- visual regression screenshots untuk fit 1/2 page pada semua viewport utama.
-- autofit teks agar ukuran font memaksimalkan ruang tanpa overflow.
-- restore posisi halaman/scroll per lagu.
-- global mini-player/shared player state lintas route.
-- stress test ganti lagu cepat, MIDI preload, dan PDF cancellation.
-- playlist editor lengkap: rename, reorder drag + tombol accessible, loop/shuffle.
+- **Windows:** frontend build -> Cargo check -> Tauri release no-bundle;
+- **Android:** Tauri debug ARM64 APK -> verify package/versionCode -> short-lived CI artifact;
+- **iOS:** Tauri `ios init` -> verify bundle identity -> Xcode simulator build;
+- signed IPA/App Store tetap menunggu Apple signing/provisioning.
 
-## P1 — UI/UX redesign
+## P1 — UI/UX release polish
 
-Arah: **minimal worship utility**, bukan dashboard SaaS generik.
+Arah visual: **minimal worship utility**, bukan dashboard SaaS.
 
-- Warna utama GYS blue; dark mode menggunakan navy/charcoal, bukan hitam pekat.
-- Surface sederhana, shadow sangat halus, tanpa glassmorphism berlebihan.
-- Phosphor Icons regular/duotone untuk identifikasi cepat.
-- Touch target minimal 48px dan label teks tetap tersedia untuk pengguna lanjut usia.
-- Navigasi tidak auto-hide.
-- Mobile: floating dock/bubble yang stabil, tidak mengganggu reader/player.
-- Tablet: navigation rail + contextual side panel.
-- Desktop: sidebar kompak + content canvas; reader dapat menjadi 2/3 pane pada >=1440px.
-- Motion 160–260ms, spring ringan hanya untuk dock/player; `prefers-reduced-motion` wajib dihormati.
-- Skeleton hanya untuk konten remote; data lokal harus tampil instan.
-- Semua state error memiliki aksi `Coba lagi` dan state download memiliki `Batalkan`.
+- GYS blue sebagai accent, bukan memenuhi semua surface;
+- hierarchy melalui typography, whitespace, thin border, dan grouping;
+- shadow ringan; hindari dekorasi berlebihan;
+- logo resmi GYS/TJC sebagai anchor identitas;
+- mobile floating dock stabil dan selalu berlabel;
+- tablet rail/desktop sidebar konsisten;
+- touch target minimum 48px;
+- reader comfort modes feature kelas satu;
+- motion 160–260ms + `prefers-reduced-motion`;
+- loading/error/download state selalu memiliki feedback/recovery.
 
-### Motion contract
+## P1 — feature parity tersisa
 
-- Route transition: opacity + translate 6–10px, <=220ms.
-- Dock active indicator: transform/size, tidak layout-thrashing.
-- Mini player expand/collapse: shared geometry sederhana, tidak blur berat.
-- Reader toolbar: sticky dan tidak menyebabkan content jump.
-- Chord update/download: progress non-blocking; viewer lama tetap usable selama update.
+### Bible / Settings
 
-## P2 — multi-platform compositor
+- real-device light/dark/system accessibility soak; automated contrast/reflow/keyboard/reduced-motion gates sudah aktif.
 
-### Web/PWA
+### Hymnal
 
-- GitHub Pages atau static hosting lain untuk frontend.
-- Service Worker hanya cache shell/data yang sesuai; PDF/MIDI/soundfont besar dikelola IndexedDB/asset manager agar tidak dobel cache.
-- Google Identity SDK dimuat hanya pada halaman akun saat login diperlukan.
-- Content gateway boleh berada di Cloudflare Worker, tetapi tidak menjadi dependency shell/local feature atau pemilik sesi e-GYS.
+- real-device long-song MIDI/PDF performance soak; narrow-width text/chord readability sudah dipagari otomatis.
 
-### Windows
+### Literature / Faith / More
 
-- Tauri MSI/NSIS.
-- Native filesystem untuk export/import backup dan asset packs.
-- Isolated e-GYS auth webview.
-- CI Windows PR menjalankan frontend build + Cargo check + Tauri no-bundle build.
+- i18n ID/EN/ZH sudah mencakup journey utama termasuk Home, Bible chrome/context/search, Faith, Literatur/Panduan, Lainnya, Settings/backup/cache/reminder, e-GYS, Kirim Masukan, Catatan, serta daftar/playlist/viewer Pujian;
+- external links Home/Literatur/Lainnya/e-GYS memakai satu platform opener adapter;
+- Kirim Masukan adalah capability gateway opsional: deployment backendless menampilkan unavailable state yang eksplisit; deployment gateway menangani success serta 429/502/503 dengan recovery copy.
 
-### Android
+## Online content architecture — audited
 
-- Tauri Android dengan application id `id.sch.kanaan.egys`.
-- Release signing memakai keystore Flutter lama.
-- AAB untuk Play Store, APK universal/arm64 untuk sideload test.
-- Shared Rust auth bridge untuk hosted e-GYS login.
-- Native notification/reminder dan external opener melalui plugin Tauri.
+Runtime normal **tidak membutuhkan Cloudflare Worker** untuk membaca konten TJC.
 
-### iOS
+- `contentSource()` memakai snapshot statis bila `VITE_CONTENT_GATEWAY_BASE` tidak diset;
+- `sync-content.yml` mengambil Sauh, Suara Sejati, Kesaksian, Warta, Renungan, dan Panduan Alkitab dari `tjc.org` setiap 6 jam;
+- parser snapshot sama dengan parser edge;
+- browser tidak perlu mem-fetch/parse HTML TJC lintas-origin untuk cold-start/journey normal;
+- Worker tetap opsional untuk near-live content dan `/api/report` bila webhook perlu dirahasiakan; tanpa gateway, UI Kirim Masukan dinonaktifkan secara eksplisit alih-alih jatuh ke `/api` lokal/404.
 
-- Source dapat di-init/build dengan Tauri iOS, tetapi final IPA/App Store signing tetap memerlukan runner macOS + Apple signing identity/provisioning.
-- CI awal cukup compile/simulator gate; release workflow ditambahkan setelah credential Apple tersedia.
+Konsekuensinya, deployment tanpa Cloudflare tetap merupakan konfigurasi production yang valid. Detail keputusan ada di ADR-0003.
 
-## Optional content gateway deployment contract
+## Quality gates
 
-Worker name: `gysapp-content-gateway`.
+### Per PR — aktif dan hijau pada milestone current head
 
-Secret aplikasi minimum:
+- TypeScript strict;
+- unit/component tests;
+- fixture integrity;
+- production frontend build;
+- Prettier;
+- Playwright Chromium production-preview desktop/mobile/accessibility matrix;
+- initial JavaScript gzip budget 250 KiB;
+- lab Web Vitals guard Home LCP <=2.5s / CLS <=0.1;
+- secret scan;
+- Windows Tauri compile;
+- Android Tauri APK compile + identity verification;
+- iOS Xcode simulator compile.
 
-- `REPORT_WEBHOOK_URL` — hanya diperlukan bila fitur Kirim Masukan meneruskan pesan ke webhook rahasia.
+### Sebelum beta/release signed
 
-GitHub Actions deployment membutuhkan:
+Sudah otomatis:
 
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ACCOUNT_ID`
+- viewport 320, 360, 390, 600, 768, 1024, 1440, 1920;
+- portrait/landscape mobile/tablet journey utama;
+- effective reflow equivalent browser zoom 200%;
+- keyboard-only primary navigation;
+- reduced motion;
+- corrupted/interrupted Bible asset update fixtures;
+- PDF rapid-switch cancellation;
+- MIDI source/seek/load race regression.
 
-Repository variable frontend bila gateway digunakan:
+Masih manual/real-device:
 
-- `VITE_CONTENT_GATEWAY_BASE=https://<worker-domain>/api`
-
-Tidak ada `SESSION_SECRET`, Google OAuth secret, Apple auth secret, atau e-GYS credential di GYSApp gateway. Tidak ada secret yang boleh masuk `wrangler.jsonc`, `.env` ter-commit, frontend bundle, atau Tauri config.
-
-## Testing gates
-
-### Per commit/PR
-
-- TypeScript strict, nol `any` baru tanpa justifikasi.
-- Unit test core/cache/parser/profile normalization.
-- Component tests route yang berubah.
-- e-GYS direct-session adapter tests dengan mocked network; tidak pernah menyimpan credential test production.
-- Edge tests hanya untuk report/content yang masih memerlukan gateway.
-- Direct-source contract tests untuk chord manifest/fixtures.
-- Playwright Chromium desktop + mobile.
-- Native Windows: Cargo check + Tauri no-bundle build pada PR.
-- Format/lint + secret scan.
-
-### Sebelum beta
-
-- Viewport matrix: 320, 360, 390, 600, 768, 1024, 1440, 1920.
-- Zoom browser 200%.
-- Keyboard-only journey desktop.
-- Reduced motion.
-- Offline cold/warm states.
-- Cache corruption + interrupted update fixtures.
-- MIDI long-song stress test.
-- PDF 1/2-page fit regression screenshots.
-- Real e-GYS login smoke test dengan account QA pada deployed web origin dan native wrapper.
-- Invalid/expired e-GYS token harus membersihkan sesi lokal tanpa merusak data offline lain.
+- real-device light/dark/system contrast/accessibility soak;
+- real-device delivery/timing pengingat Sabat dan baca Alkitab pada OS target;
+- real-device long-song MIDI/PDF performance soak;
+- field/RUM Web Vitals (terutama INP dan p75) setelah deployment beta stabil;
+- Android signed upgrade/install smoke menggunakan signing identity lama;
+- iOS signed distribution smoke setelah provisioning tersedia.
 
 ### Performance budgets
 
-- Initial JS route shell <250KB gzip target.
-- Heavy PDF/MIDI/account identity modules lazy-loaded.
-- Local navigation interactive tanpa network.
-- Search warm p95 <100ms pada device mid-range target.
-- LCP <2.5s p75, INP <200ms, CLS <0.1 untuk web production.
+- initial JS <250 KiB gzip — **achieved (~134 KiB gzip)**;
+- PDF/MIDI/heavy feature code lazy-loaded;
+- local navigation tidak menunggu network;
+- warm local search p95 <100ms pada target mid-range;
+- production target LCP <2.5s p75, INP <200ms, CLS <0.1.
 
-## Urutan eksekusi terbarui
+## Urutan eksekusi berikutnya
 
-1. Integrasi e-GYS direct session + canonical member profile + native auth bridge.
-2. Hymnal viewer parity: 1/2 page, fit, zoom, sharp/mol, transpose sync, lalu visual regression/autofit.
-3. Android identifier/version/signing continuity + native PR build gate.
-4. Bible multi-version asset manager + download manager cancel/retry/refresh.
-5. Bible split view/history/bookmark/ref silang/TTS.
-6. Global mini-player + playlist editor/history.
-7. Secure native persistence e-GYS + iOS compile gate.
-8. Performance bundle splitting + a11y/security release gates.
+1. Jalankan real-device light/dark/system accessibility, scheduled-notification delivery, dan MIDI/PDF long-song soak.
+2. Kumpulkan field/RUM Web Vitals setelah deployment beta stabil; production-preview lab regression sudah otomatis.
+3. Jalankan Android production signed upgrade smoke setelah legacy keystore + fingerprint tersedia.
+4. Tambahkan signed iOS distribution setelah provisioning/signing Apple tersedia.
 
 ## Definition of done
 
-Migrasi dianggap selesai ketika seluruh menu utama Flutter lama mempunyai ekuivalen web/Tauri yang berfungsi atau keputusan `n/a` terdokumentasi; fitur inti tidak membutuhkan backend GYSApp; integrasi e-GYS tetap langsung dan tidak melewati optional gateway; profil cabang/wilayah serta Jemaat/Simpatisan tersedia saat user login; tidak ada credential rahasia legacy di client; chord/MIDI/PDF dapat bekerja offline setelah pernah dibuka/diunduh; web dan native memakai business logic yang sama; Android dapat mempertahankan upgrade path aplikasi lama; serta seluruh journey utama lolos test desktop/mobile dan aksesibilitas minimum WCAG 2.2 AA.
+Migrasi selesai ketika semua menu utama Flutter memiliki ekuivalen web/Tauri atau keputusan `n/a` yang terdokumentasi; fitur inti berjalan tanpa backend GYSApp; e-GYS tetap di luar trust boundary aplikasi; chord/PDF/MIDI dan Bible dapat dipakai offline setelah aset tersedia; Android mempertahankan upgrade identity lama; web/native memakai core logic yang sama; dan journey utama lulus desktop/mobile/native, accessibility, security, serta release gates.

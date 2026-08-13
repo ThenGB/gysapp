@@ -5,12 +5,13 @@ import { useQuery } from '@tanstack/react-query';
 import type { BibleIndexEntry } from '@gysapp/core';
 import { decodeVerseId, searchBibleIndex } from '@gysapp/core';
 import { getBiblePort } from '../../data/bible/sqlite-bible-port';
+import { useT } from '../../i18n';
 import './bible.css';
 
 const TESTAMENTS = [
-  { value: 'all', label: 'Semua' },
-  { value: 'ot', label: 'Perjanjian Lama' },
-  { value: 'nt', label: 'Perjanjian Baru' },
+  { value: 'all', labelKey: 'allTestaments' },
+  { value: 'ot', labelKey: 'oldTestament' },
+  { value: 'nt', labelKey: 'newTestament' },
 ] as const;
 
 function loadSearchIndex(): Promise<BibleIndexEntry[]> {
@@ -22,6 +23,7 @@ function loadSearchIndex(): Promise<BibleIndexEntry[]> {
 }
 
 export function BibleSearchPage() {
+  const { t } = useT();
   const [term, setTerm] = useState('');
   const [testament, setTestament] = useState<'all' | 'ot' | 'nt'>('all');
   const deferredTerm = useDeferredValue(term);
@@ -62,10 +64,10 @@ export function BibleSearchPage() {
   return (
     <div className="content-shell bible-page">
       <div className="bible-toolbar">
-        <Link to="/bible" className="icon-btn" aria-label="Kembali ke Alkitab">
+        <Link to="/bible" className="icon-btn" aria-label={t('returnToBible')}>
           <ArrowLeft size={22} aria-hidden="true" />
         </Link>
-        <h1 className="bible-search-title">Cari Ayat</h1>
+        <h1 className="bible-search-title">{t('searchVerseTitle')}</h1>
       </div>
 
       <div className="bible-search-form" role="search">
@@ -74,33 +76,33 @@ export function BibleSearchPage() {
           className="bible-search-input"
           type="search"
           value={term}
-          placeholder="Cari kata atau frasaÃ¢â‚¬Â¦"
+          placeholder={t('searchWordsPlaceholder')}
           onChange={(e) => setTerm(e.target.value)}
           autoFocus
         />
       </div>
 
-      <div className="bible-testament-tabs" role="group" aria-label="Filter bagian kitab">
-        {TESTAMENTS.map((t) => (
+      <div className="bible-testament-tabs" role="group" aria-label={t('bibleSectionFilter')}>
+        {TESTAMENTS.map((option) => (
           <button
-            key={t.value}
+            key={option.value}
             type="button"
-            className={`chip${testament === t.value ? ' chip-active' : ''}`}
-            aria-pressed={testament === t.value}
-            onClick={() => setTestament(t.value)}
+            className={`chip${testament === option.value ? ' chip-active' : ''}`}
+            aria-pressed={testament === option.value}
+            onClick={() => setTestament(option.value)}
           >
-            {t.label}
+            {t(option.labelKey)}
           </button>
         ))}
       </div>
 
-      <p className="bible-search-hint">Pencarian di seluruh 1.189 pasal Alkitab Terjemahan Baru.</p>
+      <p className="bible-search-hint">{t('bibleSearchScopeHint')}</p>
 
-      {searching && <p aria-busy="true">Menyiapkan indexÃ¢â‚¬Â¦</p>}
+      {searching && <p aria-busy="true">{t('preparingSearchIndex')}</p>}
 
       {indexQuery.isError && (
         <div className="feed-error" role="alert">
-          <p>Index Alkitab gagal dimuat.</p>
+          <p>{t('bibleIndexUnavailable')}</p>
         </div>
       )}
 
@@ -119,9 +121,7 @@ export function BibleSearchPage() {
         </ul>
       ) : (
         !searching &&
-        deferredTerm.trim() !== '' && (
-          <p className="bible-empty">Tidak ditemukan ayat yang cocok.</p>
-        )
+        deferredTerm.trim() !== '' && <p className="bible-empty">{t('noMatchingVerses')}</p>
       )}
     </div>
   );

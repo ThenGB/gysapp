@@ -45,6 +45,9 @@ jobs:
           # Optional. Jika kosong, fitur inti tetap build/berjalan dan konten remote
           # yang memerlukan gateway memakai fallback offline/bundled.
           VITE_CONTENT_GATEWAY_BASE: ${{ vars.VITE_CONTENT_GATEWAY_BASE }}
+          # Optional field Web Vitals/RUM untuk deployment web saja. Jika kosong,
+          # GYSApp tidak memuat beacon analytics apa pun. Guard runtime juga menolak Tauri.
+          VITE_CLOUDFLARE_WEB_ANALYTICS_TOKEN: ${{ vars.VITE_CLOUDFLARE_WEB_ANALYTICS_TOKEN }}
         run: pnpm --filter @gysapp/web build
 
       - uses: actions/configure-pages@v5

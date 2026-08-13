@@ -44,6 +44,40 @@ export function addNote(note: Omit<AppNote, 'id' | 'updatedAt'>): AppNote {
   return created;
 }
 
+export function findContextNote(kind: NoteKind, target: string): AppNote | null {
+  const normalized = target.trim().toLocaleLowerCase();
+  return (
+    loadNotes().find(
+      (note) => note.kind === kind && note.target.trim().toLocaleLowerCase() === normalized,
+    ) ?? null
+  );
+}
+
+/**
+ * Catatan contextual (mis. satu ayat) memakai satu record per kind+target.
+ * Catatan lama dari halaman Notes tetap kompatibel; record terbaru untuk target
+ * yang sama diperbarui dan duplikat contextual lama dibersihkan.
+ */
+export function saveContextNote(note: Omit<AppNote, 'id' | 'updatedAt'>): AppNote {
+  const notes = loadNotes();
+  const normalized = note.target.trim().toLocaleLowerCase();
+  const existing = notes.find(
+    (item) => item.kind === note.kind && item.target.trim().toLocaleLowerCase() === normalized,
+  );
+  const saved: AppNote = {
+    ...note,
+    id: existing?.id ?? crypto.randomUUID(),
+    updatedAt: Date.now(),
+  };
+  persist([
+    saved,
+    ...notes.filter(
+      (item) => !(item.kind === note.kind && item.target.trim().toLocaleLowerCase() === normalized),
+    ),
+  ]);
+  return saved;
+}
+
 export function deleteNote(id: string): void {
   persist(loadNotes().filter((n) => n.id !== id));
 }

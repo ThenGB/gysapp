@@ -4,6 +4,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../src/index';
 
 const FIXTURES = fileURLToPath(new URL('../../../tests/fixtures/online', import.meta.url));
+const BSG_HTML = `
+<main>
+  <h1>Panduan Pemahaman Alkitab</h1>
+  <h2><a href="/id/bsg/roma/">Panduan Kitab Roma</a></h2>
+  <h2><a href="/id/bsg/markus/">Panduan Kitab Markus</a></h2>
+</main>`;
 
 function fixtureFetch() {
   return vi.fn(async (input: string | URL | Request) => {
@@ -15,6 +21,9 @@ function fixtureFetch() {
     }
     if (url.includes('/suarasejati/')) {
       return new Response(await readFile(`${FIXTURES}/suara-sejati.html`, 'utf8'), { status: 200 });
+    }
+    if (url.includes('/literatur/bsg/')) {
+      return new Response(BSG_HTML, { status: 200 });
     }
     return new Response('not found', { status: 404 });
   });
@@ -53,6 +62,19 @@ describe('BFF routes', () => {
     const body = (await res.json()) as { items: Array<{ title: string; url: string }> };
     expect(body.items.length).toBeGreaterThan(0);
     expect(body.items[0]?.url).toMatch(/^https:\/\/tjc\.org\//);
+  });
+
+  it('GET /api/content/panduan returns official Bible Study Guide catalog items', async () => {
+    const app = createApp({ fetchImpl: fixtureFetch() as unknown as typeof fetch });
+    const res = await app.request('/api/content/panduan');
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toContain('max-age=600');
+    const body = (await res.json()) as { items: Array<{ title: string; url: string }> };
+    expect(body.items).toHaveLength(2);
+    expect(body.items[0]).toMatchObject({
+      title: 'Panduan Kitab Roma',
+      url: 'https://tjc.org/id/bsg/roma/',
+    });
   });
 
   it('returns 502 when upstream fails', async () => {

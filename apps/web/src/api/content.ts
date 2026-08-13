@@ -5,10 +5,16 @@ import {
   type TrueVoiceFeed,
 } from '@gysapp/contracts';
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { apiFetch } from './client';
 import { contentSource, fetchStaticContent } from './static-content';
 
 const CACHE_KEY = 'gysapp.content.cache.v1';
+const SAUH_CACHE_MAX_ENTRIES = 14;
+const STATIC_STALE_MS = 6 * 60 * 60 * 1000;
+const GATEWAY_SAUH_STALE_MS = 5 * 60 * 1000;
+const GATEWAY_SUARA_STALE_MS = 10 * 60 * 1000;
+const GATEWAY_GC_MS = 30 * 60 * 1000;
 
 interface ContentCache {
   sauh: Record<string, SauhResult>;
@@ -35,6 +41,14 @@ function writeCache(mutate: (cache: ContentCache) => void): void {
   }
 }
 
+function writeSauhCache(dateKey: string, result: SauhResult): void {
+  writeCache((cache) => {
+    cache.sauh[dateKey] = result;
+    const evicted = Object.keys(cache.sauh).sort().reverse().slice(SAUH_CACHE_MAX_ENTRIES);
+    for (const key of evicted) delete cache.sauh[key];
+  });
+}
+
 export function cachedSauh(dateKey: string): SauhResult | null {
   return readCache().sauh[dateKey] ?? null;
 }
@@ -50,22 +64,28 @@ function localDateKey(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+function fetchedAtMs(data: { fetchedAt: string } | undefined): number {
+  if (!data) return 0;
+  const timestamp = Date.parse(data.fetchedAt);
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
 export function useSauh(date: Date, options?: Partial<UseQueryOptions<SauhResult>>) {
   const dateKey = localDateKey(date);
+  const source = contentSource();
+  const initialData = useMemo(() => cachedSauh(dateKey) ?? undefined, [dateKey]);
   return useQuery<SauhResult>({
-    queryKey: ['sauh', dateKey, contentSource()],
+    queryKey: ['sauh', dateKey, source],
     queryFn: async ({ signal }) => {
       try {
         const raw =
-          contentSource() === 'gateway'
+          source === 'gateway'
             ? await apiFetch<SauhResult>(`/content/sauh?date=${encodeURIComponent(dateKey)}`, {
                 signal,
               })
             : await fetchStaticContent<SauhResult>('sauh');
         const result = parseSauhResult(raw);
-        writeCache((cache) => {
-          cache.sauh[dateKey] = result;
-        });
+        writeSauhCache(dateKey, result);
         return result;
       } catch (err) {
         const stale = cachedSauh(dateKey);
@@ -73,19 +93,24 @@ export function useSauh(date: Date, options?: Partial<UseQueryOptions<SauhResult
         throw err;
       }
     },
-    staleTime: 5 * 60 * 1000,
+    initialData,
+    initialDataUpdatedAt: fetchedAtMs(initialData),
+    staleTime: source === 'static' ? STATIC_STALE_MS : GATEWAY_SAUH_STALE_MS,
+    gcTime: source === 'static' ? STATIC_STALE_MS : GATEWAY_GC_MS,
     retry: 1,
     ...options,
   });
 }
 
 export function useSuaraSejati(options?: Partial<UseQueryOptions<TrueVoiceFeed>>) {
+  const source = contentSource();
+  const initialData = useMemo(() => cachedSuaraSejati() ?? undefined, []);
   return useQuery<TrueVoiceFeed>({
-    queryKey: ['suara-sejati', contentSource()],
+    queryKey: ['suara-sejati', source],
     queryFn: async ({ signal }) => {
       try {
         const raw =
-          contentSource() === 'gateway'
+          source === 'gateway'
             ? await apiFetch<TrueVoiceFeed>('/content/suara-sejati', { signal })
             : await fetchStaticContent<TrueVoiceFeed>('suara-sejati');
         const result = parseTrueVoiceFeed(raw);
@@ -99,7 +124,10 @@ export function useSuaraSejati(options?: Partial<UseQueryOptions<TrueVoiceFeed>>
         throw err;
       }
     },
-    staleTime: 10 * 60 * 1000,
+    initialData,
+    initialDataUpdatedAt: fetchedAtMs(initialData),
+    staleTime: source === 'static' ? STATIC_STALE_MS : GATEWAY_SUARA_STALE_MS,
+    gcTime: source === 'static' ? STATIC_STALE_MS : GATEWAY_GC_MS,
     retry: 1,
     ...options,
   });
