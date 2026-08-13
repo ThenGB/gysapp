@@ -51,4 +51,24 @@ describe('SettingsPage', () => {
     );
     expect(screen.getByText('105%')).toBeInTheDocument();
   });
+
+  it('traps focus in the backup dialog, closes with Escape and restores the trigger focus', async () => {
+    renderSettings();
+    const trigger = screen.getByRole('button', { name: /Ekspor backup/ });
+    trigger.focus();
+    fireEvent.click(trigger);
+
+    const dialog = screen.getByRole('dialog', { name: 'Ekspor backup terenkripsi' });
+    const password = screen.getByLabelText('Kata sandi backup');
+    const cancel = screen.getByRole('button', { name: 'Batal' });
+    expect(password).toHaveFocus();
+
+    cancel.focus();
+    fireEvent.keyDown(cancel, { key: 'Tab' });
+    expect(password).toHaveFocus();
+
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
+  });
 });

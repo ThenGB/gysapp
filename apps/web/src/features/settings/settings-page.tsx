@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useId, useState, useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Bell,
@@ -35,6 +35,7 @@ import {
   isNativeReminderAvailable,
   type ReminderNotificationCopy,
 } from '../../platform/scheduled-notifications';
+import { useDialogFocus } from '../../ui/use-dialog-focus';
 import './settings.css';
 
 const THEMES: Array<{ value: ThemeMode; labelKey: TranslationKey }> = [
@@ -90,6 +91,8 @@ function PasswordDialog({
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const titleId = useId();
+  const dialogRef = useDialogFocus<HTMLDivElement>(onCancel, { escapeDisabled: busy });
   const submit = useCallback(async () => {
     if (!password) return;
     setBusy(true);
@@ -105,9 +108,17 @@ function PasswordDialog({
   }, [password, onConfirm, onCancel]);
 
   return (
-    <div className="dialog-backdrop" role="dialog" aria-modal="true" aria-label={title}>
+    <div
+      ref={dialogRef}
+      className="dialog-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      aria-busy={busy || undefined}
+      tabIndex={-1}
+    >
       <div className="dialog-card">
-        <h3>{title}</h3>
+        <h3 id={titleId}>{title}</h3>
         <input
           type="password"
           className="faith-search"
