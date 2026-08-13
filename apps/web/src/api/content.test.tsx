@@ -48,7 +48,7 @@ describe('useSauh offline fallback', () => {
     expect(cachedSauh(dateKey)?.items[0]?.title).toBe('Konten offline');
   });
 
-  it('falls back to stale cache when network fails', async () => {
+  it('shows stale cached content immediately while revalidating in the background', async () => {
     localStorage.setItem(
       'gysapp.content.cache.v1',
       JSON.stringify({ sauh: { [dateKey]: sauhResult }, suaraSejati: null }),
@@ -59,8 +59,27 @@ describe('useSauh offline fallback', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const { result } = renderHook(() => useSauh(new Date(2026, 7, 11)), { wrapper: wrapper() });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(result.current.isLoading).toBe(false);
     expect(result.current.data?.items[0]?.title).toBe('Konten offline');
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(result.current.isFetching).toBe(false));
+    expect(result.current.isSuccess).toBe(true);
+  });
+
+  it('keeps a fresh static snapshot without another network request', async () => {
+    const fresh = { ...sauhResult, fetchedAt: new Date().toISOString() };
+    localStorage.setItem(
+      'gysapp.content.cache.v1',
+      JSON.stringify({ sauh: { [dateKey]: fresh }, suaraSejati: null }),
+    );
+    const fetchMock = vi.fn(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useSauh(new Date(2026, 7, 11)), { wrapper: wrapper() });
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.data?.items[0]?.title).toBe('Konten offline');
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
