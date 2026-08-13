@@ -58,6 +58,22 @@ function isTempoNeutral(baseBpm: number, tempoBpm: number): boolean {
 }
 
 /**
+ * Return exactly one transferable ArrayBuffer for a Uint8Array. Full views can
+ * transfer their backing buffer without copying; subviews are copied once so
+ * unrelated prefix/suffix bytes are never transferred to the worker.
+ */
+export function toTransferableArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  if (
+    bytes.buffer instanceof ArrayBuffer &&
+    bytes.byteOffset === 0 &&
+    bytes.byteLength === bytes.buffer.byteLength
+  ) {
+    return bytes.buffer;
+  }
+  return bytes.slice().buffer;
+}
+
+/**
  * MIDI engine: render offline di worker (js-synthesizer + FluidSynth WASM),
  * playback AudioBufferSourceNode, cache LRU per (url, transpose, instrument)
  * dengan byte cap. Render cache hanya menyimpan tempo-neutral supaya perubahan
@@ -243,7 +259,7 @@ export class MidiEngine {
     if (this.sfLoading) return this.sfLoading;
     this.sfLoading = (async () => {
       const bytes = await offlineMediaCache.getOrFetch(this.soundfontUrl, 'soundfont');
-      const buffer = new Uint8Array(bytes).buffer;
+      const buffer = toTransferableArrayBuffer(bytes);
       await this.request('loadSoundFont', { url: this.soundfontUrl, buffer }, 60_000, [buffer]);
     })().catch((err) => {
       this.sfLoading = null;
@@ -303,11 +319,12 @@ export class MidiEngine {
         const bytes = encodeSmf(prepared);
         reportProgress(30);
 
+        const midiBuffer = toTransferableArrayBuffer(bytes);
         const result = (await this.request(
           'render',
-          { midiBuffer: bytes.buffer.slice(0), sampleRate: 48000, transpose, instrument },
+          { midiBuffer, sampleRate: 48000, transpose, instrument },
           120_000,
-          [bytes.buffer.slice(0)],
+          [midiBuffer],
         )) as { buffer: AudioBuffer; duration: number };
         const bytesCount = result.buffer.length * result.buffer.numberOfChannels * 4;
         const fresh: CacheEntry = {

@@ -7,6 +7,10 @@ const STORE_NAME = 'blobs';
  * IndexedDB BlobStore untuk web (PWA). Setiap `put` adalah satu transaksi
  * readwrite yang atomik per key; pembaca tidak pernah melihat isi sebagian.
  * Menyimpan { data: Uint8Array, size, modifiedAt } per path.
+ *
+ * IndexedDB already structured-clones values when crossing the database
+ * boundary. Keeping the returned/stored Uint8Array directly avoids a second
+ * application-level copy for large media while preserving isolation.
  */
 export class IndexedDbBlobStore implements BlobStore {
   private readonly dbName: string;
@@ -56,15 +60,12 @@ export class IndexedDbBlobStore implements BlobStore {
           { data: Uint8Array; size: number; modifiedAt: number } | undefined
         >,
     );
-    return record ? new Uint8Array(record.data) : null;
+    return record?.data ?? null;
   }
 
   async write(path: string, data: Uint8Array): Promise<void> {
     await this.withStore('readwrite', (store) =>
-      store.put(
-        { data: new Uint8Array(data), size: data.byteLength, modifiedAt: Date.now() },
-        path,
-      ),
+      store.put({ data, size: data.byteLength, modifiedAt: Date.now() }, path),
     );
   }
 

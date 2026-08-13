@@ -188,7 +188,10 @@ export class OfflineMediaCache {
       lastAccessedAt: timestamp,
       pinned: kind === 'soundfont',
     };
-    await this.store.write(dataPath(kind, url), new Uint8Array(bytes));
+    // IndexedDB performs structured cloning at the persistence boundary. Passing
+    // the existing view avoids an additional application-level copy of large
+    // PDFs/soundfonts while retaining the same atomic transaction semantics.
+    await this.store.write(dataPath(kind, url), bytes);
     const next = [
       ...entries.filter((item) => !(item.kind === kind && item.url === url)),
       nextEntry,

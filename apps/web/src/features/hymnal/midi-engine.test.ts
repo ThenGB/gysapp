@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { MidiEngine } from './midi-engine';
+import { MidiEngine, toTransferableArrayBuffer } from './midi-engine';
 
 class FakeSource {
   buffer: AudioBuffer | null = null;
@@ -107,6 +107,25 @@ function deferred() {
   });
   return { promise, resolve };
 }
+
+describe('MIDI worker transfer buffers', () => {
+  it('reuses a full Uint8Array backing ArrayBuffer without another copy', () => {
+    const bytes = new Uint8Array([1, 2, 3, 4]);
+    const buffer = toTransferableArrayBuffer(bytes);
+
+    expect(buffer).toBe(bytes.buffer);
+    expect([...new Uint8Array(buffer)]).toEqual([1, 2, 3, 4]);
+  });
+
+  it('copies a subview exactly once and excludes unrelated bytes', () => {
+    const source = new Uint8Array([9, 1, 2, 3, 8]);
+    const bytes = source.subarray(1, 4);
+    const buffer = toTransferableArrayBuffer(bytes);
+
+    expect(buffer).not.toBe(source.buffer);
+    expect([...new Uint8Array(buffer)]).toEqual([1, 2, 3]);
+  });
+});
 
 describe('MidiEngine playback lifecycle', () => {
   it('actually starts the AudioBufferSourceNode when autoplay is requested', async () => {
