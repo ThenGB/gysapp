@@ -1,10 +1,5 @@
 import type { MutableRefObject, RefObject } from 'react';
-import type {
-  AccidentalMode,
-  FitMode,
-  PageMode,
-  PdfChordPoint,
-} from './song-viewer-v2-model';
+import type { AccidentalMode, FitMode, PageMode, PdfChordPoint } from './song-viewer-v2-model';
 import { PdfCanvasList } from './song-viewer-v2-canvas-list';
 
 export function PdfSurface({
