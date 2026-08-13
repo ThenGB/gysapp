@@ -1,9 +1,4 @@
-import type {
-  AccidentalMode,
-  FitMode,
-  PageMode,
-  ViewerMode,
-} from './song-viewer-v2-model';
+import type { AccidentalMode, FitMode, PageMode, ViewerMode } from './song-viewer-v2-model';
 import { ViewerStepper } from './song-viewer-v2-stepper';
 
 export function ViewerSecondaryControls({
