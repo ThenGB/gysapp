@@ -5,6 +5,7 @@ import { parseTrueVoiceFeed, type TrueVoiceFeed } from '@gysapp/contracts';
 import { apiFetch } from '../../api/client';
 import { contentSource, fetchStaticContent } from '../../api/static-content';
 import { useT, type TranslationKey } from '../../i18n';
+import { openExternalUrl } from '../../platform/open-external';
 import '../more/more.css';
 
 const KINDS = ['kesaksian', 'warta', 'renungan', 'panduan'] as const;
@@ -31,10 +32,6 @@ export function useLiterature(kind: LiteratureKind, enabled: boolean) {
     retry: 1,
     enabled,
   });
-}
-
-function openExternal(url: string) {
-  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 export function LiteratureFeedPage() {
@@ -77,7 +74,11 @@ export function LiteratureFeedPage() {
               <div className="truevoice-body">
                 <h3 className="truevoice-title">{item.title}</h3>
                 {item.description && <p className="truevoice-desc">{item.description}</p>}
-                <button type="button" className="btn-text" onClick={() => openExternal(item.url)}>
+                <button
+                  type="button"
+                  className="btn-text"
+                  onClick={() => void openExternalUrl(item.url)}
+                >
                   {t('open')} <CaretRight size={18} aria-hidden="true" />
                 </button>
               </div>

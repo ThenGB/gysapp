@@ -12,6 +12,7 @@ import {
 import { useSauh, useSuaraSejati } from '../../api/content';
 import { useT } from '../../i18n';
 import { assetUrl } from '../../lib/asset-url';
+import { openExternalUrl } from '../../platform/open-external';
 import { getBibleReadingSnapshot, subscribeBibleReading } from '../bible/bible-reading-store';
 import { useHymnalRecent } from '../hymnal/hymnal-recent-store';
 import './home-page.css';
@@ -21,10 +22,6 @@ const DATE_LOCALE = {
   en: 'en-US',
   zh: 'zh-CN',
 } as const;
-
-function openExternal(url: string) {
-  window.open(url, '_blank', 'noopener,noreferrer');
-}
 
 function Greeting({ date }: { date: Date }) {
   const { locale, t } = useT();
@@ -162,7 +159,7 @@ function SauhCard({ date }: { date: Date }) {
       <h2 className="sauh-title">{today?.title}</h2>
       <p className="sauh-excerpt">{today?.excerpt}</p>
       {today && (
-        <button type="button" className="btn-text" onClick={() => openExternal(today.url)}>
+        <button type="button" className="btn-text" onClick={() => void openExternalUrl(today.url)}>
           {t('readMore')} <CaretRight size={18} />
         </button>
       )}
@@ -217,7 +214,11 @@ function SuaraSejatiSection() {
                 <div className="truevoice-body">
                   <h3 className="truevoice-title">{item.title}</h3>
                   {item.description && <p className="truevoice-desc">{item.description}</p>}
-                  <button type="button" className="btn-text" onClick={() => openExternal(item.url)}>
+                  <button
+                    type="button"
+                    className="btn-text"
+                    onClick={() => void openExternalUrl(item.url)}
+                  >
                     {t('open')} <CaretRight size={18} />
                   </button>
                 </div>

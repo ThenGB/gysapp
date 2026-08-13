@@ -18,6 +18,7 @@ import {
   UserCircle,
 } from '@phosphor-icons/react';
 import { useT, type TranslationKey } from '../../i18n';
+import { openExternalUrl } from '../../platform/open-external';
 import './more.css';
 
 type IconComponent = typeof BookOpenText;
@@ -81,10 +82,6 @@ const EXTERNAL: ExternalItem[] = [
   },
 ];
 
-function openExternal(url: string) {
-  window.open(url, '_blank', 'noopener,noreferrer');
-}
-
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section aria-label={title}>
@@ -118,7 +115,7 @@ export function MorePage() {
             <button
               type="button"
               className="more-card"
-              onClick={() => openExternal('https://e.gys.or.id')}
+              onClick={() => void openExternalUrl('https://e.gys.or.id')}
             >
               <GlobeHemisphereWest size={26} aria-hidden="true" />
               <span>{t('openEgysSite')}</span>
@@ -144,7 +141,11 @@ export function MorePage() {
         <ul className="more-grid">
           {EXTERNAL.map((item) => (
             <li key={item.href}>
-              <button type="button" className="more-card" onClick={() => openExternal(item.href)}>
+              <button
+                type="button"
+                className="more-card"
+                onClick={() => void openExternalUrl(item.href)}
+              >
                 <item.icon size={26} aria-hidden="true" />
                 <span>{item.labelKey ? t(item.labelKey) : item.label}</span>
               </button>
