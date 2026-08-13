@@ -1,0 +1,327 @@
+name: Harden Optional Feedback Gateway
+
+on:
+  push:
+    branches:
+      - feature/bible-mobile-parity
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/bible-mobile-parity
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Make feedback gateway explicitly optional
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def rep(text: str, old: str, new: str, label: str) -> str:
+              if old not in text:
+                  raise SystemExit(f'missing anchor for {label}: {old!r}')
+              return text.replace(old, new, 1)
+
+          page = Path('apps/web/src/features/account/report-page.tsx')
+          page.write_text("""import { useCallback, useState } from 'react';
+          import { Info, PaperPlaneTilt } from '@phosphor-icons/react';
+          import { ApiError, apiFetch } from '../../api/client';
+          import { contentSource } from '../../api/static-content';
+          import { useT, type TranslationKey } from '../../i18n';
+          import '../settings/settings.css';
+
+          type ReportPayload = {
+            subject: string;
+            message: string;
+            contact?: string;
+            anonymous: boolean;
+          };
+
+          export interface ReportPageProps {
+            gatewayAvailable?: boolean;
+            submitReport?: (payload: ReportPayload) => Promise<void>;
+          }
+
+          async function submitReportToGateway(payload: ReportPayload): Promise<void> {
+            await apiFetch<{ ok: boolean }>('/report', {
+              method: 'POST',
+              body: payload,
+            });
+          }
+
+          export function reportErrorKey(error: unknown): TranslationKey {
+            if (error instanceof ApiError) {
+              if (error.status === 429) return 'feedbackRateLimited';
+              if (error.status === 503) return 'feedbackNotConfigured';
+              if (error.status === 502) return 'feedbackDeliveryFailed';
+            }
+            return 'feedbackUnexpectedError';
+          }
+
+          export function ReportPage({
+            gatewayAvailable = contentSource() === 'gateway',
+            submitReport = submitReportToGateway,
+          }: ReportPageProps = {}) {
+            const { t } = useT();
+            const [subject, setSubject] = useState('');
+            const [message, setMessage] = useState('');
+            const [contact, setContact] = useState('');
+            const [anonymous, setAnonymous] = useState(false);
+            const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+            const [errorKey, setErrorKey] = useState<TranslationKey | null>(null);
+
+            const submit = useCallback(async () => {
+              if (!gatewayAvailable) return;
+              setStatus('sending');
+              setErrorKey(null);
+              try {
+                await submitReport({
+                  subject: subject.trim(),
+                  message: message.trim(),
+                  contact: contact.trim() || undefined,
+                  anonymous,
+                });
+                setStatus('sent');
+                setSubject('');
+                setMessage('');
+              } catch (error) {
+                setStatus('error');
+                setErrorKey(reportErrorKey(error));
+              }
+            }, [anonymous, contact, gatewayAvailable, message, subject, submitReport]);
+
+            const canSend =
+              gatewayAvailable &&
+              subject.trim().length > 0 &&
+              message.trim().length > 0 &&
+              status !== 'sending';
+
+            return (
+              <div className="content-shell settings-page">
+                <h1 className="section-title">{t('sendFeedback')}</h1>
+                {!gatewayAvailable && (
+                  <div className="settings-info-panel" role="status">
+                    <Info size={20} aria-hidden="true" />
+                    <div>
+                      <strong>{t('feedbackGatewayUnavailable')}</strong>
+                      <p>{t('feedbackGatewayUnavailableLead')}</p>
+                    </div>
+                  </div>
+                )}
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void submit();
+                  }}
+                >
+                  <div className="settings-row">
+                    <label htmlFor="report-subject">{t('subject')}</label>
+                    <input
+                      id="report-subject"
+                      className="faith-search"
+                      value={subject}
+                      maxLength={200}
+                      onChange={(event) => setSubject(event.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="settings-row">
+                    <label htmlFor="report-message">{t('message')}</label>
+                    <textarea
+                      id="report-message"
+                      className="faith-search report-message"
+                      rows={6}
+                      value={message}
+                      maxLength={5000}
+                      onChange={(event) => setMessage(event.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="settings-row">
+                    <label htmlFor="report-contact">{t('optionalContact')}</label>
+                    <input
+                      id="report-contact"
+                      type="email"
+                      className="faith-search"
+                      value={contact}
+                      onChange={(event) => setContact(event.target.value)}
+                    />
+                  </div>
+                  <div className="settings-row">
+                    <label htmlFor="report-anon">{t('sendAnonymous')}</label>
+                    <button
+                      id="report-anon"
+                      type="button"
+                      role="switch"
+                      aria-checked={anonymous}
+                      className={`switch${anonymous ? ' switch-on' : ''}`}
+                      onClick={() => setAnonymous((value) => !value)}
+                    >
+                      <span className="switch-thumb" />
+                    </button>
+                  </div>
+                  <div className="settings-row">
+                    <button type="submit" className="btn-primary" disabled={!canSend}>
+                      <PaperPlaneTilt size={20} aria-hidden="true" />{' '}
+                      {status === 'sending' ? t('sending') : t('send')}
+                    </button>
+                  </div>
+                  {status === 'sent' && (
+                    <p className="settings-feedback" role="status">
+                      {t('feedbackSent')}
+                    </p>
+                  )}
+                  {status === 'error' && errorKey && (
+                    <p className="midi-error" role="alert">
+                      {t(errorKey)}
+                    </p>
+                  )}
+                </form>
+              </div>
+            );
+          }
+          """)
+
+          i18n = Path('apps/web/src/i18n/index.ts')
+          text = i18n.read_text()
+          inserts = {
+            "    sendFailed: 'Gagal mengirim:',\n": """    sendFailed: 'Gagal mengirim:',
+              sending: 'Mengirim…',
+              feedbackGatewayUnavailable: 'Pengiriman masukan belum diaktifkan',
+              feedbackGatewayUnavailableLead: 'Aplikasi tetap dapat digunakan tanpa backend. Pengiriman masukan membutuhkan content/report gateway opsional yang dikonfigurasi oleh pengelola.',
+              feedbackRateLimited: 'Terlalu banyak masukan dikirim dalam waktu singkat. Tunggu beberapa menit lalu coba lagi.',
+              feedbackNotConfigured: 'Gateway tersedia, tetapi tujuan pengiriman masukan belum dikonfigurasi.',
+              feedbackDeliveryFailed: 'Gateway menerima masukan, tetapi layanan tujuan sedang gagal. Coba lagi nanti.',
+              feedbackUnexpectedError: 'Masukan belum dapat dikirim. Periksa koneksi lalu coba lagi.',
+          """,
+            "    sendFailed: 'Failed to send:',\n": """    sendFailed: 'Failed to send:',
+              sending: 'Sending…',
+              feedbackGatewayUnavailable: 'Feedback delivery is not enabled',
+              feedbackGatewayUnavailableLead: 'The app remains fully usable without a backend. Sending feedback requires the optional content/report gateway to be configured by the operator.',
+              feedbackRateLimited: 'Too many feedback messages were sent in a short time. Wait a few minutes and try again.',
+              feedbackNotConfigured: 'The gateway is available, but the feedback delivery destination is not configured.',
+              feedbackDeliveryFailed: 'The gateway received your feedback, but the delivery service is temporarily unavailable. Try again later.',
+              feedbackUnexpectedError: 'Feedback could not be sent. Check your connection and try again.',
+          """,
+            "    sendFailed: '发送失败：',\n": """    sendFailed: '发送失败：',
+              sending: '正在发送…',
+              feedbackGatewayUnavailable: '反馈发送尚未启用',
+              feedbackGatewayUnavailableLead: '应用无需后端即可正常使用。发送反馈需要由管理员配置可选的内容/反馈网关。',
+              feedbackRateLimited: '短时间内发送了过多反馈。请等待几分钟后重试。',
+              feedbackNotConfigured: '网关可用，但尚未配置反馈发送目标。',
+              feedbackDeliveryFailed: '网关已收到反馈，但目标服务暂时不可用。请稍后重试。',
+              feedbackUnexpectedError: '暂时无法发送反馈。请检查网络连接后重试。',
+          """,
+          }
+          for old, new in inserts.items():
+              text = rep(text, old, new, 'report i18n')
+          i18n.write_text(text)
+
+          css = Path('apps/web/src/features/settings/settings.css')
+          text = css.read_text()
+          anchor = ".settings-feedback {\n  display: flex;\n  align-items: center;\n  gap: var(--space-2);\n  color: var(--color-success);\n}\n"
+          styles = """
+
+          .settings-info-panel {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-3);
+            margin: var(--space-4) 0;
+            padding: var(--space-4);
+            border: var(--border-thin);
+            border-radius: var(--radius-md);
+            background: var(--surface-raised);
+            color: var(--text-secondary);
+          }
+
+          .settings-info-panel strong {
+            color: var(--text-primary);
+          }
+
+          .settings-info-panel p {
+            margin: 4px 0 0;
+          }
+          """
+          text = rep(text, anchor, anchor + styles, 'report info styles')
+          css.write_text(text)
+
+          test = Path('apps/web/src/features/account/report-page.test.tsx')
+          test.write_text("""import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+          import { describe, expect, it, vi } from 'vitest';
+          import { ApiError } from '../../api/client';
+          import { ReportPage, reportErrorKey } from './report-page';
+
+          describe('ReportPage', () => {
+            it('explains the optional gateway instead of sending to a broken /api fallback', () => {
+              const submitReport = vi.fn();
+              render(<ReportPage gatewayAvailable={false} submitReport={submitReport} />);
+
+              expect(screen.getByText('Pengiriman masukan belum diaktifkan')).toBeInTheDocument();
+              expect(screen.getByRole('button', { name: 'Kirim' })).toBeDisabled();
+              expect(submitReport).not.toHaveBeenCalled();
+            });
+
+            it('sends a normalized payload when the gateway is configured', async () => {
+              const submitReport = vi.fn().mockResolvedValue(undefined);
+              render(<ReportPage gatewayAvailable submitReport={submitReport} />);
+
+              fireEvent.change(screen.getByLabelText('Perihal'), {
+                target: { value: '  Masukan aplikasi  ' },
+              });
+              fireEvent.change(screen.getByLabelText('Pesan'), {
+                target: { value: '  Mohon perbaiki tampilan.  ' },
+              });
+              fireEvent.change(screen.getByLabelText('Kontak (opsional)'), {
+                target: { value: 'user@example.com' },
+              });
+              fireEvent.click(screen.getByRole('switch', { name: 'Kirim anonim' }));
+              fireEvent.click(screen.getByRole('button', { name: 'Kirim' }));
+
+              await waitFor(() =>
+                expect(submitReport).toHaveBeenCalledWith({
+                  subject: 'Masukan aplikasi',
+                  message: 'Mohon perbaiki tampilan.',
+                  contact: 'user@example.com',
+                  anonymous: true,
+                }),
+              );
+              expect(await screen.findByText(/masukan Anda telah terkirim/)).toBeInTheDocument();
+            });
+
+            it('maps gateway status codes to recovery copy', () => {
+              expect(reportErrorKey(new ApiError('rate-limited', 429))).toBe('feedbackRateLimited');
+              expect(reportErrorKey(new ApiError('not-configured', 503))).toBe(
+                'feedbackNotConfigured',
+              );
+              expect(reportErrorKey(new ApiError('delivery-failed', 502))).toBe(
+                'feedbackDeliveryFailed',
+              );
+            });
+          });
+          """)
+          PY
+
+          pnpm exec prettier --write apps/web/src/features/account/report-page.tsx apps/web/src/features/account/report-page.test.tsx apps/web/src/features/settings/settings.css apps/web/src/i18n/index.ts
+          pnpm --filter @gysapp/web typecheck
+          pnpm --filter @gysapp/web test
+          pnpm format:check
+      - name: Commit feedback hardening
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/src/features/account/report-page.tsx apps/web/src/features/account/report-page.test.tsx apps/web/src/features/settings/settings.css apps/web/src/i18n/index.ts
+          git commit -m "feat: make feedback gateway explicitly optional"
+          git push origin HEAD:feature/bible-mobile-parity
