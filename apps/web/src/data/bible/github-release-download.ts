@@ -21,9 +21,7 @@ interface GitHubReleaseResponse {
 
 const resolvedSources = new Map<string, BiblePackageDownloadSource>();
 
-export function parseGitHubReleaseDownloadUrl(
-  value: string,
-): GitHubReleaseDownloadLocation | null {
+export function parseGitHubReleaseDownloadUrl(value: string): GitHubReleaseDownloadLocation | null {
   let url: URL;
   try {
     url = new URL(value);
@@ -75,7 +73,8 @@ export async function resolveBiblePackageDownloadSource(
   const owner = encodeURIComponent(location.owner);
   const repo = encodeURIComponent(location.repo);
   const tag = encodeURIComponent(location.tag);
-  const releaseUrl = `https://api.github.com/repo/${owner}/${repo}/releases/tags/${tag}`;
+  const apiBase = 'https://api.github.com';
+  const releaseUrl = `${apiBase}/repos/${owner}/${repo}/releases/tags/${tag}`;
 
   try {
     const response = await fetch(releaseUrl, {
