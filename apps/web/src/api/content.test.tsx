@@ -61,9 +61,9 @@ describe('useSauh offline fallback', () => {
     const { result } = renderHook(() => useSauh(new Date(2026, 7, 11)), { wrapper: wrapper() });
 
     expect(result.current.isLoading).toBe(false);
+    expect(result.current.isFetching).toBe(true);
     expect(result.current.data?.items[0]?.title).toBe('Konten offline');
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(result.current.isFetching).toBe(false));
     expect(result.current.isSuccess).toBe(true);
   });
 
@@ -79,6 +79,7 @@ describe('useSauh offline fallback', () => {
     const { result } = renderHook(() => useSauh(new Date(2026, 7, 11)), { wrapper: wrapper() });
 
     expect(result.current.isLoading).toBe(false);
+    expect(result.current.isFetching).toBe(false);
     expect(result.current.data?.items[0]?.title).toBe('Konten offline');
     expect(fetchMock).not.toHaveBeenCalled();
   });
