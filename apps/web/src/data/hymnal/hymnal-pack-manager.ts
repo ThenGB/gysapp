@@ -239,10 +239,10 @@ export class HymnalPackManager {
     );
   }
 
-  private async download(
+  private async resolvePackageResponse(
     pkg: HymnalRemotePackage,
     controller: AbortController,
-  ): Promise<Uint8Array> {
+  ): Promise<Response> {
     const source = await this.resolveDownloadSource(pkg.downloadUrl, controller.signal);
     const response = await this.fetchImpl(source.url, {
       signal: controller.signal,
@@ -250,7 +250,14 @@ export class HymnalPackManager {
       cache: 'no-store',
     });
     if (!response.ok) throw new Error(`Unduhan Pujian gagal (${response.status}).`);
+    return response;
+  }
 
+  private async download(
+    pkg: HymnalRemotePackage,
+    controller: AbortController,
+  ): Promise<Uint8Array> {
+    const response = await this.resolvePackageResponse(pkg, controller);
     const totalBytes = Number(response.headers.get('content-length')) || pkg.sizeBytes;
     const reader = response.body?.getReader();
     if (!reader) {
@@ -289,6 +296,21 @@ export class HymnalPackManager {
     return output;
   }
 
+  private async retryWholeDownload(
+    pkg: HymnalRemotePackage,
+    controller: AbortController,
+  ): Promise<Uint8Array> {
+    const response = await this.resolvePackageResponse(pkg, controller);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    this.updateTask(pkg.code, {
+      code: pkg.code,
+      phase: 'downloading',
+      receivedBytes: bytes.byteLength,
+      totalBytes: bytes.byteLength,
+    });
+    return bytes;
+  }
+
   async install(code: HymnalPackCode): Promise<void> {
     if (this.controllers.has(code)) return;
     const manifest = await this.manifest(true);
@@ -305,14 +327,24 @@ export class HymnalPackManager {
     });
 
     try {
-      const packageBytes = await this.download(pkg, controller);
+      let packageBytes = await this.download(pkg, controller);
       this.updateTask(code, {
         code,
         phase: 'verifying',
         receivedBytes: packageBytes.byteLength,
         totalBytes: packageBytes.byteLength,
       });
-      const checksum = await sha256Hex(packageBytes);
+      let checksum = await sha256Hex(packageBytes);
+      if (checksum !== pkg.checksumSha256.toLowerCase()) {
+        packageBytes = await this.retryWholeDownload(pkg, controller);
+        this.updateTask(code, {
+          code,
+          phase: 'verifying',
+          receivedBytes: packageBytes.byteLength,
+          totalBytes: packageBytes.byteLength,
+        });
+        checksum = await sha256Hex(packageBytes);
+      }
       if (checksum !== pkg.checksumSha256.toLowerCase()) {
         throw new Error('Checksum paket Pujian tidak cocok. Unduhan dibatalkan.');
       }
