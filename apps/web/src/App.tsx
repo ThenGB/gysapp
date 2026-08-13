@@ -4,11 +4,7 @@ import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import { AppShell } from './ui/shell';
 import { HomePage } from './features/home/home-page';
 import { loadBibleReadingState } from './features/bible/bible-reading-store';
-import {
-  applySettings,
-  loadSettings,
-  subscribeSettings,
-} from './features/settings/settings-store';
+import { applySettings, loadSettings, subscribeSettings } from './features/settings/settings-store';
 import { useT } from './i18n';
 
 const BiblePage = lazy(() =>
@@ -51,9 +47,7 @@ const NotesPage = lazy(() =>
 function LazyPage({ element }: { element: React.ReactNode }) {
   const { t } = useT();
   return (
-    <Suspense fallback={<div className="content-shell">{t('loading')}</div>}>
-      {element}
-    </Suspense>
+    <Suspense fallback={<div className="content-shell">{t('loading')}</div>}>{element}</Suspense>
   );
 }
 
