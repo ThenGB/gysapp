@@ -40,8 +40,7 @@ function useNavActive(pathname: string, to: string): boolean {
   if (to === '/home') return pathname === '/home';
   if (to === '/more') {
     return (
-      pathname === '/more' ||
-      MORE_CHILD_ROUTES.some((route) => belongsToRoute(pathname, route))
+      pathname === '/more' || MORE_CHILD_ROUTES.some((route) => belongsToRoute(pathname, route))
     );
   }
   return belongsToRoute(pathname, to);
