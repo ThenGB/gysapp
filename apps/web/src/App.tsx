@@ -50,7 +50,11 @@ const NotesPage = lazy(() =>
 
 function LazyPage({ element }: { element: React.ReactNode }) {
   const { t } = useT();
-  return <Suspense fallback={<div className="content-shell">{t('loading')}</div>}>{element}</Suspense>;
+  return (
+    <Suspense fallback={<div className="content-shell">{t('loading')}</div>}>
+      {element}
+    </Suspense>
+  );
 }
 
 function BibleResumeRedirect() {
