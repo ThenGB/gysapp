@@ -72,7 +72,7 @@ jobs:
           APK="$(find apps/native/src-tauri/gen/android/app/build/outputs/apk -type f -name '*.apk' | head -1)"
           test -n "$APK" && test -f "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" \
-            | grep -F "package: name='id.sch.kanaan.egys'" \
+            | grep -F "package: name='com.gysid.gysapp'" \
             | grep -F "versionCode='134'"
           mkdir -p dist/android-ci
           cp "$APK" dist/android-ci/GYSApp-android-debug-arm64.apk

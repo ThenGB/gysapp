@@ -104,7 +104,7 @@ jobs:
           APPLE_DIR="$GITHUB_WORKSPACE/apps/native/src-tauri/gen/apple"
           PBXPROJ="$APPLE_DIR/gysapp.xcodeproj/project.pbxproj"
           test -f "$PBXPROJ"
-          grep -R --fixed-strings 'id.sch.kanaan.egys' "$APPLE_DIR" >/dev/null
+          grep -R --fixed-strings 'com.gysid.gysapp' "$APPLE_DIR" >/dev/null
 
           PBXPROJ="$PBXPROJ" python3 - <<'PY'
           import os

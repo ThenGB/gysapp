@@ -51,7 +51,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Validate legacy signing secrets
+      - name: Validate Android signing secrets
         shell: bash
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -95,7 +95,7 @@ jobs:
             exit 1
           fi
           if [ "$ACTUAL" != "$EXPECTED" ]; then
-            echo 'Android signing certificate mismatch; refusing to break the existing upgrade path.' >&2
+            echo 'Android signing certificate mismatch; refusing to publish with an unexpected GYSApp signing identity.' >&2
             echo "Expected SHA-256: $EXPECTED" >&2
             echo "Actual SHA-256:   $ACTUAL" >&2
             exit 1
@@ -142,20 +142,20 @@ jobs:
             | tr '[:lower:]' '[:upper:]')"
 
           if [ -z "$AAB_CERT" ] || [ "$AAB_CERT" != "$EXPECTED" ]; then
-            echo 'Final AAB signing certificate does not match the legacy identity.' >&2
+            echo 'Final AAB signing certificate does not match the configured GYSApp release identity.' >&2
             echo "Expected SHA-256: $EXPECTED" >&2
             echo "AAB SHA-256:      ${AAB_CERT:-unavailable}" >&2
             exit 1
           fi
           if [ -z "$APK_CERT" ] || [ "$APK_CERT" != "$EXPECTED" ]; then
-            echo 'Final APK signing certificate does not match the legacy identity.' >&2
+            echo 'Final APK signing certificate does not match the configured GYSApp release identity.' >&2
             echo "Expected SHA-256: $EXPECTED" >&2
             echo "APK SHA-256:      ${APK_CERT:-unavailable}" >&2
             exit 1
           fi
 
           "$BUILD_TOOLS/aapt" dump badging "$APK" \
-            | grep -F "package: name='id.sch.kanaan.egys'" \
+            | grep -F "package: name='com.gysid.gysapp'" \
             | grep -F "versionCode='134'"
 
           mkdir -p dist/android
