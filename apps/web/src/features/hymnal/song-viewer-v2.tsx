@@ -6,7 +6,11 @@ import { chordCache } from './chord-cache';
 import { updateHymnalPlayerPrefs, useHymnalPlayerState } from './hymnal-player-store';
 import { midiEngine } from './midi-engine';
 import { ViewerModeBar } from './song-viewer-v2-mode-bar';
-import { clampTranspose, clampZoom, type AccidentalMode } from './song-viewer-v2-model';
+import {
+  clampTranspose,
+  clampZoom,
+  type AccidentalMode,
+} from './song-viewer-v2-model';
 import { HymnalPdfViewer } from './song-viewer-v2-pdf';
 import { ViewerSecondaryControls } from './song-viewer-v2-secondary';
 import { HymnalTextViewer } from './song-viewer-v2-text';
@@ -74,13 +78,22 @@ export function SongViewerV2() {
     if (player.transposeStep !== state.transposeStep) {
       state.setTransposeStep(player.transposeStep);
     }
-  }, [currentTrackKey, player, state]);
+  }, [
+    currentTrackKey,
+    player.accidentalMode,
+    player.track?.key,
+    player.transposeStep,
+    state.accidentalMode,
+    state.setAccidentalMode,
+    state.setTransposeStep,
+    state.transposeStep,
+  ]);
 
   useEffect(() => {
     if (!pdf.pageCount) return;
     const maxStart = Math.max(1, pdf.pageCount - state.pageMode + 1);
     if (state.pageStart > maxStart) state.setPageStart(maxStart);
-  }, [pdf.pageCount, state]);
+  }, [pdf.pageCount, state.pageMode, state.pageStart, state.setPageStart]);
 
   useEffect(() => {
     const onChange = () => setFullscreen(document.fullscreenElement === rootRef.current);
@@ -172,7 +185,9 @@ export function SongViewerV2() {
       />
 
       {state.showChords && chordLoaded && !chordDoc && (
-        <p className="song-v2-status" role="status">{t('chordUnavailable')}</p>
+        <p className="song-v2-status" role="status">
+          {t('chordUnavailable')}
+        </p>
       )}
 
       {state.mode === 'pdf' ? (
