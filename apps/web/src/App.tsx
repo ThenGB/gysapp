@@ -7,9 +7,9 @@ import { loadBibleReadingState } from './features/bible/bible-reading-store';
 import {
   applySettings,
   loadSettings,
-  subscribeSettings as subscribeVisualSettings,
+  subscribeSettings,
 } from './features/settings/settings-store';
-import { subscribeSettings as subscribeLocaleSettings } from './i18n';
+import { useT } from './i18n';
 
 const BiblePage = lazy(() =>
   import('./features/bible/bible-page').then((m) => ({ default: m.BiblePage })),
@@ -49,7 +49,8 @@ const NotesPage = lazy(() =>
 );
 
 function LazyPage({ element }: { element: React.ReactNode }) {
-  return <Suspense fallback={<div className="content-shell">Memuat…</div>}>{element}</Suspense>;
+  const { t } = useT();
+  return <Suspense fallback={<div className="content-shell">{t('loading')}</div>}>{element}</Suspense>;
 }
 
 function BibleResumeRedirect() {
@@ -102,12 +103,17 @@ export function App() {
 
   useEffect(() => {
     const sync = () => applySettings(loadSettings());
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const syncSystemTheme = () => {
+      if (loadSettings().theme === 'system') sync();
+    };
+
     sync();
-    const unsubscribeVisual = subscribeVisualSettings(sync);
-    const unsubscribeLocale = subscribeLocaleSettings(sync);
+    const unsubscribe = subscribeSettings(sync);
+    media.addEventListener('change', syncSystemTheme);
     return () => {
-      unsubscribeVisual();
-      unsubscribeLocale();
+      unsubscribe();
+      media.removeEventListener('change', syncSystemTheme);
     };
   }, []);
 
