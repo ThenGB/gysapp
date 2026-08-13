@@ -270,7 +270,7 @@ export class HymnalPackManager {
       const { done, value } = await reader.read();
       if (done) break;
       if (!value) continue;
-      chunks.push(value);
+      chunks.push(new Uint8Array(value));
       receivedBytes += value.byteLength;
       this.updateTask(pkg.code, {
         code: pkg.code,
