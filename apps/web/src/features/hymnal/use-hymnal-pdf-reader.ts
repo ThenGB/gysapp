@@ -60,7 +60,9 @@ export function useHymnalPdfReader({
         const pdfjs = await import('pdfjs-dist');
         const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
         pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
-        const bytes = await offlineMediaCache.getOrFetch(pdfUrl, 'pdf', { signal: abort.signal });
+        const bytes = await offlineMediaCache.getOrFetch(pdfUrl, 'pdf', {
+          signal: abort.signal,
+        });
         if (cancelled) return;
         task = pdfjs.getDocument({ data: bytes });
         const doc = await task.promise;
@@ -82,9 +84,12 @@ export function useHymnalPdfReader({
     };
   }, [pdfUrl]);
 
-  useEffect(() => () => {
-    if (pdfDoc) void pdfDoc.cleanup().catch(() => undefined);
-  }, [pdfDoc]);
+  useEffect(
+    () => () => {
+      if (pdfDoc) void pdfDoc.cleanup().catch(() => undefined);
+    },
+    [pdfDoc],
+  );
 
   useEffect(() => {
     if (!pdfDoc || !chordLoaded || mode !== 'text' || !showChords) return;
@@ -137,7 +142,8 @@ export function useHymnalPdfReader({
       setViewportHeight(window.innerHeight);
     };
     update();
-    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    const observer =
+      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
     observer?.observe(node);
     window.addEventListener('resize', update, { passive: true });
     return () => {
@@ -152,7 +158,10 @@ export function useHymnalPdfReader({
     const tasks: Array<{ cancel(): void }> = [];
 
     void (async () => {
-      const usableWidth = Math.max(260, viewerWidth - (window.innerWidth <= 680 ? 16 : 32));
+      const usableWidth = Math.max(
+        260,
+        viewerWidth - (window.innerWidth <= 680 ? 16 : 32),
+      );
       const portraitTwoPage =
         pageMode === 2 && window.innerWidth <= 860 && window.innerHeight >= window.innerWidth;
       const layoutWidth = portraitTwoPage ? Math.max(760, usableWidth) : usableWidth;
