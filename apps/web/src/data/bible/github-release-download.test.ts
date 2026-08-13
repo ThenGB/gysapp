@@ -23,18 +23,19 @@ describe('GitHub Bible release download resolver', () => {
   });
 
   it('resolves a public release asset through the GitHub REST API', async () => {
-    const fetchSpy = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          assets: [
-            {
-              name: 'b_kjv.gyspkg',
-              url: 'https://api.github.com/repos/ThenGB/GYSApp-Data/releases/assets/425916697',
-            },
-          ],
-        }),
-        { status: 200, headers: { 'content-type': 'application/json' } },
-      ),
+    const fetchSpy = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            assets: [
+              {
+                name: 'b_kjv.gyspkg',
+                url: 'https://api.github.com/repos/ThenGB/GYSApp-Data/releases/assets/425916697',
+              },
+            ],
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
     );
     vi.stubGlobal('fetch', fetchSpy);
 
