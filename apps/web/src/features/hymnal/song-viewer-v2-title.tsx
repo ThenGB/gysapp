@@ -28,12 +28,7 @@ export function FullscreenButton({
 }) {
   const label = active ? 'Keluar layar penuh' : 'Layar penuh';
   return (
-    <button
-      type="button"
-      className="song-v2-fullscreen"
-      aria-label={label}
-      onClick={onClick}
-    >
+    <button type="button" className="song-v2-fullscreen" aria-label={label} onClick={onClick}>
       {active ? (
         <ArrowsIn size={18} aria-hidden="true" />
       ) : (
