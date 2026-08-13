@@ -40,7 +40,10 @@ export function clampTranspose(value: unknown): number {
 
 export function readSavedView(book: string, song: string): SavedView {
   try {
-    const all = JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}') as Record<string, SavedView>;
+    const all = JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}') as Record<
+      string,
+      SavedView
+    >;
     return all[`${book}:${song}`] ?? {};
   } catch {
     return {};
@@ -49,7 +52,10 @@ export function readSavedView(book: string, song: string): SavedView {
 
 export function writeSavedView(book: string, song: string, value: SavedView): void {
   try {
-    const all = JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}') as Record<string, SavedView>;
+    const all = JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}') as Record<
+      string,
+      SavedView
+    >;
     delete all[`${book}:${song}`];
     all[`${book}:${song}`] = value;
     const entries = Object.entries(all).slice(-80);
@@ -80,7 +86,10 @@ function commonPrefix(a: string, b: string): number {
   return index;
 }
 
-export function findBestChordLine(text: string, candidates: ChordedLine[]): ChordedLine | null {
+export function findBestChordLine(
+  text: string,
+  candidates: ChordedLine[],
+): ChordedLine | null {
   const target = normalizeLine(text);
   if (!target) return null;
   let best: ChordedLine | null = null;
@@ -89,9 +98,10 @@ export function findBestChordLine(text: string, candidates: ChordedLine[]): Chor
     const value = normalizeLine(candidate.text);
     if (!value) continue;
     if (value === target) return candidate;
-    const score = value.includes(target) || target.includes(value)
-      ? 0.85 * (Math.min(value.length, target.length) / Math.max(value.length, target.length))
-      : commonPrefix(value, target) / Math.max(value.length, target.length);
+    const score =
+      value.includes(target) || target.includes(value)
+        ? 0.85 * (Math.min(value.length, target.length) / Math.max(value.length, target.length))
+        : commonPrefix(value, target) / Math.max(value.length, target.length);
     if (score > bestScore) {
       bestScore = score;
       best = candidate;
@@ -135,7 +145,10 @@ export async function extractPageChordData(
       });
     }
   }
-  const extracted = extractPageNotes(items, { width: viewport.width, height: viewport.height });
+  const extracted = extractPageNotes(items, {
+    width: viewport.width,
+    height: viewport.height,
+  });
   const entries = (chordDoc?.pages[String(pageNo)] ?? []) as Array<{
     noteIdx: number;
     chord: string;
