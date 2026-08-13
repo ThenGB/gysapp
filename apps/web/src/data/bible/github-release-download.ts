@@ -31,18 +31,11 @@ export function parseGitHubReleaseDownloadUrl(
     return null;
   }
 
-  if (
-    url.protocol !== 'https:' ||
-    url.hostname.toLowerCase() !== 'github.com'
-  ) {
+  if (url.protocol !== 'https:' || url.hostname.toLowerCase() !== 'github.com') {
     return null;
   }
   const parts = url.pathname.split('/').filter(Boolean);
-  if (
-    parts.length < 6 ||
-    parts[2] !== 'releases' ||
-    parts[3] !== 'download'
-  ) {
+  if (parts.length < 6 || parts[2] !== 'releases' || parts[3] !== 'download') {
     return null;
   }
 
@@ -82,7 +75,7 @@ export async function resolveBiblePackageDownloadSource(
   const owner = encodeURIComponent(location.owner);
   const repo = encodeURIComponent(location.repo);
   const tag = encodeURIComponent(location.tag);
-  const releaseUrl = `https://api.github.com/repos/${owner}/${repo}/releases/tags/${tag}`;
+  const releaseUrl = `https://api.github.com/repo/${owner}/${repo}/releases/tags/${tag}`;
 
   try {
     const response = await fetch(releaseUrl, {
@@ -94,9 +87,7 @@ export async function resolveBiblePackageDownloadSource(
 
     const release = (await response.json()) as GitHubReleaseResponse;
     const asset = release.assets?.find(
-      (candidate) =>
-        candidate.name === location.fileName &&
-        typeof candidate.url === 'string',
+      (candidate) => candidate.name === location.fileName && typeof candidate.url === 'string',
     );
     if (!asset || typeof asset.url !== 'string') return { url: downloadUrl };
 

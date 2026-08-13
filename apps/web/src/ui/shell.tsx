@@ -30,25 +30,21 @@ const SHELL_A11Y = {
   },
 } as const;
 
-const MORE_CHILD_ROUTES = [
-  '/literature',
-  '/settings',
-  '/account',
-  '/report',
-  '/notes',
-] as const;
+const MORE_CHILD_ROUTES = ['/literature', '/settings', '/account', '/report', '/notes'] as const;
+
+function belongsToRoute(pathname: string, route: string): boolean {
+  return pathname === route || pathname.startsWith(`${route}/`);
+}
 
 function useNavActive(pathname: string, to: string): boolean {
   if (to === '/home') return pathname === '/home';
   if (to === '/more') {
     return (
       pathname === '/more' ||
-      MORE_CHILD_ROUTES.some(
-        (route) => pathname === route || pathname.startsWith(`${route}/`),
-      )
+      MORE_CHILD_ROUTES.some((route) => belongsToRoute(pathname, route))
     );
   }
-  return pathname === to || pathname.startsWith(`${to}/`);
+  return belongsToRoute(pathname, to);
 }
 
 export function AppShell() {
