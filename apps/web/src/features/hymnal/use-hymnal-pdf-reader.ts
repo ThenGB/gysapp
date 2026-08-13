@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChordDocument } from '@gysapp/contracts';
 import type { ChordedLine } from '@gysapp/core';
+import { hymnalPackManager } from '../../data/hymnal/hymnal-pack-manager';
 import { offlineMediaCache } from '../../platform/offline-media-cache';
 import {
   extractPageChordData,
@@ -12,6 +13,28 @@ import {
 
 type PdfDocumentProxy = import('pdfjs-dist').PDFDocumentProxy;
 type PdfDocumentLoadingTask = import('pdfjs-dist').PDFDocumentLoadingTask;
+
+interface InstalledPdfSource {
+  code: string;
+  page: number;
+  pages: number;
+}
+
+function parseInstalledPdfSource(value: string | null): InstalledPdfSource | null {
+  if (!value?.startsWith('gysapp-hymnal-pack://')) return null;
+  try {
+    const url = new URL(value);
+    const page = Number(url.searchParams.get('page'));
+    const pages = Number(url.searchParams.get('pages'));
+    return {
+      code: decodeURIComponent(url.hostname).toUpperCase(),
+      page: Number.isInteger(page) && page > 0 ? page : 1,
+      pages: Number.isInteger(pages) && pages > 0 ? pages : 1,
+    };
+  } catch {
+    return null;
+  }
+}
 
 function physicalPage(logicalPage: number, sourcePageStart: number): number {
   return sourcePageStart + logicalPage - 1;
@@ -55,8 +78,12 @@ export function useHymnalPdfReader({
   const [viewportHeight, setViewportHeight] = useState(() => window.innerHeight);
   const pdfWrapRef = useRef<HTMLDivElement | null>(null);
   const canvasRefs = useRef<Array<HTMLCanvasElement | null>>([]);
-  const firstSourcePage = Math.max(1, sourcePageStart ?? 1);
-  const requestedPageCount = Math.max(1, sourcePageCount ?? Number.MAX_SAFE_INTEGER);
+  const installedSource = parseInstalledPdfSource(pdfUrl);
+  const firstSourcePage = Math.max(1, installedSource?.page ?? sourcePageStart ?? 1);
+  const requestedPageCount = Math.max(
+    1,
+    installedSource?.pages ?? sourcePageCount ?? Number.MAX_SAFE_INTEGER,
+  );
 
   useEffect(() => {
     if (!pdfUrl && !pdfBytes) {
@@ -82,6 +109,10 @@ export function useHymnalPdfReader({
         const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
         pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
         let bytes = pdfBytes ? new Uint8Array(pdfBytes) : null;
+        if (!bytes && installedSource) {
+          bytes = await hymnalPackManager.pdfBytes(installedSource.code);
+          if (!bytes) throw new Error('Partitur Pujian yang terpasang tidak dapat dibaca.');
+        }
         if (!bytes && pdfUrl) {
           try {
             bytes = await offlineMediaCache.getOrFetch(pdfUrl, 'pdf', {
@@ -122,7 +153,14 @@ export function useHymnalPdfReader({
       abort.abort();
       if (task) void task.destroy().catch(() => undefined);
     };
-  }, [firstSourcePage, pdfBytes, pdfFallbackUrl, pdfUrl, requestedPageCount]);
+  }, [
+    firstSourcePage,
+    installedSource?.code,
+    pdfBytes,
+    pdfFallbackUrl,
+    pdfUrl,
+    requestedPageCount,
+  ]);
 
   useEffect(
     () => () => {
