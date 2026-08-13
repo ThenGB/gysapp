@@ -30,6 +30,9 @@ describe('SettingsPage', () => {
       '/bible?library=1',
     );
     expect(screen.getByRole('button', { name: /Reset semua data/ })).toBeInTheDocument();
+    expect(screen.getByText(/aplikasi native Android, Windows, dan iOS/)).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Pengingat Sabat (Jumat 17:00)' })).toBeDisabled();
+    expect(screen.getByRole('switch', { name: 'Pengingat baca Alkitab Senin' })).toBeDisabled();
   });
 
   it('applies theme to document element on toggle', async () => {

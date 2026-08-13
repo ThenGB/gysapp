@@ -1,3 +1,8 @@
+import {
+  normalizeBibleReminderSchedule,
+  type BibleReminderSchedule,
+} from '../../lib/reminder-schedule';
+
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type Locale = 'id' | 'en' | 'zh';
 export type ComfortPreset = 'standard' | 'comfortable' | 'large';
@@ -6,6 +11,7 @@ export interface AppSettings {
   theme: ThemeMode;
   locale: Locale;
   sabatReminder: boolean;
+  bibleReminders: BibleReminderSchedule;
   comfortPreset: ComfortPreset;
   uiScale: number;
   readerScale: number;
@@ -19,6 +25,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
   locale: 'id',
   sabatReminder: false,
+  bibleReminders: {},
   comfortPreset: 'standard',
   uiScale: 1,
   readerScale: 1,
@@ -67,6 +74,7 @@ function normalize(value: unknown): AppSettings {
     theme: validTheme(s.theme) ? s.theme : DEFAULT_SETTINGS.theme,
     locale: validLocale(s.locale) ? s.locale : DEFAULT_SETTINGS.locale,
     sabatReminder: typeof s.sabatReminder === 'boolean' ? s.sabatReminder : false,
+    bibleReminders: normalizeBibleReminderSchedule(s.bibleReminders),
     comfortPreset: preset,
     uiScale: clamp(s.uiScale ?? s.fontSize, 0.9, 1.3, defaults.uiScale),
     readerScale: clamp(s.readerScale, 0.9, 1.6, defaults.readerScale),

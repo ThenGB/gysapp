@@ -241,6 +241,82 @@
   font-size: var(--text-sm);
 }
 
+.settings-reminder-summary {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+}
+
+.settings-reminder-block {
+  padding: var(--space-4) 0 var(--space-2);
+}
+
+.settings-reminder-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  color: var(--text-secondary);
+}
+
+.settings-reminder-heading > div {
+  display: grid;
+  gap: 3px;
+}
+
+.settings-reminder-heading strong {
+  color: var(--text-primary);
+}
+
+.settings-reminder-heading small,
+.settings-reminder-note {
+  color: var(--text-tertiary);
+}
+
+.settings-reminder-days {
+  display: grid;
+  gap: 2px;
+  margin-top: var(--space-3);
+}
+
+.settings-reminder-day {
+  min-height: var(--target-min);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 7px 0;
+  border-bottom: var(--border-thin);
+}
+
+.settings-reminder-day:last-child {
+  border-bottom: 0;
+}
+
+.settings-reminder-day > span {
+  font-weight: 650;
+}
+
+.settings-reminder-day input[type='time'] {
+  min-height: 40px;
+  padding: 6px 9px;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-reminder-note {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+}
+
+.switch:disabled,
+.settings-reminder-day input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .settings-data-actions {
   display: flex;
   align-items: center;

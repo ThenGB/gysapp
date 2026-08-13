@@ -42,5 +42,9 @@ describe('i18n dictionaries', () => {
     expect(t('searchVerseTitle', 'id')).toBe('Cari Ayat');
     expect(t('searchVerseTitle', 'en')).toBe('Search Verses');
     expect(t('searchVerseTitle', 'zh')).toBe('搜索经文');
+
+    expect(t('bibleReminder', 'id')).toBe('Pengingat baca Alkitab');
+    expect(t('bibleReminder', 'en')).toBe('Bible reading reminders');
+    expect(t('bibleReminder', 'zh')).toBe('读经提醒');
   });
 });

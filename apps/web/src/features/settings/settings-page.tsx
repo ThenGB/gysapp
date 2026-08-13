@@ -1,7 +1,9 @@
-import { useCallback, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  Bell,
   Books,
+  CalendarDots,
   Check,
   DownloadSimple,
   Eye,
@@ -26,6 +28,13 @@ import {
 } from './settings-store';
 import { useLocale, useT, type TranslationKey } from '../../i18n';
 import { OfflineMediaSettings } from './offline-media-settings';
+import { type BibleReminderSchedule, type IsoWeekday } from '../../lib/reminder-schedule';
+import {
+  applyNativeReminderSettings,
+  cancelAllGysReminders,
+  isNativeReminderAvailable,
+  type ReminderNotificationCopy,
+} from '../../platform/scheduled-notifications';
 import './settings.css';
 
 const THEMES: Array<{ value: ThemeMode; labelKey: TranslationKey }> = [
@@ -38,6 +47,16 @@ const LOCALES: Array<{ value: Locale; label: string }> = [
   { value: 'id', label: 'Bahasa Indonesia' },
   { value: 'en', label: 'English' },
   { value: 'zh', label: '中文' },
+];
+
+const WEEKDAYS: Array<{ value: IsoWeekday; labelKey: TranslationKey }> = [
+  { value: 1, labelKey: 'weekdayMonday' },
+  { value: 2, labelKey: 'weekdayTuesday' },
+  { value: 3, labelKey: 'weekdayWednesday' },
+  { value: 4, labelKey: 'weekdayThursday' },
+  { value: 5, labelKey: 'weekdayFriday' },
+  { value: 6, labelKey: 'weekdaySaturday' },
+  { value: 7, labelKey: 'weekdaySunday' },
 ];
 
 const PRESETS: Array<{
@@ -161,6 +180,15 @@ export function SettingsPage() {
   const settings = useSyncExternalStore(subscribeSettings, getSettingsSnapshot);
   const [dialog, setDialog] = useState<'export' | 'import' | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [reminderFeedback, setReminderFeedback] = useState<string | null>(null);
+  const [reminderBusy, setReminderBusy] = useState(false);
+  const nativeReminderAvailable = isNativeReminderAvailable();
+  const reminderCopy: ReminderNotificationCopy = {
+    sabatTitle: t('sabatNotificationTitle'),
+    sabatBody: t('sabatNotificationBody'),
+    bibleTitle: t('bibleNotificationTitle'),
+    bibleBody: t('bibleNotificationBody'),
+  };
 
   const applyAndSave = useCallback((partial: Partial<AppSettings>) => {
     const next = { ...loadSettings(), ...partial };
@@ -171,6 +199,61 @@ export function SettingsPage() {
   const selectPreset = useCallback((preset: ComfortPreset) => {
     applySettings(applyComfortPreset(preset));
   }, []);
+
+  useEffect(() => {
+    if (!nativeReminderAvailable) return;
+    void applyNativeReminderSettings(loadSettings(), reminderCopy, false).catch(() => undefined);
+    // Reconcile persisted schedules on mount and whenever notification copy language changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale, nativeReminderAvailable]);
+
+  const commitReminderSettings = useCallback(
+    async (partial: Pick<Partial<AppSettings>, 'sabatReminder' | 'bibleReminders'>) => {
+      const current = loadSettings();
+      const next: AppSettings = {
+        ...current,
+        ...partial,
+        sabatReminder: partial.sabatReminder ?? current.sabatReminder,
+        bibleReminders: partial.bibleReminders ?? current.bibleReminders,
+      };
+      setReminderBusy(true);
+      setReminderFeedback(null);
+      try {
+        if (!nativeReminderAvailable) {
+          const enablingSabat = !current.sabatReminder && next.sabatReminder;
+          const changingOrAddingBible = Object.entries(next.bibleReminders).some(
+            ([weekday, time]) => current.bibleReminders[Number(weekday) as IsoWeekday] !== time,
+          );
+          if (enablingSabat || changingOrAddingBible) {
+            setReminderFeedback(t('nativeReminderOnly'));
+            return false;
+          }
+          applyAndSave(partial);
+          setReminderFeedback(t('reminderSaved'));
+          return true;
+        }
+
+        const status = await applyNativeReminderSettings(next, reminderCopy, true);
+        if (status === 'permission-denied') {
+          setReminderFeedback(t('reminderPermissionDenied'));
+          return false;
+        }
+        if (status === 'unsupported') {
+          setReminderFeedback(t('nativeReminderOnly'));
+          return false;
+        }
+        applyAndSave(partial);
+        setReminderFeedback(t('reminderSaved'));
+        return true;
+      } catch {
+        setReminderFeedback(t('reminderScheduleFailed'));
+        return false;
+      } finally {
+        setReminderBusy(false);
+      }
+    },
+    [applyAndSave, nativeReminderAvailable, reminderCopy, t],
+  );
 
   const exportBackup = useCallback(
     async (password: string) => {
@@ -207,14 +290,19 @@ export function SettingsPage() {
       const data = envelope.data as { settings?: Partial<AppSettings> };
       if (data.settings) {
         applyAndSave(data.settings);
+        const restored = loadSettings();
+        if (nativeReminderAvailable) {
+          void applyNativeReminderSettings(restored, reminderCopy, false).catch(() => undefined);
+        }
         setFeedback(t('backupRestored'));
       }
     },
-    [applyAndSave, t],
+    [applyAndSave, nativeReminderAvailable, reminderCopy, t],
   );
 
-  const resetAll = useCallback(() => {
+  const resetAll = useCallback(async () => {
     if (!window.confirm(t('resetAllConfirm'))) return;
+    await cancelAllGysReminders().catch(() => undefined);
     localStorage.clear();
     location.reload();
   }, [t]);
@@ -387,22 +475,86 @@ export function SettingsPage() {
 
       <section className="settings-section" aria-label={t('notifications')}>
         <h2 className="settings-heading">{t('notifications')}</h2>
-        <div className="settings-row">
-          <label htmlFor="sabat-toggle">{t('sabatReminder')}</label>
+        <div className="settings-row settings-reminder-summary">
+          <span className="settings-row-icon" aria-hidden="true">
+            <Bell size={20} />
+          </span>
+          <div className="settings-row-main">
+            <label htmlFor="sabat-toggle">{t('sabatReminder')}</label>
+            <small>{t('sabatReminderLead')}</small>
+          </div>
           <button
             id="sabat-toggle"
             type="button"
             role="switch"
             aria-checked={settings.sabatReminder}
+            disabled={reminderBusy || (!nativeReminderAvailable && !settings.sabatReminder)}
             className={`switch${settings.sabatReminder ? ' switch-on' : ''}`}
-            onClick={() => {
-              applyAndSave({ sabatReminder: !settings.sabatReminder });
-              if (!settings.sabatReminder) void Notification.requestPermission();
-            }}
+            onClick={() => void commitReminderSettings({ sabatReminder: !settings.sabatReminder })}
           >
             <span className="switch-thumb" />
           </button>
         </div>
+
+        <div className="settings-reminder-block">
+          <div className="settings-reminder-heading">
+            <CalendarDots size={20} aria-hidden="true" />
+            <div>
+              <strong>{t('bibleReminder')}</strong>
+              <small>{t('bibleReminderLead')}</small>
+            </div>
+          </div>
+          <div className="settings-reminder-days">
+            {WEEKDAYS.map((weekday) => {
+              const active = Boolean(settings.bibleReminders[weekday.value]);
+              const time = settings.bibleReminders[weekday.value] ?? '07:00';
+              const weekdayLabel = t(weekday.labelKey);
+              return (
+                <div key={weekday.value} className="settings-reminder-day">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-label={`${t('bibleReminder')} ${weekdayLabel}`}
+                    aria-checked={active}
+                    disabled={reminderBusy || (!nativeReminderAvailable && !active)}
+                    className={`switch${active ? ' switch-on' : ''}`}
+                    onClick={() => {
+                      const next: BibleReminderSchedule = { ...settings.bibleReminders };
+                      if (active) delete next[weekday.value];
+                      else next[weekday.value] = '07:00';
+                      void commitReminderSettings({ bibleReminders: next });
+                    }}
+                  >
+                    <span className="switch-thumb" />
+                  </button>
+                  <span>{weekdayLabel}</span>
+                  <input
+                    type="time"
+                    value={time}
+                    aria-label={`${t('reminderTime')} ${weekdayLabel}`}
+                    disabled={!active || reminderBusy || !nativeReminderAvailable}
+                    onChange={(event) => {
+                      const next: BibleReminderSchedule = {
+                        ...settings.bibleReminders,
+                        [weekday.value]: event.target.value,
+                      };
+                      void commitReminderSettings({ bibleReminders: next });
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {!nativeReminderAvailable && (
+          <p className="settings-reminder-note">{t('nativeReminderOnly')}</p>
+        )}
+        {reminderFeedback && (
+          <p className="settings-action-status" role="status">
+            {reminderFeedback}
+          </p>
+        )}
       </section>
 
       <section className="settings-section" aria-label={t('data')}>
@@ -418,7 +570,7 @@ export function SettingsPage() {
           <button type="button" className="btn-text" onClick={() => setDialog('import')}>
             <UploadSimple size={20} /> {t('restoreBackup')}
           </button>
-          <button type="button" className="btn-danger" onClick={resetAll}>
+          <button type="button" className="btn-danger" onClick={() => void resetAll()}>
             <Trash size={20} /> {t('resetAllData')}
           </button>
         </div>
