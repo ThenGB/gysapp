@@ -114,6 +114,28 @@ test.describe('accessibility release regressions', () => {
     await expectNoDocumentOverflow(page);
   });
 
+  test('skip link is the first keyboard stop and moves focus directly to main content', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.goto('/home');
+
+    const skipLink = page.getByRole('link', { name: 'Lewati ke konten utama' });
+    await page.keyboard.press('Tab');
+    await expect(skipLink).toBeFocused();
+    await expect(skipLink).toBeVisible();
+
+    const focusStyle = await skipLink.evaluate((node) => {
+      const style = getComputedStyle(node);
+      return { outlineStyle: style.outlineStyle, outlineWidth: style.outlineWidth };
+    });
+    expect(focusStyle.outlineStyle).not.toBe('none');
+    expect(Number.parseFloat(focusStyle.outlineWidth)).toBeGreaterThanOrEqual(2);
+
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#main-content')).toBeFocused();
+  });
+
   test('primary navigation is usable keyboard-only and exposes a visible focus ring', async ({
     page,
   }) => {

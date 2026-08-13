@@ -12,6 +12,24 @@ const GlobalMidiPlayerDock = lazy(() =>
   })),
 );
 
+const SHELL_A11Y = {
+  id: {
+    skip: 'Lewati ke konten utama',
+    navigation: 'Navigasi utama',
+    home: 'GYSApp Beranda',
+  },
+  en: {
+    skip: 'Skip to main content',
+    navigation: 'Main navigation',
+    home: 'GYSApp Home',
+  },
+  zh: {
+    skip: '跳到主要内容',
+    navigation: '主导航',
+    home: 'GYSApp 首页',
+  },
+} as const;
+
 function useNavActive(pathname: string, to: string): boolean {
   if (to === '/home') return pathname === '/home';
   return pathname === to || pathname.startsWith(`${to}/`);
@@ -19,8 +37,9 @@ function useNavActive(pathname: string, to: string): boolean {
 
 export function AppShell() {
   const { pathname } = useLocation();
-  const { t } = useT();
+  const { locale, t } = useT();
   const player = useHymnalPlayerState();
+  const a11y = SHELL_A11Y[locale];
   const NAV_ITEMS = [
     { to: '/home', label: t('home'), icon: House },
     { to: '/bible', label: t('bible'), icon: BookOpenText },
@@ -47,8 +66,19 @@ export function AppShell() {
 
   return (
     <div className="app-shell">
-      <aside className="shell-sidebar" aria-label="Navigasi utama">
-        <Link to="/home" className="shell-brand" aria-label="GYSApp Beranda">
+      <a
+        className="skip-link"
+        href="#main-content"
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById('main-content')?.focus();
+        }}
+      >
+        {a11y.skip}
+      </a>
+
+      <aside className="shell-sidebar" aria-label={a11y.navigation}>
+        <Link to="/home" className="shell-brand" aria-label={a11y.home}>
           <img src={assetUrl('/brand/tjc-logo-indonesia-color.png')} alt="" />
           <span>
             <strong>GYSApp</strong>
@@ -58,7 +88,11 @@ export function AppShell() {
         <nav className="shell-nav">{NAV_ITEMS.map((item) => renderNavItem(item, 'nav'))}</nav>
       </aside>
 
-      <main className={`shell-content${player.track ? ' shell-content-with-player' : ''}`}>
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className={`shell-content${player.track ? ' shell-content-with-player' : ''}`}
+      >
         <Outlet />
       </main>
 
@@ -68,7 +102,7 @@ export function AppShell() {
         </Suspense>
       )}
 
-      <nav className="shell-dock" aria-label="Navigasi utama">
+      <nav className="shell-dock" aria-label={a11y.navigation}>
         {NAV_ITEMS.map((item) => renderNavItem(item, 'dock'))}
       </nav>
     </div>
