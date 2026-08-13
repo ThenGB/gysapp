@@ -10,6 +10,7 @@ import { apiFetch } from './client';
 import { contentSource, fetchStaticContent } from './static-content';
 
 const CACHE_KEY = 'gysapp.content.cache.v1';
+const SAUH_CACHE_MAX_ENTRIES = 14;
 const STATIC_STALE_MS = 6 * 60 * 60 * 1000;
 const GATEWAY_SAUH_STALE_MS = 5 * 60 * 1000;
 const GATEWAY_SUARA_STALE_MS = 10 * 60 * 1000;
@@ -38,6 +39,14 @@ function writeCache(mutate: (cache: ContentCache) => void): void {
   } catch {
     // localStorage penuh/tidak tersedia: offline fallback hilang, bukan crash.
   }
+}
+
+function writeSauhCache(dateKey: string, result: SauhResult): void {
+  writeCache((cache) => {
+    cache.sauh[dateKey] = result;
+    const evicted = Object.keys(cache.sauh).sort().reverse().slice(SAUH_CACHE_MAX_ENTRIES);
+    for (const key of evicted) delete cache.sauh[key];
+  });
 }
 
 export function cachedSauh(dateKey: string): SauhResult | null {
@@ -76,9 +85,7 @@ export function useSauh(date: Date, options?: Partial<UseQueryOptions<SauhResult
               })
             : await fetchStaticContent<SauhResult>('sauh');
         const result = parseSauhResult(raw);
-        writeCache((cache) => {
-          cache.sauh[dateKey] = result;
-        });
+        writeSauhCache(dateKey, result);
         return result;
       } catch (err) {
         const stale = cachedSauh(dateKey);
