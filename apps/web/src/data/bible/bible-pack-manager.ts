@@ -9,6 +9,7 @@ import {
   type BiblePackPackage,
 } from '@gysapp/core';
 import { assetUrl } from '../../lib/asset-url';
+import { resolveBiblePackageDownloadSource } from './github-release-download';
 
 const MANIFEST_URL =
   'https://raw.githubusercontent.com/ThenGB/GYSApp-Data/main/latest/bibles-manifest.json';
@@ -17,8 +18,6 @@ const DB_VERSION = 1;
 const STORE_FILES = 'files';
 const STORE_META = 'meta';
 const GYSPKG_MAGIC = new TextEncoder().encode('GYSPKG1');
-// Legacy GYSPKG1 key is intentionally only obfuscation. Integrity is provided
-// by HTTPS + mandatory SHA-256 verification before activation.
 const LEGACY_PACKAGE_KEY_BASE64 = 'yrvxIa8zgtn6cxTLH/+BsLjx5SrgGRQN7IVhK0ufB1Y=';
 const BUILTIN_DB_URLS: Partial<Record<BiblePackCode, string>> = {
   b_tb: '/data/bible/b_tb/b_tb.db',
@@ -151,7 +150,6 @@ async function gunzip(bytes: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
-/** Decode the legacy Flutter GYSPKG1 format (AES-SIC/CTR + gzip). */
 export async function decodeBiblePackage(packageBytes: Uint8Array): Promise<Uint8Array> {
   if (!bytesEqualPrefix(packageBytes, GYSPKG_MAGIC)) return new Uint8Array(packageBytes);
   const ivOffset = GYSPKG_MAGIC.byteLength;
@@ -182,13 +180,17 @@ async function fetchPackageWithResume(
   const saved = await idbGet<Uint8Array>(STORE_FILES, partialKey(pkg.checksumSha256));
   let prefix = saved ? new Uint8Array(saved) : new Uint8Array();
   let response: Response;
+  const source = await resolveBiblePackageDownloadSource(pkg.downloadUrl, signal);
 
-  const request = async (rangeStart?: number) =>
-    fetch(pkg.downloadUrl, {
+  const request = async (rangeStart?: number) => {
+    const headers = new Headers(source.headers);
+    if (rangeStart) headers.set('Range', `bytes=${rangeStart}-`);
+    return fetch(source.url, {
       signal,
-      headers: rangeStart ? { Range: `bytes=${rangeStart}-` } : undefined,
+      headers,
       cache: 'no-store',
     });
+  };
 
   try {
     response = await request(prefix.byteLength || undefined);
