@@ -4,6 +4,7 @@ import { App } from './App';
 import { applySettings, loadSettings } from './features/settings/settings-store';
 import { installOptionalWebAnalytics } from './lib/web-analytics';
 import './ui/tokens.css';
+import './ui/figma-system.css';
 
 const rootEl = document.getElementById('root');
 if (!rootEl) throw new Error('root element missing');
