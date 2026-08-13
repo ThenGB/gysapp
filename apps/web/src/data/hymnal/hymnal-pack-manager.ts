@@ -1,9 +1,9 @@
 import { sha256Hex } from '@gysapp/core';
+import { decodeBiblePackage } from '../bible/bible-pack-manager';
 import {
-  decodeBiblePackage,
+  resolveBiblePackageDownloadSource,
   type BiblePackageDownloadSource,
-} from '../bible/bible-pack-manager';
-import { resolveBiblePackageDownloadSource } from '../bible/github-release-download';
+} from '../bible/github-release-download';
 import { IndexedDbBlobStore } from '../../platform/blob-stores/indexeddb';
 
 export type HymnalPackCode = 'KR' | 'HYMNE' | 'MDR' | 'ASM-I' | 'ASM-M' | 'ASM-P';
