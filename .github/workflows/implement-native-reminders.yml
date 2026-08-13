@@ -1,0 +1,41 @@
+name: Implement Native Reminders
+
+on:
+  push:
+    branches:
+      - feature/bible-mobile-parity
+
+permissions:
+  contents: write
+
+jobs:
+  implement:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/bible-mobile-parity
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply reminder parity patch
+        run: bash scripts/implement-native-reminders.sh
+      - name: Format and verify
+        run: |
+          pnpm exec prettier --write apps/web/src/lib/reminder-schedule.ts apps/web/src/platform/scheduled-notifications.ts apps/web/src/platform/scheduled-notifications.test.ts apps/web/src/features/settings/settings-store.ts apps/web/src/features/settings/settings-store.test.ts apps/web/src/features/settings/settings-page.tsx apps/web/src/features/settings/settings-page.test.tsx apps/web/src/features/settings/settings.css apps/web/src/i18n/index.ts apps/web/src/i18n/index.test.ts
+          pnpm --filter @gysapp/web typecheck
+          pnpm --filter @gysapp/web test
+          pnpm format:check
+      - name: Commit reminder parity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/src/lib/reminder-schedule.ts apps/web/src/platform/scheduled-notifications.ts apps/web/src/platform/scheduled-notifications.test.ts apps/web/src/features/settings/settings-store.ts apps/web/src/features/settings/settings-store.test.ts apps/web/src/features/settings/settings-page.tsx apps/web/src/features/settings/settings-page.test.tsx apps/web/src/features/settings/settings.css apps/web/src/i18n/index.ts apps/web/src/i18n/index.test.ts
+          git commit -m "feat: restore native Sabbath and Bible reminders"
+          git push origin HEAD:feature/bible-mobile-parity
