@@ -115,20 +115,54 @@ jobs:
       - name: Build signed APK
         run: pnpm --filter @gysapp/native tauri android build --apk --ci
 
-      - name: Verify Android signatures
+      - name: Verify signed artifact identity
         shell: bash
+        env:
+          ANDROID_CERT_SHA256: ${{ secrets.ANDROID_CERT_SHA256 }}
         run: |
           set -euo pipefail
           AAB="$(find apps/native/src-tauri/gen/android/app/build/outputs/bundle -type f -name '*.aab' | head -1)"
           APK="$(find apps/native/src-tauri/gen/android/app/build/outputs/apk -type f -name '*.apk' | head -1)"
           test -n "$AAB" && test -f "$AAB"
           test -n "$APK" && test -f "$APK"
-          jarsigner -verify -verbose -certs "$AAB" >/dev/null
+
           BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          EXPECTED="$(printf '%s' "$ANDROID_CERT_SHA256" | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')"
+
+          jarsigner -verify -verbose -certs "$AAB" >/dev/null
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
+
+          AAB_CERT="$(keytool -printcert -jarfile "$AAB" \
+            | awk '/SHA256:/{print $2; exit}' \
+            | tr -d ':[:space:]' \
+            | tr '[:lower:]' '[:upper:]')"
+          APK_CERT="$("$BUILD_TOOLS/apksigner" verify --print-certs "$APK" \
+            | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print $2; exit}' \
+            | tr -d ':[:space:]' \
+            | tr '[:lower:]' '[:upper:]')"
+
+          if [ -z "$AAB_CERT" ] || [ "$AAB_CERT" != "$EXPECTED" ]; then
+            echo 'Final AAB signing certificate does not match the legacy identity.' >&2
+            echo "Expected SHA-256: $EXPECTED" >&2
+            echo "AAB SHA-256:      ${AAB_CERT:-unavailable}" >&2
+            exit 1
+          fi
+          if [ -z "$APK_CERT" ] || [ "$APK_CERT" != "$EXPECTED" ]; then
+            echo 'Final APK signing certificate does not match the legacy identity.' >&2
+            echo "Expected SHA-256: $EXPECTED" >&2
+            echo "APK SHA-256:      ${APK_CERT:-unavailable}" >&2
+            exit 1
+          fi
+
+          "$BUILD_TOOLS/aapt" dump badging "$APK" \
+            | grep -F "package: name='id.sch.kanaan.egys'" \
+            | grep -F "versionCode='134'"
+
           mkdir -p dist/android
           cp "$AAB" dist/android/GYSApp-android-release.aab
           cp "$APK" dist/android/GYSApp-android-release.apk
+          printf '%s\n' "$GITHUB_SHA" > dist/android/SOURCE_SHA.txt
+          printf '%s\n' "$EXPECTED" > dist/android/SIGNING_CERT_SHA256.txt
           (cd dist/android && sha256sum *.aab *.apk > SHA256SUMS.txt)
 
       - uses: actions/upload-artifact@v4
