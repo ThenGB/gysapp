@@ -45,8 +45,8 @@ export function useDialogFocus<T extends HTMLElement>(
         return;
       }
 
-      const first = elements[0];
-      const last = elements[elements.length - 1];
+      const first = elements[0]!;
+      const last = elements[elements.length - 1]!;
       const active = document.activeElement;
       if (event.shiftKey && (active === first || active === dialog)) {
         event.preventDefault();
