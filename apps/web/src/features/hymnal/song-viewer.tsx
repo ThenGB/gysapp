@@ -48,6 +48,7 @@ const VIEW_PREFS_KEY = 'gysapp.hymnal.viewer.v1';
 const SONG_STATE_KEY = 'gysapp.hymnal.song-state.v1';
 const ACCIDENTAL_KEY = 'gysapp.hymnal.accidental.v1';
 const MAX_SAVED_SONG_STATES = 80;
+const MAX_TEXT_CACHE_SONGS = 12;
 
 function clampZoom(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0.7 && value <= 2
@@ -170,6 +171,8 @@ export function SongViewer() {
   const pdfContainerRef = useRef<HTMLDivElement | null>(null);
   const pdfDocRef = useRef<{ url: string; doc: PdfDocumentProxy } | null>(null);
   const pdfLoadGuardRef = useRef(new LatestRequestGuard());
+  const textLoadGuardRef = useRef(new LatestRequestGuard());
+  const textCacheRef = useRef(new Map<string, ChordedLine[]>());
   const snapshotRef = useRef<SongViewState>(initialSongState);
 
   snapshotRef.current = {
@@ -273,10 +276,8 @@ export function SongViewer() {
     );
   }, [accidentalMode, book, currentTrackKey, resolved, transposeStep]);
 
-  // Load PDF + ekstraksi teks/chord hanya ketika lagu berubah. Resize/zoom tidak
-  // mengulang pekerjaan mahal ini; render canvas ditangani effect terpisah.
-  // LatestRequestGuard mencegah PDF lama yang selesai belakangan mengambil alih
-  // viewer setelah user sudah berpindah lagu.
+  // Load the PDF document only when the song changes. Expensive all-page text
+  // extraction is intentionally deferred until Text & Chord is actually opened.
   useEffect(() => {
     if (!resolved) return;
     let cancelled = false;
@@ -290,6 +291,7 @@ export function SongViewer() {
       setPdfError(null);
       setPageCount(0);
       setChordedLines([]);
+      textLoadGuardRef.current.invalidate();
       try {
         const pdfjs: PdfJs = await import('pdfjs-dist');
         const moduleWorker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
@@ -304,7 +306,9 @@ export function SongViewer() {
             signal: mediaAbort.signal,
           });
           if (!isCurrent()) return;
-          loadingTask = pdfjs.getDocument({ data: new Uint8Array(pdfBytes) });
+          // PDF.js can consume the Uint8Array directly and transfer it to its own
+          // worker; wrapping it again would allocate another full PDF-sized copy.
+          loadingTask = pdfjs.getDocument({ data: pdfBytes });
           const loadedDoc = await loadingTask.promise;
           if (!isCurrent()) {
             void loadingTask.destroy().catch(() => undefined);
@@ -323,45 +327,6 @@ export function SongViewer() {
 
         setPageCount(doc.numPages);
         setPdfRevision((value) => value + 1);
-
-        const chordDoc = await loadChordDoc(book, song);
-        if (!isCurrent()) return;
-        const nextLines: ChordedLine[] = [];
-        for (let pageNo = 1; pageNo <= doc.numPages; pageNo += 1) {
-          if (!isCurrent()) return;
-          const page = await doc.getPage(pageNo);
-          if (!isCurrent()) return;
-          const logicalViewport = page.getViewport({ scale: 1 });
-          const content = await page.getTextContent();
-          if (!isCurrent()) return;
-          const items: Array<{ str: string; transform: number[]; width: number }> = [];
-          for (const item of content.items) {
-            if ('str' in item && 'transform' in item) {
-              items.push({
-                str: String(item.str),
-                transform: item.transform as number[],
-                width: item.width as number,
-              });
-            }
-          }
-
-          const extracted = extractPageNotes(items, {
-            width: logicalViewport.width,
-            height: logicalViewport.height,
-          });
-          const lyrics = extractLyricLines(items, logicalViewport.width);
-          const pageEntries = chordDoc?.pages[String(pageNo)] ?? [];
-          nextLines.push(
-            ...buildChordedLines(
-              extracted.notes,
-              extracted.noteRows,
-              lyrics,
-              pageEntries as Array<{ noteIdx: number; chord: string }>,
-            ),
-          );
-        }
-
-        if (isCurrent()) setChordedLines(nextLines);
       } catch (err) {
         if (isCurrent()) setPdfError(err instanceof Error ? err.message : String(err));
       }
@@ -374,11 +339,93 @@ export function SongViewer() {
       if (pdfLoadGuardRef.current.isCurrent(loadToken)) {
         pdfLoadGuardRef.current.invalidate();
       }
+      textLoadGuardRef.current.invalidate();
       if (loadingTask && !committedLoadingTask) {
         void loadingTask.destroy().catch(() => undefined);
       }
     };
-  }, [resolved, book, song]);
+  }, [resolved]);
+
+  // All-page extraction can be expensive on long scores. Run it only for the
+  // text/chord view, cache a small number of songs, and discard stale results if
+  // users switch mode/song while extraction is still in flight.
+  useEffect(() => {
+    if (mode !== 'text' || !resolved || pdfRevision === 0) return;
+    const currentPdf = pdfDocRef.current;
+    if (!currentPdf || currentPdf.url !== resolved.pdfUrl) return;
+
+    const cacheKey = `${book}:${song}:${resolved.pdfUrl}`;
+    const cached = textCacheRef.current.get(cacheKey);
+    if (cached) {
+      textCacheRef.current.delete(cacheKey);
+      textCacheRef.current.set(cacheKey, cached);
+      setChordedLines(cached);
+      return;
+    }
+
+    let cancelled = false;
+    const loadToken = textLoadGuardRef.current.begin();
+    const isCurrent = () => !cancelled && textLoadGuardRef.current.isCurrent(loadToken);
+
+    const extract = async () => {
+      const chordDoc = await loadChordDoc(book, song);
+      if (!isCurrent()) return;
+      const nextLines: ChordedLine[] = [];
+      for (let pageNo = 1; pageNo <= currentPdf.doc.numPages; pageNo += 1) {
+        if (!isCurrent()) return;
+        const page = await currentPdf.doc.getPage(pageNo);
+        if (!isCurrent()) return;
+        const logicalViewport = page.getViewport({ scale: 1 });
+        const content = await page.getTextContent();
+        if (!isCurrent()) return;
+        const items: Array<{ str: string; transform: number[]; width: number }> = [];
+        for (const item of content.items) {
+          if ('str' in item && 'transform' in item) {
+            items.push({
+              str: String(item.str),
+              transform: item.transform as number[],
+              width: item.width as number,
+            });
+          }
+        }
+
+        const extracted = extractPageNotes(items, {
+          width: logicalViewport.width,
+          height: logicalViewport.height,
+        });
+        const lyrics = extractLyricLines(items, logicalViewport.width);
+        const pageEntries = chordDoc?.pages[String(pageNo)] ?? [];
+        nextLines.push(
+          ...buildChordedLines(
+            extracted.notes,
+            extracted.noteRows,
+            lyrics,
+            pageEntries as Array<{ noteIdx: number; chord: string }>,
+          ),
+        );
+      }
+
+      if (!isCurrent()) return;
+      textCacheRef.current.set(cacheKey, nextLines);
+      while (textCacheRef.current.size > MAX_TEXT_CACHE_SONGS) {
+        const oldest = textCacheRef.current.keys().next().value as string | undefined;
+        if (!oldest) break;
+        textCacheRef.current.delete(oldest);
+      }
+      setChordedLines(nextLines);
+    };
+
+    void extract().catch(() => {
+      // Lyrics from the catalog remain immediately usable when extraction fails.
+      if (isCurrent()) setChordedLines([]);
+    });
+    return () => {
+      cancelled = true;
+      if (textLoadGuardRef.current.isCurrent(loadToken)) {
+        textLoadGuardRef.current.invalidate();
+      }
+    };
+  }, [book, mode, pdfRevision, resolved, song]);
 
   useEffect(() => {
     if (mode !== 'pdf') return;
