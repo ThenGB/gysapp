@@ -1,0 +1,489 @@
+.song-v2-page {
+  --song-v2-control-bg: color-mix(in srgb, var(--surface-raised) 88%, var(--surface));
+  --song-v2-chord-bg: color-mix(in srgb, var(--accent) 10%, var(--surface-raised));
+  --song-v2-chord-border: color-mix(in srgb, var(--accent) 32%, var(--surface-border));
+  padding-top: var(--space-3);
+  padding-bottom: calc(var(--space-12) + 92px);
+}
+
+.song-v2-page:fullscreen {
+  max-width: none;
+  width: 100%;
+  min-height: 100%;
+  overflow: auto;
+  padding-inline: clamp(12px, 2vw, 28px);
+  background: var(--surface);
+}
+
+.song-v2-header {
+  position: sticky;
+  top: 0;
+  z-index: 18;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  margin-inline: calc(var(--space-4) * -1);
+  padding: 12px var(--space-4);
+  border-bottom: var(--border-thin);
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.song-v2-title {
+  min-width: 0;
+}
+
+.song-v2-title > span {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--brand-church-text);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.song-v2-title h1 {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-family: var(--font-reader);
+  font-size: clamp(1.1rem, 2vw, 1.4rem);
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song-v2-primary-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.song-v2-mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-width: 176px;
+  padding: 3px;
+  border: var(--border-thin);
+  border-radius: 12px;
+  background: var(--surface-muted);
+}
+
+.song-v2-mode-tabs button,
+.song-v2-chord-toggle,
+.song-v2-fullscreen,
+.song-v2-controlgroup button,
+.song-v2-stepper button,
+.song-v2-page-nav button {
+  min-height: var(--target-min);
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.song-v2-mode-tabs button {
+  min-height: 42px;
+  padding-inline: 16px;
+}
+
+.song-v2-mode-tabs button.active {
+  background: var(--surface-raised);
+  color: var(--accent-text);
+  box-shadow: var(--shadow-raised);
+}
+
+.song-v2-chord-toggle,
+.song-v2-fullscreen {
+  min-height: 42px;
+  padding-inline: 14px;
+  border: var(--border-thin);
+  background: var(--surface-raised);
+}
+
+.song-v2-chord-toggle.active {
+  border-color: var(--song-v2-chord-border);
+  background: var(--song-v2-chord-bg);
+  color: var(--accent-text);
+}
+
+.song-v2-secondary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 0 12px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+
+.song-v2-controlgroup,
+.song-v2-stepper,
+.song-v2-page-nav {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 4px;
+  padding: 3px;
+  border: var(--border-thin);
+  border-radius: 11px;
+  background: var(--song-v2-control-bg);
+}
+
+.song-v2-controlgroup button,
+.song-v2-stepper button,
+.song-v2-page-nav button {
+  min-width: 42px;
+  min-height: 40px;
+  padding-inline: 10px;
+}
+
+.song-v2-controlgroup button.active {
+  background: var(--surface-raised);
+  color: var(--accent-text);
+  box-shadow: var(--shadow-raised);
+}
+
+.song-v2-stepper span,
+.song-v2-page-nav span {
+  min-width: 7ch;
+  padding-inline: 6px;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.song-v2-controlgroup button:active,
+.song-v2-stepper button:active,
+.song-v2-page-nav button:active,
+.song-v2-mode-tabs button:active,
+.song-v2-chord-toggle:active,
+.song-v2-fullscreen:active {
+  transform: scale(0.97);
+}
+
+.song-v2-controlgroup button:disabled,
+.song-v2-stepper button:disabled,
+.song-v2-page-nav button:disabled {
+  cursor: default;
+  opacity: 0.42;
+  transform: none;
+}
+
+.song-v2-status {
+  margin: 0 0 var(--space-3);
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+}
+
+.song-v2-page-nav {
+  width: max-content;
+  margin: 0 auto var(--space-3);
+}
+
+.song-v2-pdf {
+  padding: clamp(8px, 1.7vw, 18px);
+  background: color-mix(in srgb, var(--surface-muted) 92%, var(--text-primary) 2%);
+}
+
+.song-v2-score-sheet {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+  line-height: 0;
+}
+
+.song-v2-pdf-chords {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.song-v2-pdf-chord {
+  position: absolute;
+  z-index: 3;
+  max-width: 7rem;
+  padding: 3px 6px;
+  overflow: hidden;
+  transform: translate(-50%, -145%);
+  border: 1px solid var(--song-v2-chord-border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--surface-raised) 90%, var(--accent) 10%);
+  color: var(--accent-text);
+  box-shadow: 0 1px 2px rgba(33, 29, 24, 0.12);
+  font-family: var(--font-ui);
+  font-size: clamp(10px, 1.2vw, 13px);
+  font-weight: 800;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song-v2-text {
+  max-width: min(760px, 100%);
+  min-height: min(60dvh, 700px);
+  padding: clamp(22px, 5vw, 42px);
+  text-align: center;
+}
+
+.song-v2-verse {
+  width: 100%;
+  margin: 0 0 clamp(34px, 6vw, 56px);
+}
+
+.song-v2-verse:last-child {
+  margin-bottom: 0;
+}
+
+.song-v2-verse-label {
+  display: block;
+  margin-bottom: 24px;
+  color: var(--brand-church-text);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.song-v2-text-line {
+  width: 100%;
+  margin-bottom: 22px;
+}
+
+.song-v2-text-line:last-child {
+  margin-bottom: 0;
+}
+
+.song-v2-text .song-line-text {
+  max-width: 100%;
+  font-size: clamp(1.05rem, calc(var(--reader-size) * 1.03), 1.7rem);
+  text-wrap: pretty;
+  overflow-wrap: break-word;
+}
+
+.song-v2-text .song-chord-row {
+  min-height: 1.5em;
+}
+
+.song-v2-text .song-chord-badge,
+.song-v2-page .song-chord-badge {
+  padding: 2px 5px;
+  border: 1px solid var(--song-v2-chord-border);
+  border-radius: 6px;
+  background: var(--song-v2-chord-bg);
+  color: var(--accent-text);
+  font-family: var(--font-ui);
+  font-size: 0.8em;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.song-v2-text:not(.chords-on) .song-chord-row {
+  display: none;
+}
+
+@media (hover: hover) {
+  .song-v2-mode-tabs button:hover,
+  .song-v2-chord-toggle:hover,
+  .song-v2-fullscreen:hover,
+  .song-v2-controlgroup button:hover,
+  .song-v2-stepper button:hover,
+  .song-v2-page-nav button:hover {
+    background: color-mix(in srgb, var(--accent) 6%, var(--surface-raised));
+    color: var(--accent-text);
+  }
+}
+
+@media (max-width: 760px) {
+  .song-v2-page {
+    padding-bottom: calc(var(--space-12) + 104px);
+  }
+
+  .song-v2-header {
+    position: relative;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    margin-inline: 0;
+    padding: 4px 0 12px;
+    backdrop-filter: none;
+  }
+
+  .song-v2-title h1 {
+    white-space: normal;
+  }
+
+  .song-v2-primary-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    justify-content: stretch;
+  }
+
+  .song-v2-mode-tabs {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .song-v2-fullscreen {
+    grid-column: 1 / -1;
+  }
+
+  .song-v2-secondary {
+    margin-inline: calc(var(--space-4) * -1);
+    padding-inline: var(--space-4);
+  }
+
+  .song-v2-text {
+    min-height: 52dvh;
+    padding: 24px 16px 30px;
+  }
+
+  .song-v2-text-line {
+    margin-bottom: 20px;
+  }
+
+  .song-v2-pdf-chord {
+    padding: 2px 4px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 390px) {
+  .song-v2-primary-actions {
+    gap: 6px;
+  }
+
+  .song-v2-mode-tabs button,
+  .song-v2-chord-toggle,
+  .song-v2-fullscreen {
+    min-height: 48px;
+  }
+
+  .song-v2-chord-toggle {
+    min-width: 54px;
+    padding-inline: 10px;
+    font-size: 0;
+    color: transparent;
+  }
+
+  .song-v2-chord-toggle::after {
+    content: '♯';
+    font-size: 1rem;
+  }
+
+  .song-v2-chord-toggle.active::after {
+    color: var(--accent-text);
+  }
+
+  .song-v2-chord-toggle:not(.active)::after {
+    color: var(--text-secondary);
+  }
+
+  .song-v2-text {
+    border-inline: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: var(--surface);
+  }
+
+  .song-v2-text .song-line-text {
+    font-size: max(1rem, var(--reader-size));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .song-v2-mode-tabs button,
+  .song-v2-chord-toggle,
+  .song-v2-fullscreen,
+  .song-v2-controlgroup button,
+  .song-v2-stepper button,
+  .song-v2-page-nav button {
+    transition: none;
+  }
+}
+
+.midi-v2-player {
+  margin-top: 0;
+  border-radius: 18px;
+}
+
+.midi-v2-details {
+  align-items: center;
+}
+
+.midi-v2-instrument {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: 800;
+}
+
+.midi-v2-instrument select {
+  min-height: 40px;
+  max-width: 180px;
+  padding: 0 32px 0 10px;
+  border: var(--border-thin);
+  border-radius: 9px;
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+@media (max-width: 680px) {
+  .midi-v2-player.midi-player-compact {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .midi-v2-player .midi-info {
+    min-width: 0;
+  }
+
+  .midi-v2-player .midi-seek {
+    min-width: 0;
+  }
+
+  .midi-v2-player .midi-time {
+    display: none;
+  }
+
+  .midi-v2-player.midi-player-details-open {
+    align-items: start;
+  }
+
+  .midi-v2-player.midi-player-details-open .midi-v2-details {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .midi-v2-instrument {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .midi-v2-instrument select {
+    max-width: min(58vw, 220px);
+  }
+}
