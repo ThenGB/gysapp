@@ -79,6 +79,10 @@ export function toTransferableArrayBuffer(bytes: Uint8Array): ArrayBuffer {
  * dengan byte cap. Render cache hanya menyimpan tempo-neutral supaya perubahan
  * tempo tidak membuat cache membengkak.
  *
+ * Media persistennya dimiliki offlineMediaCache. Buffer besar dipindahkan ke
+ * worker dengan transfer list; worker mengembalikan PCM transferable yang
+ * langsung disalin sekali ke AudioBuffer tanpa membuat typed-array copy ekstra.
+ *
  * Load guard menjamin request lama tidak boleh mengaktifkan deck setelah user
  * sudah pindah lagu/menekan stop. AudioBufferSourceNode benar-benar dimulai
  * lewat source.start(); paused deck baru dimulai saat play() dipanggil.
@@ -191,7 +195,10 @@ export class MidiEngine {
       this.worker = new Worker(WORKER_URL);
       this.worker.onmessage = (e) => this.onWorkerMessage(e.data);
       this.worker.onerror = () => {
-        for (const p of this.pending.values()) p.reject(new Error('midi worker crashed'));
+        for (const p of this.pending.values()) {
+          clearTimeout(p.timeout);
+          p.reject(new Error('midi worker crashed'));
+        }
         this.pending.clear();
       };
     }
@@ -213,14 +220,29 @@ export class MidiEngine {
       if (!p) return;
       this.pending.delete(msg.id);
       clearTimeout(p.timeout);
-      const left = new Float32Array(msg.left as Float32Array);
-      const right = new Float32Array(msg.right as Float32Array);
-      const buffer = this.ensureContext().createBuffer(2, left.length, msg.sampleRate ?? 48000);
+      const left = msg.left;
+      const right = msg.right;
+      if (!(left instanceof Float32Array) || !(right instanceof Float32Array)) {
+        p.reject(new Error('midi worker returned invalid PCM'));
+        return;
+      }
+      if (left.length !== right.length) {
+        p.reject(new Error('midi worker returned mismatched PCM channels'));
+        return;
+      }
+      const sampleRate = msg.sampleRate ?? 48000;
+      const buffer = this.ensureContext().createBuffer(2, left.length, sampleRate);
       buffer.copyToChannel(left, 0);
       buffer.copyToChannel(right, 1);
-      p.resolve({ buffer, duration: msg.duration ?? left.length / (msg.sampleRate ?? 48000) });
-    } else if (msg.type === 'sfLoaded') {
+      p.resolve({ buffer, duration: msg.duration ?? left.length / sampleRate });
+    } else if (msg.type === 'sfLoaded' && msg.id !== undefined) {
       this.sfLoaded = true;
+      const p = this.pending.get(msg.id);
+      if (p) {
+        this.pending.delete(msg.id);
+        clearTimeout(p.timeout);
+        p.resolve({ presets: msg.presets });
+      }
     } else if (msg.type === 'error' && msg.id !== undefined) {
       const p = this.pending.get(msg.id);
       if (p) {
@@ -260,7 +282,7 @@ export class MidiEngine {
     this.sfLoading = (async () => {
       const bytes = await offlineMediaCache.getOrFetch(this.soundfontUrl, 'soundfont');
       const buffer = toTransferableArrayBuffer(bytes);
-      await this.request('loadSoundFont', { url: this.soundfontUrl, buffer }, 60_000, [buffer]);
+      await this.request('loadSoundFont', { buffer }, 60_000, [buffer]);
     })().catch((err) => {
       this.sfLoading = null;
       throw err;

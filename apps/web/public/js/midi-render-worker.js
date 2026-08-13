@@ -1,18 +1,18 @@
 /* GYSApp MIDI render worker (classic). Kontrak:
  * IN  : { type:'init' }
- *       { type:'loadSoundFont', id, url, buffer }   buffer: ArrayBuffer
+ *       { type:'loadSoundFont', id, buffer }   buffer: ArrayBuffer (transferable)
  *       { type:'render', id, midiBuffer, sampleRate, transpose, instrument, tempoRate }
  * OUT : { type:'ready' }
  *       { type:'sfLoaded', id, presets:[[program,name]] }
  *       { type:'rendered', id, left, right, sampleRate, duration }  (transferable)
  *       { type:'error', id, error }
- * SoundFont di-cache IndexedDB (gys-sf-cache) — tidak pernah dobel di Cache API.
+ * Persistent media ownership berada di main-thread offlineMediaCache. Worker tidak
+ * memiliki IndexedDB sendiri agar clear-cache benar-benar lengkap dan SoundFont
+ * tidak tersimpan dua kali.
  */
 self.importScripts('/vendor/libfluidsynth-2.4.6.js');
 self.importScripts('/vendor/js-synthesizer.min.js');
 
-var SF_DB = 'gys-sf-cache';
-var SF_STORE = 'soundfonts';
 var synth = null;
 var engineReady = false;
 var CHUNK = 8192;
@@ -25,51 +25,6 @@ JSSynth.waitForReady().then(function () {
   engineReady = true;
   postMessage({ type: 'ready' });
 });
-
-function openDb() {
-  return new Promise(function (resolve, reject) {
-    var req = indexedDB.open(SF_DB, 1);
-    req.onupgradeneeded = function (e) {
-      if (!e.target.result.objectStoreNames.contains(SF_STORE)) {
-        e.target.result.createObjectStore(SF_STORE);
-      }
-    };
-    req.onsuccess = function () {
-      resolve(req.result);
-    };
-    req.onerror = function () {
-      reject(req.error || new Error('indexeddb open failed'));
-    };
-  });
-}
-
-function getSf(url) {
-  return openDb().then(function (db) {
-    return new Promise(function (resolve, reject) {
-      var tx = db.transaction(SF_STORE, 'readonly');
-      var req = tx.objectStore(SF_STORE).get(url);
-      req.onsuccess = function () {
-        resolve(req.result || null);
-      };
-      req.onerror = function () {
-        reject(req.error);
-      };
-    });
-  });
-}
-
-function putSf(url, buffer) {
-  return openDb().then(function (db) {
-    return new Promise(function (resolve, reject) {
-      var tx = db.transaction(SF_STORE, 'readwrite');
-      tx.objectStore(SF_STORE).put(buffer, url);
-      tx.oncomplete = resolve;
-      tx.onerror = function () {
-        reject(tx.error);
-      };
-    });
-  });
-}
 
 function ensureSynth(sampleRate) {
   if (synth) return Promise.resolve(synth);
@@ -94,18 +49,11 @@ self.onmessage = function (e) {
     return;
   }
   if (msg.type === 'loadSoundFont') {
-    getSf(msg.url)
-      .then(function (cached) {
-        if (cached) return cached;
-        var copy = msg.buffer.slice(0);
-        return putSf(msg.url, copy).then(function () {
-          return copy;
-        });
-      })
-      .then(function (buffer) {
-        return ensureSynth(48000).then(function () {
-          return synth.loadSFont(buffer);
-        });
+    ensureSynth(48000)
+      .then(function () {
+        // Ownership buffer sudah dipindahkan ke worker lewat postMessage transfer list.
+        // FluidSynth menjadi satu-satunya consumer; tidak perlu slice/copy kedua.
+        return synth.loadSFont(msg.buffer);
       })
       .then(function () {
         postMessage({ type: 'sfLoaded', id: msg.id, presets: extractPresets() });
@@ -124,8 +72,9 @@ self.onmessage = function (e) {
 function renderMidi(msg) {
   ensureSynth(msg.sampleRate || 48000)
     .then(function () {
-      var copy = msg.midiBuffer.slice(0);
-      return synth.addSMFDataToPlayer(copy);
+      // midiBuffer juga sudah menjadi milik worker. Hindari salinan ArrayBuffer
+      // sebelum js-synthesizer memasukkannya ke player.
+      return synth.addSMFDataToPlayer(msg.midiBuffer);
     })
     .then(function () {
       return synth.playPlayer();

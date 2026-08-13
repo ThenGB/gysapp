@@ -30,9 +30,27 @@ class FakeGain {
   disconnect() {}
 }
 
+class FakeRenderedBuffer {
+  duration: number;
+  numberOfChannels = 2;
+  readonly copiedChannels: Array<Float32Array | undefined> = [];
+
+  constructor(
+    public readonly length: number,
+    public readonly sampleRate: number,
+  ) {
+    this.duration = length / sampleRate;
+  }
+
+  copyToChannel(source: Float32Array, channelNumber: number) {
+    this.copiedChannels[channelNumber] = source;
+  }
+}
+
 class FakeAudioContext {
   currentTime = 0;
   readonly sources: FakeSource[] = [];
+  readonly buffers: FakeRenderedBuffer[] = [];
 
   resume = vi.fn(async () => undefined);
 
@@ -45,6 +63,12 @@ class FakeAudioContext {
   createGain(): GainNode {
     return new FakeGain() as unknown as GainNode;
   }
+
+  createBuffer(_channels: number, length: number, sampleRate: number): AudioBuffer {
+    const buffer = new FakeRenderedBuffer(length, sampleRate);
+    this.buffers.push(buffer);
+    return buffer as unknown as AudioBuffer;
+  }
 }
 
 type InternalCacheEntry = {
@@ -55,6 +79,12 @@ type InternalCacheEntry = {
   baseBpm: number;
 };
 
+type PendingRequest = {
+  resolve: (value: unknown) => void;
+  reject: (error: Error) => void;
+  timeout: ReturnType<typeof setTimeout>;
+};
+
 type InternalMidiEngine = {
   ctx: AudioContext | null;
   master: GainNode | null;
@@ -63,7 +93,18 @@ type InternalMidiEngine = {
   currentUrl: string | null;
   baseBpm: number;
   tempoBpm: number;
+  pending: Map<number, PendingRequest>;
   loadSoundFont: () => Promise<void>;
+  onWorkerMessage: (msg: {
+    type: string;
+    id?: number;
+    left?: Float32Array;
+    right?: Float32Array;
+    sampleRate?: number;
+    duration?: number;
+    presets?: unknown;
+    error?: string;
+  }) => void;
 };
 
 function fakeBuffer(duration: number): AudioBuffer {
@@ -108,6 +149,20 @@ function deferred() {
   return { promise, resolve };
 }
 
+function seedPending(
+  internal: InternalMidiEngine,
+  id: number,
+): { resolve: ReturnType<typeof vi.fn>; reject: ReturnType<typeof vi.fn> } {
+  const resolve = vi.fn();
+  const reject = vi.fn();
+  internal.pending.set(id, {
+    resolve,
+    reject,
+    timeout: setTimeout(() => undefined, 10_000),
+  });
+  return { resolve, reject };
+}
+
 describe('MIDI worker transfer buffers', () => {
   it('reuses a full Uint8Array backing ArrayBuffer without another copy', () => {
     const bytes = new Uint8Array([1, 2, 3, 4]);
@@ -124,6 +179,60 @@ describe('MIDI worker transfer buffers', () => {
 
     expect(buffer).not.toBe(source.buffer);
     expect([...new Uint8Array(buffer)]).toEqual([1, 2, 3]);
+  });
+
+  it('consumes transferred PCM views directly instead of cloning both channels again', () => {
+    const { ctx, internal } = setupEngine();
+    const pending = seedPending(internal, 41);
+    const left = new Float32Array([0.1, 0.2, 0.3]);
+    const right = new Float32Array([0.4, 0.5, 0.6]);
+
+    internal.onWorkerMessage({
+      type: 'rendered',
+      id: 41,
+      left,
+      right,
+      sampleRate: 48_000,
+      duration: 3 / 48_000,
+    });
+
+    expect(pending.reject).not.toHaveBeenCalled();
+    expect(pending.resolve).toHaveBeenCalledOnce();
+    expect(ctx.buffers).toHaveLength(1);
+    expect(ctx.buffers[0]?.copiedChannels[0]).toBe(left);
+    expect(ctx.buffers[0]?.copiedChannels[1]).toBe(right);
+    expect(internal.pending.has(41)).toBe(false);
+  });
+
+  it('resolves the SoundFont request when the worker reports sfLoaded', () => {
+    const { internal } = setupEngine();
+    internal.sfLoaded = false;
+    const pending = seedPending(internal, 7);
+    const presets = [[0, 'Piano']];
+
+    internal.onWorkerMessage({ type: 'sfLoaded', id: 7, presets });
+
+    expect(internal.sfLoaded).toBe(true);
+    expect(pending.reject).not.toHaveBeenCalled();
+    expect(pending.resolve).toHaveBeenCalledWith({ presets });
+    expect(internal.pending.has(7)).toBe(false);
+  });
+
+  it('rejects malformed transferred PCM without allocating an AudioBuffer', () => {
+    const { ctx, internal } = setupEngine();
+    const pending = seedPending(internal, 52);
+
+    internal.onWorkerMessage({
+      type: 'rendered',
+      id: 52,
+      left: new Float32Array([0.1, 0.2]),
+      right: new Float32Array([0.3]),
+      sampleRate: 48_000,
+    });
+
+    expect(pending.resolve).not.toHaveBeenCalled();
+    expect(pending.reject).toHaveBeenCalledOnce();
+    expect(ctx.buffers).toHaveLength(0);
   });
 });
 
