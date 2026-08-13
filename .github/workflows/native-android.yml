@@ -83,4 +83,4 @@ jobs:
           name: gysapp-android-ci-${{ github.sha }}
           path: dist/android-ci/*
           if-no-files-found: error
-          retention-days: 3
+          retention-days: 14

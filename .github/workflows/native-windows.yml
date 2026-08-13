@@ -53,3 +53,23 @@ jobs:
 
       - name: Tauri build (no bundle)
         run: pnpm --filter @gysapp/native build
+
+      - name: Stage Windows soak binary
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $source = 'apps/native/src-tauri/target/release/gysapp.exe'
+          if (-not (Test-Path $source)) {
+            throw "Expected Windows binary not found at $source"
+          }
+          New-Item -ItemType Directory -Force -Path 'dist/windows-ci' | Out-Null
+          Copy-Item $source 'dist/windows-ci/GYSApp-windows-x64-portable.exe'
+          $hash = (Get-FileHash 'dist/windows-ci/GYSApp-windows-x64-portable.exe' -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  GYSApp-windows-x64-portable.exe" | Set-Content -NoNewline 'dist/windows-ci/SHA256SUMS.txt'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gysapp-windows-ci-${{ github.sha }}
+          path: dist/windows-ci/*
+          if-no-files-found: error
+          retention-days: 14
