@@ -7,6 +7,7 @@ import './ui/tokens.css';
 import './ui/wireframe-system.css';
 import './ui/wireframe-features.css';
 import './ui/wireframe-responsive.css';
+import './ui/wireframe-hymnal.css';
 
 const rootEl = document.getElementById('root');
 if (!rootEl) throw new Error('root element missing');
