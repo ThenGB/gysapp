@@ -1,0 +1,791 @@
+name: Implement Native Reminders
+
+on:
+  push:
+    branches:
+      - feature/bible-mobile-parity
+
+permissions:
+  contents: write
+
+jobs:
+  implement:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/bible-mobile-parity
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Implement native reminder parity
+        shell: bash
+        run: |
+          cat > apps/web/src/lib/reminder-schedule.ts <<'EOF'
+          export const ISO_WEEKDAYS = [1, 2, 3, 4, 5, 6, 7] as const;
+          export type IsoWeekday = (typeof ISO_WEEKDAYS)[number];
+          export type BibleReminderSchedule = Partial<Record<IsoWeekday, string>>;
+
+          export function isIsoWeekday(value: number): value is IsoWeekday {
+            return ISO_WEEKDAYS.includes(value as IsoWeekday);
+          }
+
+          export function isReminderTime(value: unknown): value is string {
+            return typeof value === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+          }
+
+          export function normalizeBibleReminderSchedule(value: unknown): BibleReminderSchedule {
+            if (!value || typeof value !== 'object') return {};
+            const normalized: BibleReminderSchedule = {};
+            for (const [rawWeekday, rawTime] of Object.entries(value)) {
+              const weekday = Number(rawWeekday);
+              if (isIsoWeekday(weekday) && isReminderTime(rawTime)) {
+                normalized[weekday] = rawTime;
+              }
+            }
+            return normalized;
+          }
+
+          export function splitReminderTime(time: string): { hour: number; minute: number } {
+            if (!isReminderTime(time)) throw new Error(`Invalid reminder time: ${time}`);
+            const [hour, minute] = time.split(':').map(Number);
+            return { hour: hour ?? 0, minute: minute ?? 0 };
+          }
+
+          /** ISO weekday uses Monday=1..Sunday=7; Tauri notification uses Sunday=1..Saturday=7. */
+          export function isoWeekdayToTauri(weekday: IsoWeekday): number {
+            return weekday === 7 ? 1 : weekday + 1;
+          }
+          EOF
+
+          cat > apps/web/src/platform/scheduled-notifications.ts <<'EOF'
+          import {
+            ISO_WEEKDAYS,
+            isoWeekdayToTauri,
+            splitReminderTime,
+            type BibleReminderSchedule,
+          } from '../lib/reminder-schedule';
+
+          export const SABAT_NOTIFICATION_ID = 31111;
+          const BIBLE_NOTIFICATION_BASE_ID = 321000;
+          export const GYS_REMINDER_NOTIFICATION_IDS = [
+            SABAT_NOTIFICATION_ID,
+            ...ISO_WEEKDAYS.map((weekday) => BIBLE_NOTIFICATION_BASE_ID + weekday),
+          ];
+
+          export interface ReminderNotificationCopy {
+            sabatTitle: string;
+            sabatBody: string;
+            bibleTitle: string;
+            bibleBody: string;
+          }
+
+          export interface ReminderSettingsInput {
+            sabatReminder: boolean;
+            bibleReminders: BibleReminderSchedule;
+          }
+
+          export type ReminderApplyStatus =
+            | 'scheduled'
+            | 'disabled'
+            | 'unsupported'
+            | 'permission-denied';
+
+          type NotificationSchedule = unknown;
+          type NativeNotificationApi = {
+            Schedule?: {
+              interval: (
+                interval: {
+                  weekday?: number;
+                  hour?: number;
+                  minute?: number;
+                  second?: number;
+                },
+                allowWhileIdle?: boolean,
+              ) => NotificationSchedule;
+            };
+            isPermissionGranted?: () => Promise<boolean>;
+            requestPermission?: () => Promise<NotificationPermission>;
+            sendNotification?: (options: {
+              id: number;
+              title: string;
+              body: string;
+              schedule: NotificationSchedule;
+            }) => void;
+            cancel?: (ids: number[]) => Promise<void>;
+          };
+
+          type TauriNotificationWindow = Window & {
+            __TAURI__?: { notification?: NativeNotificationApi };
+          };
+
+          function notificationApi(): Required<NativeNotificationApi> | null {
+            if (typeof window === 'undefined') return null;
+            const api = (window as TauriNotificationWindow).__TAURI__?.notification;
+            if (
+              !api?.Schedule?.interval ||
+              !api.isPermissionGranted ||
+              !api.requestPermission ||
+              !api.sendNotification ||
+              !api.cancel
+            ) {
+              return null;
+            }
+            return api as Required<NativeNotificationApi>;
+          }
+
+          export function isNativeReminderAvailable(): boolean {
+            return notificationApi() !== null;
+          }
+
+          async function ensurePermission(
+            api: Required<NativeNotificationApi>,
+            requestPermission: boolean,
+          ): Promise<boolean> {
+            if (await api.isPermissionGranted()) return true;
+            if (!requestPermission) return false;
+            return (await api.requestPermission()) === 'granted';
+          }
+
+          function hasBibleReminders(schedule: BibleReminderSchedule): boolean {
+            return ISO_WEEKDAYS.some((weekday) => Boolean(schedule[weekday]));
+          }
+
+          export async function applyNativeReminderSettings(
+            settings: ReminderSettingsInput,
+            copy: ReminderNotificationCopy,
+            requestPermission = true,
+          ): Promise<ReminderApplyStatus> {
+            const api = notificationApi();
+            if (!api) return 'unsupported';
+
+            const hasAny = settings.sabatReminder || hasBibleReminders(settings.bibleReminders);
+            if (hasAny && !(await ensurePermission(api, requestPermission))) {
+              return 'permission-denied';
+            }
+
+            await api.cancel(GYS_REMINDER_NOTIFICATION_IDS);
+            if (!hasAny) return 'disabled';
+
+            try {
+              if (settings.sabatReminder) {
+                api.sendNotification({
+                  id: SABAT_NOTIFICATION_ID,
+                  title: copy.sabatTitle,
+                  body: copy.sabatBody,
+                  schedule: api.Schedule.interval(
+                    { weekday: 6, hour: 17, minute: 0, second: 0 },
+                    true,
+                  ),
+                });
+              }
+
+              for (const weekday of ISO_WEEKDAYS) {
+                const time = settings.bibleReminders[weekday];
+                if (!time) continue;
+                const { hour, minute } = splitReminderTime(time);
+                api.sendNotification({
+                  id: BIBLE_NOTIFICATION_BASE_ID + weekday,
+                  title: copy.bibleTitle,
+                  body: copy.bibleBody,
+                  schedule: api.Schedule.interval(
+                    {
+                      weekday: isoWeekdayToTauri(weekday),
+                      hour,
+                      minute,
+                      second: 0,
+                    },
+                    true,
+                  ),
+                });
+              }
+            } catch (error) {
+              await api.cancel(GYS_REMINDER_NOTIFICATION_IDS).catch(() => undefined);
+              throw error;
+            }
+
+            return 'scheduled';
+          }
+
+          export async function cancelAllGysReminders(): Promise<void> {
+            const api = notificationApi();
+            if (!api) return;
+            await api.cancel(GYS_REMINDER_NOTIFICATION_IDS);
+          }
+          EOF
+
+          cat > apps/web/src/platform/scheduled-notifications.test.ts <<'EOF'
+          import { afterEach, describe, expect, it, vi } from 'vitest';
+          import {
+            GYS_REMINDER_NOTIFICATION_IDS,
+            SABAT_NOTIFICATION_ID,
+            applyNativeReminderSettings,
+            cancelAllGysReminders,
+            isNativeReminderAvailable,
+          } from './scheduled-notifications';
+
+          type TestWindow = Window & { __TAURI__?: unknown };
+
+          function installApi(permission = true) {
+            const interval = vi.fn((value, allowWhileIdle = false) => ({
+              at: undefined,
+              interval: { interval: value, allowWhileIdle },
+              every: undefined,
+            }));
+            const api = {
+              Schedule: { interval },
+              isPermissionGranted: vi.fn().mockResolvedValue(permission),
+              requestPermission: vi.fn().mockResolvedValue('granted'),
+              sendNotification: vi.fn(),
+              cancel: vi.fn().mockResolvedValue(undefined),
+            };
+            Object.defineProperty(window, '__TAURI__', {
+              configurable: true,
+              writable: true,
+              value: { notification: api },
+            });
+            return api;
+          }
+
+          const copy = {
+            sabatTitle: 'Sabbath',
+            sabatBody: 'Prepare',
+            bibleTitle: 'Bible',
+            bibleBody: 'Read',
+          };
+
+          afterEach(() => {
+            delete (window as TestWindow).__TAURI__;
+            vi.restoreAllMocks();
+          });
+
+          describe('scheduled notifications adapter', () => {
+            it('reports unsupported outside Tauri', () => {
+              expect(isNativeReminderAvailable()).toBe(false);
+            });
+
+            it('schedules Friday Sabbath and maps ISO Monday/Sunday to Tauri weekdays', async () => {
+              const api = installApi();
+              const status = await applyNativeReminderSettings(
+                {
+                  sabatReminder: true,
+                  bibleReminders: { 1: '07:15', 7: '20:30' },
+                },
+                copy,
+              );
+
+              expect(status).toBe('scheduled');
+              expect(api.cancel).toHaveBeenCalledWith(GYS_REMINDER_NOTIFICATION_IDS);
+              expect(api.sendNotification).toHaveBeenCalledTimes(3);
+              expect(api.sendNotification).toHaveBeenCalledWith(
+                expect.objectContaining({
+                  id: SABAT_NOTIFICATION_ID,
+                  schedule: expect.objectContaining({
+                    interval: expect.objectContaining({
+                      interval: expect.objectContaining({ weekday: 6, hour: 17, minute: 0 }),
+                    }),
+                  }),
+                }),
+              );
+              expect(api.sendNotification).toHaveBeenCalledWith(
+                expect.objectContaining({
+                  id: 321001,
+                  schedule: expect.objectContaining({
+                    interval: expect.objectContaining({
+                      interval: expect.objectContaining({ weekday: 2, hour: 7, minute: 15 }),
+                    }),
+                  }),
+                }),
+              );
+              expect(api.sendNotification).toHaveBeenCalledWith(
+                expect.objectContaining({
+                  id: 321007,
+                  schedule: expect.objectContaining({
+                    interval: expect.objectContaining({ weekday: 1, hour: 20, minute: 30 }),
+                  }),
+                }),
+              );
+            });
+
+            it('requests permission before creating active schedules', async () => {
+              const api = installApi(false);
+              await expect(
+                applyNativeReminderSettings(
+                  { sabatReminder: true, bibleReminders: {} },
+                  copy,
+                  true,
+                ),
+              ).resolves.toBe('scheduled');
+              expect(api.requestPermission).toHaveBeenCalledOnce();
+            });
+
+            it('does not replace existing schedules when permission is denied', async () => {
+              const api = installApi(false);
+              api.requestPermission.mockResolvedValue('denied');
+              await expect(
+                applyNativeReminderSettings(
+                  { sabatReminder: true, bibleReminders: {} },
+                  copy,
+                  true,
+                ),
+              ).resolves.toBe('permission-denied');
+              expect(api.cancel).not.toHaveBeenCalled();
+              expect(api.sendNotification).not.toHaveBeenCalled();
+            });
+
+            it('can cancel all GYSApp-owned reminder ids without requesting permission', async () => {
+              const api = installApi(false);
+              await cancelAllGysReminders();
+              expect(api.cancel).toHaveBeenCalledWith(GYS_REMINDER_NOTIFICATION_IDS);
+              expect(api.requestPermission).not.toHaveBeenCalled();
+            });
+          });
+          EOF
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              if old not in text:
+                  raise SystemExit(f'missing anchor for {label}: {old!r}')
+              return text.replace(old, new, 1)
+
+          store = Path('apps/web/src/features/settings/settings-store.ts')
+          text = store.read_text()
+          text = replace_once(
+              text,
+              "export type ThemeMode = 'system' | 'light' | 'dark';\n",
+              "import { normalizeBibleReminderSchedule, type BibleReminderSchedule } from '../../lib/reminder-schedule';\n\nexport type ThemeMode = 'system' | 'light' | 'dark';\n",
+              'settings reminder import',
+          )
+          text = replace_once(
+              text,
+              '  sabatReminder: boolean;\n',
+              '  sabatReminder: boolean;\n  bibleReminders: BibleReminderSchedule;\n',
+              'settings reminder field',
+          )
+          text = replace_once(
+              text,
+              '  sabatReminder: false,\n',
+              '  sabatReminder: false,\n  bibleReminders: {},\n',
+              'settings reminder default',
+          )
+          text = replace_once(
+              text,
+              "    sabatReminder: typeof s.sabatReminder === 'boolean' ? s.sabatReminder : false,\n",
+              "    sabatReminder: typeof s.sabatReminder === 'boolean' ? s.sabatReminder : false,\n    bibleReminders: normalizeBibleReminderSchedule(s.bibleReminders),\n",
+              'settings reminder normalize',
+          )
+          store.write_text(text)
+
+          i18n = Path('apps/web/src/i18n/index.ts')
+          text = i18n.read_text()
+          inserts = {
+              "    sabatReminder: 'Pengingat Sabat (Jumat 17:00)',\n": """    sabatReminder: 'Pengingat Sabat (Jumat 17:00)',
+              sabatReminderLead: 'Dijadwalkan setiap Jumat pukul 17:00 untuk membantu mempersiapkan hati menyambut hari Sabat.',
+              bibleReminder: 'Pengingat baca Alkitab',
+              bibleReminderLead: 'Pilih hari dan waktu untuk pengingat baca Alkitab yang berulang setiap minggu.',
+              nativeReminderOnly: 'Pengingat berulang tersedia di aplikasi native Android, Windows, dan iOS. Browser/PWA tidak menjadwalkan notifikasi OS berulang.',
+              reminderPermissionDenied: 'Izin notifikasi belum diberikan. Aktifkan izin notifikasi lalu coba lagi.',
+              reminderSaved: 'Jadwal pengingat berhasil disimpan.',
+              reminderScheduleFailed: 'Jadwal pengingat belum dapat diterapkan. Coba lagi.',
+              reminderTime: 'Waktu pengingat',
+              weekdayMonday: 'Senin',
+              weekdayTuesday: 'Selasa',
+              weekdayWednesday: 'Rabu',
+              weekdayThursday: 'Kamis',
+              weekdayFriday: 'Jumat',
+              weekdaySaturday: 'Sabtu',
+              weekdaySunday: 'Minggu',
+              sabatNotificationTitle: 'Persiapan Hari Sabat',
+              sabatNotificationBody: 'Hari Sabat segera tiba. Persiapkan hati untuk beribadah dan beristirahat di dalam Tuhan.',
+              bibleNotificationTitle: 'Waktunya membaca Alkitab',
+              bibleNotificationBody: 'Luangkan waktu untuk membaca dan merenungkan Firman Tuhan hari ini.',
+          """,
+              "    sabatReminder: 'Sabbath reminder (Friday 17:00)',\n": """    sabatReminder: 'Sabbath reminder (Friday 17:00)',
+              sabatReminderLead: 'Scheduled every Friday at 17:00 to help you prepare your heart for the Sabbath day.',
+              bibleReminder: 'Bible reading reminders',
+              bibleReminderLead: 'Choose days and times for weekly recurring Bible reading reminders.',
+              nativeReminderOnly: 'Recurring reminders are available in the native Android, Windows, and iOS apps. Browser/PWA does not schedule recurring OS notifications.',
+              reminderPermissionDenied: 'Notification permission has not been granted. Enable notifications and try again.',
+              reminderSaved: 'Reminder schedule saved.',
+              reminderScheduleFailed: 'The reminder schedule could not be applied. Try again.',
+              reminderTime: 'Reminder time',
+              weekdayMonday: 'Monday',
+              weekdayTuesday: 'Tuesday',
+              weekdayWednesday: 'Wednesday',
+              weekdayThursday: 'Thursday',
+              weekdayFriday: 'Friday',
+              weekdaySaturday: 'Saturday',
+              weekdaySunday: 'Sunday',
+              sabatNotificationTitle: 'Prepare for the Sabbath',
+              sabatNotificationBody: 'The Sabbath is approaching. Prepare your heart for worship and rest in the Lord.',
+              bibleNotificationTitle: 'Time to read the Bible',
+              bibleNotificationBody: 'Set aside time to read and reflect on God’s word today.',
+          """,
+              "    sabatReminder: '安息日提醒（周五 17:00）',\n": """    sabatReminder: '安息日提醒（周五 17:00）',
+              sabatReminderLead: '每周五 17:00 定时提醒，帮助您预备心迎接安息日。',
+              bibleReminder: '读经提醒',
+              bibleReminderLead: '选择星期和时间，设置每周重复的读经提醒。',
+              nativeReminderOnly: '重复提醒仅适用于 Android、Windows 和 iOS 原生应用。浏览器/PWA 不会安排重复的系统通知。',
+              reminderPermissionDenied: '尚未授予通知权限。请开启通知权限后重试。',
+              reminderSaved: '提醒时间表已保存。',
+              reminderScheduleFailed: '暂时无法应用提醒时间表，请重试。',
+              reminderTime: '提醒时间',
+              weekdayMonday: '星期一',
+              weekdayTuesday: '星期二',
+              weekdayWednesday: '星期三',
+              weekdayThursday: '星期四',
+              weekdayFriday: '星期五',
+              weekdaySaturday: '星期六',
+              weekdaySunday: '星期日',
+              sabatNotificationTitle: '预备安息日',
+              sabatNotificationBody: '安息日即将来到。请预备心敬拜，在主里安息。',
+              bibleNotificationTitle: '读经时间到了',
+              bibleNotificationBody: '今天请预留时间阅读并默想神的话语。',
+          """,
+          }
+          for old, new in inserts.items():
+              if old not in text:
+                  raise SystemExit(f'i18n reminder anchor missing: {old!r}')
+              text = text.replace(old, new, 1)
+          i18n.write_text(text)
+
+          page = Path('apps/web/src/features/settings/settings-page.tsx')
+          text = page.read_text()
+          text = replace_once(
+              text,
+              "import { useCallback, useState, useSyncExternalStore } from 'react';",
+              "import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';",
+              'settings useEffect import',
+          )
+          text = replace_once(
+              text,
+              '  Books,\n',
+              '  Bell,\n  Books,\n  CalendarDots,\n',
+              'settings notification icons',
+          )
+          text = replace_once(
+              text,
+              "import { OfflineMediaSettings } from './offline-media-settings';\n",
+              "import { OfflineMediaSettings } from './offline-media-settings';\nimport { ISO_WEEKDAYS, type BibleReminderSchedule, type IsoWeekday } from '../../lib/reminder-schedule';\nimport {\n  applyNativeReminderSettings,\n  cancelAllGysReminders,\n  isNativeReminderAvailable,\n  type ReminderNotificationCopy,\n} from '../../platform/scheduled-notifications';\n",
+              'settings reminder imports',
+          )
+          text = replace_once(
+              text,
+              "const PRESETS: Array<{\n",
+              "const WEEKDAYS: Array<{ value: IsoWeekday; labelKey: TranslationKey }> = [\n  { value: 1, labelKey: 'weekdayMonday' },\n  { value: 2, labelKey: 'weekdayTuesday' },\n  { value: 3, labelKey: 'weekdayWednesday' },\n  { value: 4, labelKey: 'weekdayThursday' },\n  { value: 5, labelKey: 'weekdayFriday' },\n  { value: 6, labelKey: 'weekdaySaturday' },\n  { value: 7, labelKey: 'weekdaySunday' },\n];\n\nconst PRESETS: Array<{\n",
+              'settings weekdays',
+          )
+          text = replace_once(
+              text,
+              "  const [feedback, setFeedback] = useState<string | null>(null);\n",
+              "  const [feedback, setFeedback] = useState<string | null>(null);\n  const [reminderFeedback, setReminderFeedback] = useState<string | null>(null);\n  const [reminderBusy, setReminderBusy] = useState(false);\n  const nativeReminderAvailable = isNativeReminderAvailable();\n  const reminderCopy: ReminderNotificationCopy = {\n    sabatTitle: t('sabatNotificationTitle'),\n    sabatBody: t('sabatNotificationBody'),\n    bibleTitle: t('bibleNotificationTitle'),\n    bibleBody: t('bibleNotificationBody'),\n  };\n",
+              'settings reminder state',
+          )
+          text = replace_once(
+              text,
+              "  const selectPreset = useCallback((preset: ComfortPreset) => {\n    applySettings(applyComfortPreset(preset));\n  }, []);\n",
+              "  const selectPreset = useCallback((preset: ComfortPreset) => {\n    applySettings(applyComfortPreset(preset));\n  }, []);\n\n  useEffect(() => {\n    if (!nativeReminderAvailable) return;\n    void applyNativeReminderSettings(loadSettings(), reminderCopy, false).catch(() => undefined);\n    // Reconcile persisted schedules on mount and when the UI locale changes.\n    // eslint-disable-next-line react-hooks/exhaustive-deps\n  }, [locale, nativeReminderAvailable]);\n\n  const commitReminderSettings = useCallback(\n    async (partial: Pick<Partial<AppSettings>, 'sabatReminder' | 'bibleReminders'>) => {\n      const current = loadSettings();\n      const next = { ...current, ...partial };\n      setReminderBusy(true);\n      setReminderFeedback(null);\n      try {\n        if (!nativeReminderAvailable) {\n          const enablingSabat = !current.sabatReminder && next.sabatReminder;\n          const changingOrAddingBible = Object.entries(next.bibleReminders).some(\n            ([weekday, time]) => current.bibleReminders[Number(weekday) as IsoWeekday] !== time,\n          );\n          if (enablingSabat || changingOrAddingBible) {\n            setReminderFeedback(t('nativeReminderOnly'));\n            return false;\n          }\n          applyAndSave(partial);\n          setReminderFeedback(t('reminderSaved'));\n          return true;\n        }\n\n        const status = await applyNativeReminderSettings(next, reminderCopy, true);\n        if (status === 'permission-denied') {\n          setReminderFeedback(t('reminderPermissionDenied'));\n          return false;\n        }\n        if (status === 'unsupported') {\n          setReminderFeedback(t('nativeReminderOnly'));\n          return false;\n        }\n        applyAndSave(partial);\n        setReminderFeedback(t('reminderSaved'));\n        return true;\n      } catch {\n        setReminderFeedback(t('reminderScheduleFailed'));\n        return false;\n      } finally {\n        setReminderBusy(false);\n      }\n    },\n    [applyAndSave, nativeReminderAvailable, reminderCopy, t],\n  );\n",
+              'settings reminder handlers',
+          )
+          text = replace_once(
+              text,
+              "        applyAndSave(data.settings);\n        setFeedback(t('backupRestored'));\n",
+              "        applyAndSave(data.settings);\n        const restored = loadSettings();\n        if (nativeReminderAvailable) {\n          void applyNativeReminderSettings(restored, reminderCopy, false).catch(() => undefined);\n        }\n        setFeedback(t('backupRestored'));\n",
+              'backup reminder reconciliation',
+          )
+          text = replace_once(
+              text,
+              "    [applyAndSave, t],\n  );\n\n  const resetAll = useCallback(() => {\n    if (!window.confirm(t('resetAllConfirm'))) return;\n    localStorage.clear();\n    location.reload();\n  }, [t]);\n",
+              "    [applyAndSave, nativeReminderAvailable, reminderCopy, t],\n  );\n\n  const resetAll = useCallback(async () => {\n    if (!window.confirm(t('resetAllConfirm'))) return;\n    await cancelAllGysReminders().catch(() => undefined);\n    localStorage.clear();\n    location.reload();\n  }, [t]);\n",
+              'reset reminder cancellation',
+          )
+          old_notifications = """      <section className=\"settings-section\" aria-label={t('notifications')}>
+        <h2 className=\"settings-heading\">{t('notifications')}</h2>
+        <div className=\"settings-row\">
+          <label htmlFor=\"sabat-toggle\">{t('sabatReminder')}</label>
+          <button
+            id=\"sabat-toggle\"
+            type=\"button\"
+            role=\"switch\"
+            aria-checked={settings.sabatReminder}
+            className={`switch${settings.sabatReminder ? ' switch-on' : ''}`}
+            onClick={() => {
+              applyAndSave({ sabatReminder: !settings.sabatReminder });
+              if (!settings.sabatReminder) void Notification.requestPermission();
+            }}
+          >
+            <span className=\"switch-thumb\" />
+          </button>
+        </div>
+      </section>
+          """
+          new_notifications = """      <section className=\"settings-section\" aria-label={t('notifications')}>
+        <h2 className=\"settings-heading\">{t('notifications')}</h2>
+        <div className=\"settings-row settings-reminder-summary\">
+          <span className=\"settings-row-icon\" aria-hidden=\"true\">
+            <Bell size={20} />
+          </span>
+          <div className=\"settings-row-main\">
+            <label htmlFor=\"sabat-toggle\">{t('sabatReminder')}</label>
+            <small>{t('sabatReminderLead')}</small>
+          </div>
+          <button
+            id=\"sabat-toggle\"
+            type=\"button\"
+            role=\"switch\"
+            aria-checked={settings.sabatReminder}
+            disabled={reminderBusy || (!nativeReminderAvailable && !settings.sabatReminder)}
+            className={`switch${settings.sabatReminder ? ' switch-on' : ''}`}
+            onClick={() => void commitReminderSettings({ sabatReminder: !settings.sabatReminder })}
+          >
+            <span className=\"switch-thumb\" />
+          </button>
+        </div>
+
+        <div className=\"settings-reminder-block\">
+          <div className=\"settings-reminder-heading\">
+            <CalendarDots size={20} aria-hidden=\"true\" />
+            <div>
+              <strong>{t('bibleReminder')}</strong>
+              <small>{t('bibleReminderLead')}</small>
+            </div>
+          </div>
+          <div className=\"settings-reminder-days\">
+            {WEEKDAYS.map((weekday) => {
+              const active = Boolean(settings.bibleReminders[weekday.value]);
+              const time = settings.bibleReminders[weekday.value] ?? '07:00';
+              const weekdayLabel = t(weekday.labelKey);
+              return (
+                <div key={weekday.value} className=\"settings-reminder-day\">
+                  <button
+                    type=\"button\"
+                    role=\"switch\"
+                    aria-label={`${t('bibleReminder')} ${weekdayLabel}`}
+                    aria-checked={active}
+                    disabled={reminderBusy || (!nativeReminderAvailable && !active)}
+                    className={`switch${active ? ' switch-on' : ''}`}
+                    onClick={() => {
+                      const next: BibleReminderSchedule = { ...settings.bibleReminders };
+                      if (active) delete next[weekday.value];
+                      else next[weekday.value] = '07:00';
+                      void commitReminderSettings({ bibleReminders: next });
+                    }}
+                  >
+                    <span className=\"switch-thumb\" />
+                  </button>
+                  <span>{weekdayLabel}</span>
+                  <input
+                    type=\"time\"
+                    value={time}
+                    aria-label={`${t('reminderTime')} ${weekdayLabel}`}
+                    disabled={!active || reminderBusy || !nativeReminderAvailable}
+                    onChange={(event) => {
+                      const next: BibleReminderSchedule = {
+                        ...settings.bibleReminders,
+                        [weekday.value]: event.target.value,
+                      };
+                      void commitReminderSettings({ bibleReminders: next });
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {!nativeReminderAvailable && (
+          <p className=\"settings-reminder-note\">{t('nativeReminderOnly')}</p>
+        )}
+        {reminderFeedback && (
+          <p className=\"settings-action-status\" role=\"status\">
+            {reminderFeedback}
+          </p>
+        )}
+      </section>
+          """
+          text = replace_once(text, old_notifications, new_notifications, 'notification settings section')
+          text = replace_once(
+              text,
+              '          <button type="button" className="btn-danger" onClick={resetAll}>\n',
+              '          <button type="button" className="btn-danger" onClick={() => void resetAll()}>\n',
+              'async reset button',
+          )
+          page.write_text(text)
+
+          css = Path('apps/web/src/features/settings/settings.css')
+          text = css.read_text()
+          anchor = ".settings-action-status {\n  flex-basis: 100%;\n  color: var(--text-secondary);\n  font-size: var(--text-sm);\n}\n"
+          styles = """
+
+          .settings-reminder-summary {
+            display: grid;
+            grid-template-columns: 34px minmax(0, 1fr) auto;
+          }
+
+          .settings-reminder-block {
+            padding: var(--space-4) 0 var(--space-2);
+          }
+
+          .settings-reminder-heading {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-3);
+            color: var(--text-secondary);
+          }
+
+          .settings-reminder-heading > div {
+            display: grid;
+            gap: 3px;
+          }
+
+          .settings-reminder-heading strong {
+            color: var(--text-primary);
+          }
+
+          .settings-reminder-heading small,
+          .settings-reminder-note {
+            color: var(--text-tertiary);
+          }
+
+          .settings-reminder-days {
+            display: grid;
+            gap: 2px;
+            margin-top: var(--space-3);
+          }
+
+          .settings-reminder-day {
+            min-height: var(--target-min);
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr) auto;
+            align-items: center;
+            gap: var(--space-3);
+            padding: 7px 0;
+            border-bottom: var(--border-thin);
+          }
+
+          .settings-reminder-day:last-child {
+            border-bottom: 0;
+          }
+
+          .settings-reminder-day > span {
+            font-weight: 650;
+          }
+
+          .settings-reminder-day input[type='time'] {
+            min-height: 40px;
+            padding: 6px 9px;
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-md);
+            background: var(--surface);
+            color: var(--text-primary);
+            font: inherit;
+            font-variant-numeric: tabular-nums;
+          }
+
+          .settings-reminder-note {
+            margin: var(--space-3) 0 0;
+            font-size: var(--text-sm);
+          }
+
+          .switch:disabled,
+          .settings-reminder-day input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+          """
+          text = replace_once(text, anchor, anchor + styles, 'reminder styles')
+          css.write_text(text)
+
+          i18n_test = Path('apps/web/src/i18n/index.test.ts')
+          text = i18n_test.read_text()
+          anchor = "    expect(t('searchVerseTitle', 'zh')).toBe('搜索经文');\n"
+          addition = """
+
+              expect(t('bibleReminder', 'id')).toBe('Pengingat baca Alkitab');
+              expect(t('bibleReminder', 'en')).toBe('Bible reading reminders');
+              expect(t('bibleReminder', 'zh')).toBe('读经提醒');
+          """
+          text = replace_once(text, anchor, anchor + addition, 'i18n reminder regression')
+          i18n_test.write_text(text)
+
+          page_test = Path('apps/web/src/features/settings/settings-page.test.tsx')
+          text = page_test.read_text()
+          anchor = "    expect(screen.getByRole('button', { name: /Reset semua data/ })).toBeInTheDocument();\n"
+          addition = """
+              expect(screen.getByText(/aplikasi native Android, Windows, dan iOS/)).toBeInTheDocument();
+              expect(screen.getByRole('switch', { name: 'Pengingat Sabat (Jumat 17:00)' })).toBeDisabled();
+              expect(screen.getByRole('switch', { name: 'Pengingat baca Alkitab Senin' })).toBeDisabled();
+          """
+          text = replace_once(text, anchor, anchor + addition, 'settings browser reminder regression')
+          page_test.write_text(text)
+
+          store_test = Path('apps/web/src/features/settings/settings-store.test.ts')
+          store_test.write_text("""import { beforeEach, describe, expect, it } from 'vitest';
+          import { loadSettings, updateSettings } from './settings-store';
+
+          describe('settings reminder persistence', () => {
+            beforeEach(() => localStorage.clear());
+
+            it('normalizes valid weekday/time reminder entries and drops invalid values', () => {
+              localStorage.setItem(
+                'gysapp.settings.v2',
+                JSON.stringify({
+                  sabatReminder: true,
+                  bibleReminders: { 1: '07:30', 5: '20:00', 2: '25:00', 8: '08:00' },
+                }),
+              );
+              expect(loadSettings().bibleReminders).toEqual({ 1: '07:30', 5: '20:00' });
+            });
+
+            it('persists Bible reminder schedules in the existing settings envelope', () => {
+              updateSettings({ bibleReminders: { 2: '06:45', 7: '19:15' } });
+              expect(loadSettings().bibleReminders).toEqual({ 2: '06:45', 7: '19:15' });
+            });
+          });
+          """)
+          PY
+
+          pnpm exec prettier --write \
+            apps/web/src/lib/reminder-schedule.ts \
+            apps/web/src/platform/scheduled-notifications.ts \
+            apps/web/src/platform/scheduled-notifications.test.ts \
+            apps/web/src/features/settings/settings-store.ts \
+            apps/web/src/features/settings/settings-store.test.ts \
+            apps/web/src/features/settings/settings-page.tsx \
+            apps/web/src/features/settings/settings-page.test.tsx \
+            apps/web/src/features/settings/settings.css \
+            apps/web/src/i18n/index.ts \
+            apps/web/src/i18n/index.test.ts
+          pnpm --filter @gysapp/web typecheck
+          pnpm --filter @gysapp/web test
+          pnpm format:check
+      - name: Commit reminder parity
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo 'No reminder changes generated'
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/web/src/lib/reminder-schedule.ts \
+            apps/web/src/platform/scheduled-notifications.ts \
+            apps/web/src/platform/scheduled-notifications.test.ts \
+            apps/web/src/features/settings/settings-store.ts \
+            apps/web/src/features/settings/settings-store.test.ts \
+            apps/web/src/features/settings/settings-page.tsx \
+            apps/web/src/features/settings/settings-page.test.tsx \
+            apps/web/src/features/settings/settings.css \
+            apps/web/src/i18n/index.ts \
+            apps/web/src/i18n/index.test.ts
+          git commit -m "feat: restore native Sabbath and Bible reminders"
+          git push origin HEAD:feature/bible-mobile-parity
