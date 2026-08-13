@@ -346,6 +346,26 @@
   color: var(--color-success);
 }
 
+.settings-info-panel {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+}
+
+.settings-info-panel strong {
+  color: var(--text-primary);
+}
+
+.settings-info-panel p {
+  margin: 4px 0 0;
+}
+
 .dialog-backdrop {
   position: fixed;
   inset: 0;

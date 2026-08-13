@@ -157,6 +157,17 @@ const dictionaries = {
     send: 'Kirim',
     feedbackSent: 'Terima kasih, masukan Anda telah terkirim.',
     sendFailed: 'Gagal mengirim:',
+    sending: 'Mengirim…',
+    feedbackGatewayUnavailable: 'Pengiriman masukan belum diaktifkan',
+    feedbackGatewayUnavailableLead:
+      'Aplikasi tetap dapat digunakan tanpa backend. Pengiriman masukan membutuhkan content/report gateway opsional yang dikonfigurasi oleh pengelola.',
+    feedbackRateLimited:
+      'Terlalu banyak masukan dikirim dalam waktu singkat. Tunggu beberapa menit lalu coba lagi.',
+    feedbackNotConfigured:
+      'Gateway tersedia, tetapi tujuan pengiriman masukan belum dikonfigurasi.',
+    feedbackDeliveryFailed:
+      'Gateway menerima masukan, tetapi layanan tujuan sedang gagal. Coba lagi nanti.',
+    feedbackUnexpectedError: 'Masukan belum dapat dikirim. Periksa koneksi lalu coba lagi.',
     hymnalOfflineStorage: 'Penyimpanan offline Pujian',
     hymnalOfflineStorageLead:
       'Soundfont, MIDI, PDF, dan chord yang pernah dibuka disimpan lokal agar lebih cepat dan tetap tersedia setelah tersimpan. Media besar dibatasi dengan LRU; chord tetap content-addressed dan dapat diunduh ulang saat lagu dibuka.',
@@ -461,6 +472,17 @@ const dictionaries = {
     send: 'Send',
     feedbackSent: 'Thank you, your feedback has been sent.',
     sendFailed: 'Failed to send:',
+    sending: 'Sending…',
+    feedbackGatewayUnavailable: 'Feedback delivery is not enabled',
+    feedbackGatewayUnavailableLead:
+      'The app remains fully usable without a backend. Sending feedback requires the optional content/report gateway to be configured by the operator.',
+    feedbackRateLimited:
+      'Too many feedback messages were sent in a short time. Wait a few minutes and try again.',
+    feedbackNotConfigured:
+      'The gateway is available, but the feedback delivery destination is not configured.',
+    feedbackDeliveryFailed:
+      'The gateway received your feedback, but the delivery service is temporarily unavailable. Try again later.',
+    feedbackUnexpectedError: 'Feedback could not be sent. Check your connection and try again.',
     hymnalOfflineStorage: 'Offline Hymnal storage',
     hymnalOfflineStorageLead:
       'Soundfont, MIDI, PDF, and chord files you open are stored locally for faster access and remain available once cached. Large media uses bounded LRU storage; chords remain content-addressed and can be downloaded again when a hymn is opened.',
@@ -760,6 +782,14 @@ const dictionaries = {
     send: '发送',
     feedbackSent: '感谢您，反馈已发送。',
     sendFailed: '发送失败：',
+    sending: '正在发送…',
+    feedbackGatewayUnavailable: '反馈发送尚未启用',
+    feedbackGatewayUnavailableLead:
+      '应用无需后端即可正常使用。发送反馈需要由管理员配置可选的内容/反馈网关。',
+    feedbackRateLimited: '短时间内发送了过多反馈。请等待几分钟后重试。',
+    feedbackNotConfigured: '网关可用，但尚未配置反馈发送目标。',
+    feedbackDeliveryFailed: '网关已收到反馈，但目标服务暂时不可用。请稍后重试。',
+    feedbackUnexpectedError: '暂时无法发送反馈。请检查网络连接后重试。',
     hymnalOfflineStorage: '赞美诗离线存储',
     hymnalOfflineStorageLead:
       '打开过的 Soundfont、MIDI、PDF 和和弦文件会保存在本机，以便更快访问并在缓存后离线使用。大型媒体采用有界 LRU；和弦保持内容寻址，并可在打开赞美诗时重新下载。',
