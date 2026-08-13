@@ -11,9 +11,7 @@ export function ViewerTitle({
 }) {
   return (
     <div className="song-v2-title">
-      <span>
-        {book} {number}
-      </span>
+      <span>{book} {number}</span>
       <h1>{title}</h1>
     </div>
   );
