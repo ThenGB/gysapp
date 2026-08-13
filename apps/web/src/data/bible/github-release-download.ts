@@ -49,9 +49,8 @@ export function parseGitHubReleaseDownloadUrl(
 
 /**
  * Resolve GitHub's browser-facing release URL through the public release API.
- * The returned asset endpoint supports binary download with an explicit
- * application/octet-stream Accept header and avoids depending on github.com
- * navigation responses from a cross-origin PWA fetch.
+ * The binary request deliberately sends only a simple Accept header; keeping
+ * the browser request minimal avoids unnecessary CORS preflight dependencies.
  */
 export async function resolveBiblePackageDownloadSource(
   downloadUrl: string,
@@ -72,10 +71,7 @@ export async function resolveBiblePackageDownloadSource(
     const response = await fetch(releaseUrl, {
       signal,
       cache: 'no-store',
-      headers: {
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
+      headers: { Accept: 'application/vnd.github+json' },
     });
     if (!response.ok) return { url: downloadUrl };
 
@@ -87,10 +83,7 @@ export async function resolveBiblePackageDownloadSource(
 
     const source: BiblePackageDownloadSource = {
       url: asset.url,
-      headers: {
-        Accept: 'application/octet-stream',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
+      headers: { Accept: 'application/octet-stream' },
     };
     resolvedSources.set(downloadUrl, source);
     return source;
