@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, Navigate, RouterProvider, useLocation } from 'react-router-dom';
 import { AppShell } from './ui/shell';
 import { HomePage } from './features/home/home-page';
 import { loadBibleReadingState } from './features/bible/bible-reading-store';
@@ -53,7 +53,8 @@ function LazyPage({ element }: { element: React.ReactNode }) {
 
 function BibleResumeRedirect() {
   const last = loadBibleReadingState().last;
-  return <Navigate to={`/bible/${last.bookId}/${last.chapter}`} replace />;
+  const { search } = useLocation();
+  return <Navigate to={`/bible/${last.bookId}/${last.chapter}${search}`} replace />;
 }
 
 const router = createBrowserRouter(

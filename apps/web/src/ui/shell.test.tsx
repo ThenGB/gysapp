@@ -35,4 +35,14 @@ describe('AppShell', () => {
       expect(link).toHaveAttribute('href', '/hymnal');
     }
   });
+
+  it.each(['/settings', '/notes/bible', '/literature/renungan', '/account', '/report'])(
+    'keeps Lainnya active for secondary route %s',
+    (path) => {
+      renderShell(path);
+      const active = screen.getAllByRole('link', { current: 'page' });
+      expect(active).toHaveLength(2);
+      for (const link of active) expect(link).toHaveAttribute('href', '/more');
+    },
+  );
 });

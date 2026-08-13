@@ -1,0 +1,97 @@
+/* Canva wireframe system mapping: low-fidelity, responsive, accessibility-first. */
+:root {
+  --duration-tab: 180ms;
+  --duration-drawer: 280ms;
+  --duration-page: 300ms;
+  --press-scale: 0.99;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --wireframe-shadow: 0 1px 0 rgba(20, 27, 36, 0.05);
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+.shell-route-stage {
+  min-width: 0;
+  min-height: 100%;
+}
+
+/* Keep the shell visually structural: border + state, no glass treatment. */
+.shell-dock {
+  inset-inline: max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right));
+  bottom: calc(8px + env(safe-area-inset-bottom));
+  padding: 4px;
+  border: 1px solid var(--surface-border);
+  border-radius: 16px;
+  background: var(--surface-raised);
+  box-shadow: var(--wireframe-shadow);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.dock-item,
+.nav-item {
+  transition:
+    color var(--duration-base) var(--ease-standard),
+    background-color var(--duration-base) var(--ease-standard),
+    border-color var(--duration-base) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+}
+
+.dock-item:hover,
+.nav-item:hover {
+  background: var(--surface-muted);
+}
+
+.dock-item:active,
+.nav-item:active {
+  transform: scale(var(--press-scale));
+}
+
+.dock-item-active,
+.nav-item-active {
+  color: var(--accent-text);
+  background: var(--surface-muted);
+}
+
+.dock-item-active::after {
+  width: 18px;
+  height: 2px;
+  background: var(--accent);
+}
+
+.dock-item:focus-visible,
+.nav-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (min-width: 600px) {
+  .shell-sidebar {
+    background: var(--surface-raised);
+  }
+
+  .nav-item-active::before {
+    width: 2px;
+    background: var(--accent);
+  }
+}
+
+@media (min-width: 960px) {
+  .shell-sidebar {
+    border-inline-end-color: var(--surface-border);
+  }
+
+  .shell-brand {
+    border-bottom-color: var(--surface-border);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock-item,
+  .nav-item {
+    transform: none !important;
+  }
+}

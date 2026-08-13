@@ -1,0 +1,140 @@
+/* Canva wireframe responsive QA overrides. */
+.home-section-head,
+.bible-toolbar-modern,
+.bible-library-dialog > header,
+.song-toolbar,
+.song-controlbar,
+.midi-player,
+.midi-info {
+  min-width: 0;
+}
+
+@media (max-width: 599px) {
+  .bible-library-dialog {
+    border-radius: 14px 14px 0 0;
+  }
+
+  :root[data-comfort='large'] .home-shortcuts {
+    grid-template-columns: 1fr;
+  }
+
+  :root[data-comfort='large'] .home-shortcuts a {
+    min-height: var(--target-min);
+    flex-direction: row;
+    justify-content: flex-start;
+    padding: 10px 14px;
+    text-align: start;
+  }
+
+  :root[data-comfort='large'] .bible-toolbar-modern {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  :root[data-comfort='large'] .bible-book-select {
+    grid-column: 1 / -1;
+  }
+
+  :root[data-comfort='large'] .bible-chapter-select,
+  :root[data-comfort='large'] .bible-version-select {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .home-shortcuts {
+    grid-template-columns: 1fr;
+  }
+
+  .home-shortcuts a {
+    min-height: var(--target-min);
+    flex-direction: row;
+    justify-content: flex-start;
+    padding: 10px 14px;
+    text-align: start;
+  }
+
+  .home-shortcuts a svg {
+    flex: 0 0 auto;
+  }
+
+  .bible-toolbar-modern {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bible-book-select {
+    grid-column: 1 / -1;
+  }
+
+  .bible-chapter-select,
+  .bible-version-select {
+    width: 100%;
+    max-width: none;
+  }
+
+  .bible-library-dialog > header > div,
+  .bible-pack-copy {
+    min-width: 0;
+  }
+
+  .bible-library-dialog h2,
+  .bible-pack-copy strong,
+  .bible-pack-copy span,
+  .bible-pack-copy small {
+    overflow-wrap: break-word;
+  }
+
+  .bible-pack-actions {
+    flex-wrap: wrap;
+  }
+
+  .bible-pack-actions > button {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .bible-progress-track {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .song-toolbar h1 {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .midi-player-compact {
+    flex-wrap: wrap;
+  }
+
+  .midi-player-compact .midi-info {
+    flex: 1 1 calc(100% - 60px);
+  }
+
+  .midi-player-compact .midi-aux {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 359px) {
+  .home-greeting {
+    align-items: flex-start;
+  }
+
+  .bible-library-dialog {
+    padding: 14px;
+  }
+
+  .song-lyrics {
+    padding-inline: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-shortcuts a,
+  .bible-pack-actions > button,
+  .midi-player-compact {
+    transform: none !important;
+  }
+}

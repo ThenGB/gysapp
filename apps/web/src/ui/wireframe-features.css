@@ -1,0 +1,411 @@
+/* Canva wireframe feature mapping: structure and responsive behavior over decoration. */
+.home-greeting,
+.continue-card,
+.home-shortcuts a,
+.sauh-card,
+.bible-reader,
+.bible-library-dialog,
+.bible-result,
+.song-lyrics,
+.hymnal-item,
+.midi-player,
+.more-card,
+.faith-item,
+.comfort-preset,
+.comfort-preview,
+.settings-info-panel,
+.dialog-card {
+  box-shadow: none;
+}
+
+.home-greeting {
+  min-height: 82px;
+  gap: 14px;
+  margin-bottom: var(--space-6);
+  padding: 14px 16px;
+  border: var(--border-thin);
+  border-radius: 14px;
+  background: var(--surface-raised);
+}
+
+.home-brand-mark {
+  width: 52px;
+  height: 52px;
+  flex-basis: 52px;
+}
+
+.home-greeting h1 {
+  font-size: clamp(1.6rem, 4vw, 2rem);
+  line-height: 1.2;
+}
+
+.home-continue-list {
+  gap: 10px;
+}
+
+.continue-card,
+.home-shortcuts a,
+.hymnal-item,
+.more-card,
+.bible-result,
+.faith-item,
+.comfort-preset {
+  border-color: var(--surface-border);
+  background: var(--surface-raised);
+  transition:
+    border-color var(--duration-base) var(--ease-standard),
+    background-color var(--duration-base) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+}
+
+.continue-card {
+  min-height: 100px;
+  padding: 17px 18px;
+  border-radius: 14px;
+}
+
+.continue-card:hover,
+.home-shortcuts a:hover,
+.hymnal-item:hover,
+.more-card:hover,
+.bible-result:hover,
+.faith-item:hover,
+.comfort-preset:hover {
+  border-color: color-mix(in srgb, var(--text-primary) 35%, var(--surface-border));
+  background: var(--surface-muted);
+}
+
+.continue-card:active,
+.home-shortcuts a:active,
+.hymnal-item:active,
+.more-card:active,
+.bible-result:active,
+.comfort-preset:active {
+  transform: scale(0.99);
+}
+
+.continue-card > svg:first-child {
+  color: var(--accent-text);
+}
+
+.home-shortcuts {
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.home-shortcuts a {
+  min-height: 92px;
+  border-radius: 14px;
+}
+
+.sauh-card {
+  border-radius: 14px;
+  padding: clamp(16px, 2vw, 22px);
+  border-color: var(--surface-border);
+}
+
+/* Bible reader and library. */
+.bible-mobile-header {
+  min-height: 64px;
+}
+
+.icon-btn,
+.reader-control,
+.bible-font-controls button,
+.bible-listen-button,
+.chip {
+  transition:
+    border-color var(--duration-tab) var(--ease-standard),
+    background-color var(--duration-tab) var(--ease-standard),
+    color var(--duration-tab) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+}
+
+.icon-btn:hover,
+.reader-control:hover,
+.bible-font-controls button:hover,
+.bible-listen-button:hover,
+.chip:hover {
+  border-color: color-mix(in srgb, var(--text-primary) 35%, var(--surface-border));
+  background: var(--surface-muted);
+}
+
+.icon-btn:active,
+.reader-control:active,
+.bible-font-controls button:active,
+.bible-listen-button:active,
+.chip:active {
+  transform: scale(var(--press-scale));
+}
+
+.reader-control-active,
+.chip-active {
+  border-color: color-mix(in srgb, var(--text-primary) 55%, var(--surface-border));
+  background: var(--surface-muted);
+  color: var(--accent-text);
+}
+
+.bible-reader {
+  border-radius: 14px;
+  background: var(--surface-raised);
+  border-color: var(--surface-border);
+}
+
+.bible-verse {
+  transition:
+    background-color var(--duration-tab) var(--ease-standard),
+    outline-color var(--duration-tab) var(--ease-standard);
+}
+
+.bible-verse-num {
+  color: var(--accent-text);
+}
+
+.bible-verse-selected {
+  background: var(--surface-muted);
+  outline-color: color-mix(in srgb, var(--text-primary) 34%, transparent);
+}
+
+.bible-library-dialog {
+  border: 1px solid var(--surface-border);
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+.bible-pack-card {
+  padding-block: 18px;
+}
+
+.bible-progress-track {
+  height: 7px;
+}
+
+.bible-result {
+  border-radius: 14px;
+}
+
+/* Hymnal and MIDI. */
+.song-mode-tabs .chip,
+.song-controlgroup .chip {
+  min-height: var(--target-min);
+}
+
+.song-lyrics {
+  border-radius: 14px;
+  padding: clamp(20px, 4vw, 34px);
+  border-color: var(--surface-border);
+}
+
+.song-chord-badge {
+  color: var(--accent-text);
+}
+
+.hymnal-item,
+.more-card {
+  min-height: max(56px, var(--target-min));
+  border-radius: 14px;
+}
+
+.midi-player {
+  border: 1px solid var(--surface-border);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.midi-play {
+  transition:
+    transform var(--duration-fast) var(--ease-standard),
+    filter var(--duration-base) var(--ease-standard);
+}
+
+.midi-play:active {
+  transform: scale(0.97);
+}
+
+/* More/settings entry cards remain easy to scan at large font sizes. */
+.more-grid {
+  gap: 14px;
+}
+
+.more-card {
+  padding: 14px 16px;
+}
+
+/* Faith: the search/filters may wrap, but content must never overflow the viewport. */
+.faith-page,
+.settings-page {
+  width: min(100%, 1100px);
+  margin-inline: auto;
+}
+
+.faith-toolbar,
+.faith-selection-toolbar,
+.faith-selection-actions {
+  min-width: 0;
+}
+
+.faith-search {
+  min-width: min(220px, 100%);
+}
+
+.faith-item {
+  border-radius: 12px;
+}
+
+.faith-copy,
+.faith-select {
+  min-width: var(--target-min);
+  min-height: var(--target-min);
+}
+
+/* Settings: favor readable stacked controls over compressed three-column cards. */
+.comfort-preset,
+.comfort-preview,
+.settings-info-panel,
+.dialog-card {
+  border-color: var(--surface-border);
+  border-radius: 12px;
+}
+
+.settings-data-actions > button,
+.settings-data-actions > a {
+  min-height: var(--target-min);
+}
+
+.dialog-actions {
+  flex-wrap: wrap;
+}
+
+@media (min-width: 960px) {
+  .home-continue-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-page {
+    padding-inline: clamp(24px, 3vw, 44px);
+  }
+
+  .bible-page,
+  .song-page,
+  .more-page,
+  .faith-page,
+  .settings-page {
+    padding-inline: clamp(20px, 2.6vw, 40px);
+  }
+}
+
+@media (max-width: 599px) {
+  .bible-reader {
+    background: var(--surface);
+    box-shadow: none;
+  }
+
+  .bible-library-dialog {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+    border-radius: 14px;
+    padding: 16px;
+  }
+
+  .song-lyrics {
+    padding: 18px 16px;
+  }
+
+  .faith-page,
+  .settings-page {
+    width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .faith-toolbar {
+    align-items: stretch;
+  }
+
+  .faith-lang-tabs {
+    width: 100%;
+  }
+
+  .faith-lang-tabs .chip {
+    flex: 1 1 0;
+  }
+
+  .faith-search {
+    flex: 1 0 100%;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .faith-item {
+    flex-wrap: wrap;
+  }
+
+  .faith-body {
+    flex: 1 1 calc(100% - 84px);
+  }
+
+  .faith-copy {
+    margin-inline-start: auto;
+  }
+
+  .comfort-presets {
+    grid-template-columns: 1fr;
+  }
+
+  .comfort-preset {
+    min-height: 92px;
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: center;
+    justify-items: start;
+    column-gap: 12px;
+    row-gap: 2px;
+    padding: 12px 14px;
+    text-align: start;
+  }
+
+  .comfort-sample {
+    grid-row: 1 / span 2;
+    margin: 0;
+  }
+
+  .comfort-preset small {
+    text-align: start;
+  }
+
+  .settings-data-actions > button,
+  .settings-data-actions > a,
+  .dialog-actions > button {
+    flex: 1 1 100%;
+  }
+}
+
+/* Large comfort preset gets the same safe stacking before the viewport is tiny. */
+:root[data-comfort='large'] .comfort-presets {
+  grid-template-columns: 1fr;
+}
+
+:root[data-comfort='large'] .comfort-preset {
+  min-height: 96px;
+}
+
+:root[data-comfort='large'] .faith-search {
+  flex-basis: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .continue-card,
+  .home-shortcuts a,
+  .hymnal-item,
+  .more-card,
+  .bible-result,
+  .faith-item,
+  .comfort-preset,
+  .icon-btn,
+  .reader-control,
+  .chip,
+  .midi-play {
+    transform: none !important;
+  }
+}

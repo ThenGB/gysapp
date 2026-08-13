@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
 import {
   BookOpenText,
+  Books,
   Newspaper,
   BookBookmark,
   Feather,
-  DownloadSimple,
   Gear,
   PaperPlaneTilt,
   PencilLine,
@@ -170,9 +170,9 @@ export function MorePage() {
       <Section title={t('downloadsAndSettings')}>
         <ul className="more-grid">
           <li>
-            <Link to="/settings" className="more-card">
-              <DownloadSimple size={26} aria-hidden="true" />
-              <span>{t('downloadsAndStorage')}</span>
+            <Link to="/bible?library=1" className="more-card">
+              <Books size={26} aria-hidden="true" />
+              <span>{t('manageBibleVersions')}</span>
             </Link>
           </li>
           <li>

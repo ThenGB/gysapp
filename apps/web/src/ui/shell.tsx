@@ -4,6 +4,7 @@ import { House, BookOpenText, MusicNotes, Sparkle, SquaresFour } from '@phosphor
 import { useHymnalPlayerState } from '../features/hymnal/hymnal-player-store';
 import { useT } from '../i18n';
 import { assetUrl } from '../lib/asset-url';
+import { useRouteMotion } from './use-route-motion';
 import './shell.css';
 
 const GlobalMidiPlayerDock = lazy(() =>
@@ -30,9 +31,20 @@ const SHELL_A11Y = {
   },
 } as const;
 
+const MORE_CHILD_ROUTES = ['/literature', '/settings', '/account', '/report', '/notes'] as const;
+
+function belongsToRoute(pathname: string, route: string): boolean {
+  return pathname === route || pathname.startsWith(`${route}/`);
+}
+
 function useNavActive(pathname: string, to: string): boolean {
   if (to === '/home') return pathname === '/home';
-  return pathname === to || pathname.startsWith(`${to}/`);
+  if (to === '/more') {
+    return (
+      pathname === '/more' || MORE_CHILD_ROUTES.some((route) => belongsToRoute(pathname, route))
+    );
+  }
+  return belongsToRoute(pathname, to);
 }
 
 export function AppShell() {
@@ -40,6 +52,8 @@ export function AppShell() {
   const { locale, t } = useT();
   const player = useHymnalPlayerState();
   const a11y = SHELL_A11Y[locale];
+  useRouteMotion(pathname);
+
   const NAV_ITEMS = [
     { to: '/home', label: t('home'), icon: House },
     { to: '/bible', label: t('bible'), icon: BookOpenText },
