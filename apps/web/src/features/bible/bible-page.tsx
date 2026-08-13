@@ -34,6 +34,7 @@ import {
 } from './bible-reading-store';
 import { bibleTts } from './bible-tts';
 import { BibleVerseContext } from './bible-verse-context';
+import { useT } from '../../i18n';
 import './bible.css';
 
 const VERSION_SHORT: Record<BiblePackCode, string> = {
@@ -62,6 +63,7 @@ function PackCard({
   status: BiblePackStatus;
   onChanged: () => Promise<void>;
 }) {
+  const { t } = useT();
   const task = usePackTask(status.code);
   const busy = task && ['downloading', 'verifying', 'installing'].includes(task.phase);
   const progress = task?.totalBytes
@@ -90,13 +92,15 @@ function PackCard({
         <strong>{status.label}</strong>
         <span>
           {status.builtIn && !status.installed
-            ? 'Tersedia bawaan'
+            ? t('builtInAvailable')
             : status.installed
-              ? `Terpasang ${status.installed.version}`
-              : 'Belum terpasang'}
+              ? `${t('installed')} ${status.installed.version}`
+              : t('notInstalled')}
         </span>
         {status.remote && (
-          <small>{formatBytes(status.remote.sizeBytes)} • SHA-256 terverifikasi</small>
+          <small>
+            {formatBytes(status.remote.sizeBytes)} • {t('shaVerified')}
+          </small>
         )}
       </div>
 
@@ -107,10 +111,10 @@ function PackCard({
           </div>
           <span>
             {task.phase === 'downloading'
-              ? `${progress}%${task.resumable ? ' • dapat dilanjutkan' : ''}`
+              ? `${progress}%${task.resumable ? ` • ${t('resumable')}` : ''}`
               : task.phase === 'verifying'
-                ? 'Memverifikasi…'
-                : 'Memasang…'}
+                ? t('verifying')
+                : t('installing')}
           </span>
           {task.phase === 'downloading' && (
             <button
@@ -118,7 +122,7 @@ function PackCard({
               className="btn-text"
               onClick={() => biblePackManager.cancel(status.code)}
             >
-              Stop
+              {t('stop')}
             </button>
           )}
         </div>
@@ -133,23 +137,23 @@ function PackCard({
       <div className="bible-pack-actions">
         {!busy && status.availability === 'not-installed' && (
           <button type="button" className="btn-primary" onClick={() => void install()}>
-            <DownloadSimple size={19} aria-hidden="true" /> Unduh
+            <DownloadSimple size={19} aria-hidden="true" /> {t('download')}
           </button>
         )}
         {!busy && status.availability === 'update-available' && (
           <button type="button" className="btn-primary" onClick={() => void install()}>
-            Perbarui
+            {t('updateBiblePack')}
           </button>
         )}
         {!busy && task?.phase === 'error' && (
           <button type="button" className="btn-primary" onClick={() => void install()}>
-            Coba lagi
+            {t('retry')}
           </button>
         )}
         {!busy && status.installed && (
           <button type="button" className="btn-text" onClick={() => void remove()}>
             <Trash size={18} aria-hidden="true" />
-            {status.builtIn ? 'Hapus update' : 'Hapus'}
+            {status.builtIn ? t('removeUpdate') : t('remove')}
           </button>
         )}
       </div>
@@ -158,6 +162,7 @@ function PackCard({
 }
 
 function BibleLibraryDialog({ onClose }: { onClose: () => void }) {
+  const { t } = useT();
   const queryClient = useQueryClient();
   const statuses = useQuery({
     queryKey: ['bible-pack-statuses'],
@@ -171,27 +176,29 @@ function BibleLibraryDialog({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="dialog-backdrop" role="dialog" aria-modal="true" aria-label="Kelola Alkitab">
+    <div
+      className="dialog-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label={t('manageBibleLibrary')}
+    >
       <section className="bible-library-dialog">
         <header>
           <div>
-            <p className="bible-dialog-kicker">Perpustakaan offline</p>
-            <h2>Versi Alkitab</h2>
+            <p className="bible-dialog-kicker">{t('offlineLibrary')}</p>
+            <h2>{t('bibleVersions')}</h2>
           </div>
-          <button type="button" className="icon-btn" aria-label="Tutup" onClick={onClose}>
+          <button type="button" className="icon-btn" aria-label={t('close')} onClick={onClose}>
             <X size={22} aria-hidden="true" />
           </button>
         </header>
-        <p className="bible-dialog-hint">
-          File baru baru diaktifkan setelah SHA-256 cocok. Unduhan yang dihentikan akan dilanjutkan
-          bila server mendukung resume.
-        </p>
-        {statuses.isLoading && <p>Memeriksa versi…</p>}
+        <p className="bible-dialog-hint">{t('bibleLibraryHint')}</p>
+        {statuses.isLoading && <p>{t('checkingVersions')}</p>}
         {statuses.isError && (
           <div className="feed-error" role="alert">
-            <p>Daftar versi belum dapat diperbarui.</p>
+            <p>{t('versionListUnavailable')}</p>
             <button type="button" className="btn-primary" onClick={() => void statuses.refetch()}>
-              Coba lagi
+              {t('retry')}
             </button>
           </div>
         )}
@@ -224,6 +231,7 @@ function ReaderPane({
   focusVerse,
   onScroll,
 }: ReaderPaneProps) {
+  const { t } = useT();
   const port = getBiblePortForVersion(version);
   const catalogQuery = useQuery({
     queryKey: ['bible-catalog', version],
@@ -271,7 +279,7 @@ function ReaderPane({
         <p>
           {chapterQuery.error instanceof Error
             ? chapterQuery.error.message
-            : 'Versi belum tersedia.'}
+            : t('versionUnavailable')}
         </p>
       </article>
     );
@@ -288,7 +296,7 @@ function ReaderPane({
         <div>
           <p>{VERSION_SHORT[version]}</p>
           <h1 className="bible-reader-title">
-            {book?.bl ?? 'Alkitab'} {chapterId}
+            {book?.bl ?? t('bible')} {chapterId}
           </h1>
         </div>
         <button
@@ -302,11 +310,11 @@ function ReaderPane({
             )
           }
         >
-          <SpeakerHigh size={20} aria-hidden="true" /> Dengarkan
+          <SpeakerHigh size={20} aria-hidden="true" /> {t('listen')}
         </button>
       </header>
 
-      {chapterQuery.isLoading && <p className="bible-empty">Memuat pasal…</p>}
+      {chapterQuery.isLoading && <p className="bible-empty">{t('loadingChapter')}</p>}
       {pericopeQuery.data?.map((pericope) => (
         <p key={pericope.id} className="bible-pericope">
           {pericope.t}
@@ -329,7 +337,7 @@ function ReaderPane({
                 <BookmarkSimple
                   className="bible-bookmark-mark"
                   weight="fill"
-                  aria-label="Ditandai"
+                  aria-label={t('bookmarked')}
                 />
               )}
             </button>
@@ -342,7 +350,7 @@ function ReaderPane({
           version={version}
           bookId={bookId}
           chapterId={chapterId}
-          bookLabel={book?.bl ?? 'Alkitab'}
+          bookLabel={book?.bl ?? t('bible')}
           verse={selected}
           books={catalogQuery.data?.books ?? []}
           relatedRefs={related}
@@ -359,7 +367,7 @@ function ReaderPane({
               bookId,
               chapter: chapterId,
               verse: selected.v,
-              label: `${book?.bl ?? 'Alkitab'} ${chapterId}:${selected.v}`,
+              label: `${book?.bl ?? t('bible')} ${chapterId}:${selected.v}`,
               text: stripBibleTags(selected.t),
             })
           }
@@ -372,6 +380,7 @@ function ReaderPane({
 }
 
 export function BiblePage() {
+  const { t } = useT();
   const params = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -461,19 +470,19 @@ export function BiblePage() {
     <div className="content-shell bible-page">
       <header className="bible-mobile-header">
         <div className="bible-title-block">
-          <span>Alkitab</span>
+          <span>{t('bible')}</span>
           <strong>
-            {book?.bl ?? 'Memuat…'} {chapterId}
+            {book?.bl ?? t('loading')} {chapterId}
           </strong>
         </div>
         <div className="bible-header-actions">
-          <Link to="/bible/search" className="icon-btn" aria-label="Cari ayat">
+          <Link to="/bible/search" className="icon-btn" aria-label={t('searchVerse')}>
             <MagnifyingGlass size={21} aria-hidden="true" />
           </Link>
           <button
             type="button"
             className="icon-btn"
-            aria-label="Kelola versi Alkitab"
+            aria-label={t('manageBibleVersions')}
             onClick={() => setLibraryOpen(true)}
           >
             <Books size={21} aria-hidden="true" />
@@ -483,7 +492,7 @@ export function BiblePage() {
 
       <div className="bible-toolbar bible-toolbar-modern">
         <label>
-          <span className="visually-hidden">Pilih kitab</span>
+          <span className="visually-hidden">{t('selectBook')}</span>
           <select
             className="bible-book-select"
             value={bookId}
@@ -497,7 +506,7 @@ export function BiblePage() {
           </select>
         </label>
         <label>
-          <span className="visually-hidden">Pilih pasal</span>
+          <span className="visually-hidden">{t('selectChapter')}</span>
           <select
             className="bible-book-select bible-chapter-select"
             value={chapterId}
@@ -505,13 +514,13 @@ export function BiblePage() {
           >
             {Array.from({ length: chapterCount || 1 }, (_, index) => index + 1).map((chapter) => (
               <option key={chapter} value={chapter}>
-                Pasal {chapter}
+                {t('chapter')} {chapter}
               </option>
             ))}
           </select>
         </label>
         <label>
-          <span className="visually-hidden">Versi utama</span>
+          <span className="visually-hidden">{t('primaryVersion')}</span>
           <select
             className="bible-book-select bible-version-select"
             value={version}
@@ -527,18 +536,18 @@ export function BiblePage() {
         </label>
       </div>
 
-      <div className="bible-reader-controls" aria-label="Kontrol pembaca">
+      <div className="bible-reader-controls" aria-label={t('readerControls')}>
         <button
           type="button"
           className={`reader-control${reading.settings.split ? ' reader-control-active' : ''}`}
           aria-pressed={reading.settings.split}
           onClick={() => updateBibleReadingSettings({ split: !reading.settings.split })}
         >
-          <ArrowsOutLineHorizontal size={19} aria-hidden="true" /> Dua panel
+          <ArrowsOutLineHorizontal size={19} aria-hidden="true" /> {t('twoPanels')}
         </button>
         {reading.settings.split && (
           <label className="bible-secondary-version">
-            <span>Panel 2</span>
+            <span>{t('secondPanel')}</span>
             <select
               value={reading.settings.secondaryVersion}
               onChange={(event) =>
@@ -562,13 +571,13 @@ export function BiblePage() {
               checked={reading.settings.syncScroll}
               onChange={(event) => updateBibleReadingSettings({ syncScroll: event.target.checked })}
             />
-            Sinkron ayat
+            {t('syncVerse')}
           </label>
         )}
-        <div className="bible-font-controls" role="group" aria-label="Ukuran teks Alkitab">
+        <div className="bible-font-controls" role="group" aria-label={t('bibleTextSize')}>
           <button
             type="button"
-            aria-label="Perkecil teks Alkitab"
+            aria-label={t('decreaseBibleText')}
             disabled={reading.settings.readerScale <= 0.9}
             onClick={() =>
               updateBibleReadingSettings({
@@ -583,7 +592,7 @@ export function BiblePage() {
           </button>
           <button
             type="button"
-            aria-label="Perbesar teks Alkitab"
+            aria-label={t('increaseBibleText')}
             disabled={reading.settings.readerScale >= 1.6}
             onClick={() =>
               updateBibleReadingSettings({
@@ -635,13 +644,13 @@ export function BiblePage() {
         )}
       </div>
 
-      <nav className="bible-bottom-pager" aria-label="Navigasi pasal">
+      <nav className="bible-bottom-pager" aria-label={t('chapterNavigation')}>
         <button
           type="button"
           disabled={chapterId <= 1}
           onClick={() => changeChapter(chapterId - 1)}
         >
-          <CaretLeft size={20} aria-hidden="true" /> Sebelumnya
+          <CaretLeft size={20} aria-hidden="true" /> {t('previous')}
         </button>
         <span>
           {book?.bl} {chapterId}
@@ -651,18 +660,18 @@ export function BiblePage() {
           disabled={chapterId >= chapterCount}
           onClick={() => changeChapter(chapterId + 1)}
         >
-          Berikutnya <CaretRight size={20} aria-hidden="true" />
+          {t('next')} <CaretRight size={20} aria-hidden="true" />
         </button>
       </nav>
 
       {tts.speaking && (
         <div className="bible-tts-bar" role="status">
           <SpeakerHigh size={20} aria-hidden="true" />
-          <span>Alkitab sedang dibacakan</span>
+          <span>{t('bibleReading')}</span>
           <button
             type="button"
             className="icon-btn"
-            aria-label={tts.paused ? 'Lanjutkan' : 'Jeda'}
+            aria-label={tts.paused ? t('resume') : t('pause')}
             onClick={() => bibleTts.togglePause()}
           >
             {tts.paused ? <Play size={19} /> : <Pause size={19} />}
@@ -670,7 +679,7 @@ export function BiblePage() {
           <button
             type="button"
             className="icon-btn"
-            aria-label="Stop pembacaan"
+            aria-label={t('stopReading')}
             onClick={() => bibleTts.stop()}
           >
             <Stop size={18} />

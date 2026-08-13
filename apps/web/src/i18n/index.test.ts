@@ -34,5 +34,13 @@ describe('i18n dictionaries', () => {
     expect(t('searchHymn', 'id')).toBe('Cari pujian');
     expect(t('searchHymn', 'en')).toBe('Search hymns');
     expect(t('searchHymn', 'zh')).toBe('搜索赞美诗');
+
+    expect(t('manageBibleLibrary', 'id')).toBe('Kelola Alkitab');
+    expect(t('manageBibleLibrary', 'en')).toBe('Manage Bible');
+    expect(t('manageBibleLibrary', 'zh')).toBe('管理圣经');
+
+    expect(t('searchVerseTitle', 'id')).toBe('Cari Ayat');
+    expect(t('searchVerseTitle', 'en')).toBe('Search Verses');
+    expect(t('searchVerseTitle', 'zh')).toBe('搜索经文');
   });
 });

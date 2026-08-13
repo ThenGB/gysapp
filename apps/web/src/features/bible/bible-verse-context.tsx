@@ -12,6 +12,7 @@ import {
 import type { BibleBook, BibleParalel, BibleRef, BibleVerse } from '@gysapp/contracts';
 import { decodeVerseId, encodeVerseId, stripBibleTags, type BiblePackCode } from '@gysapp/core';
 import { deleteNote, findContextNote, saveContextNote, type AppNote } from '../notes/notes-store';
+import { useT } from '../../i18n';
 import './bible-verse-context.css';
 
 interface BibleVerseContextProps {
@@ -103,6 +104,7 @@ export function BibleVerseContext({
   onRead,
   onClose,
 }: BibleVerseContextProps) {
+  const { t } = useT();
   const target = `${bookLabel} ${chapterId}:${verse.v}`;
   const verseText = stripBibleTags(verse.t);
   const [note, setNote] = useState<AppNote | null>(() => findContextNote('bible', target));
@@ -157,7 +159,10 @@ export function BibleVerseContext({
   };
 
   return (
-    <aside className="bible-verse-actions bible-context" aria-label={`Aksi ${target}`}>
+    <aside
+      className="bible-verse-actions bible-context"
+      aria-label={`${t('verseActions')} ${target}`}
+    >
       <header className="bible-context-header">
         <div>
           <strong>{target}</strong>
@@ -166,7 +171,7 @@ export function BibleVerseContext({
         <button
           type="button"
           className="icon-btn mini"
-          aria-label="Tutup aksi ayat"
+          aria-label={t('closeVerseActions')}
           onClick={onClose}
         >
           <X size={18} aria-hidden="true" />
@@ -176,10 +181,10 @@ export function BibleVerseContext({
       <div className="bible-context-actions">
         <button type="button" className="btn-text" onClick={onToggleBookmark}>
           <BookmarkSimple size={19} weight={bookmarked ? 'fill' : 'regular'} aria-hidden="true" />
-          {bookmarked ? 'Hapus tanda' : 'Tandai'}
+          {bookmarked ? t('removeBookmark') : t('bookmark')}
         </button>
         <button type="button" className="btn-text" onClick={onRead}>
-          <SpeakerHigh size={19} aria-hidden="true" /> Baca
+          <SpeakerHigh size={19} aria-hidden="true" /> {t('read')}
         </button>
         <button type="button" className="btn-text" onClick={() => void copyVerse()}>
           {copyState === 'done' ? (
@@ -187,7 +192,7 @@ export function BibleVerseContext({
           ) : (
             <Copy size={19} aria-hidden="true" />
           )}
-          {copyState === 'done' ? 'Tersalin' : 'Salin'}
+          {copyState === 'done' ? t('copied') : t('copy')}
         </button>
         <button
           type="button"
@@ -198,23 +203,23 @@ export function BibleVerseContext({
             setNoteState('idle');
           }}
         >
-          <NotePencil size={19} aria-hidden="true" /> Catatan
+          <NotePencil size={19} aria-hidden="true" /> {t('verseNote')}
         </button>
       </div>
 
       {copyState === 'error' && (
         <p className="bible-context-status" role="status">
-          Clipboard tidak tersedia. Pilih teks ayat untuk menyalin secara manual.
+          {t('clipboardManual')}
         </p>
       )}
 
       {noteOpen && (
-        <section className="bible-context-note" aria-label={`Catatan ${target}`}>
+        <section className="bible-context-note" aria-label={`${t('verseNote')} ${target}`}>
           <textarea
             rows={4}
             value={noteText}
-            aria-label="Isi catatan ayat"
-            placeholder="Tulis catatan pribadi untuk ayat ini…"
+            aria-label={t('verseNoteBody')}
+            placeholder={t('verseNotePlaceholder')}
             onChange={(event) => {
               setNoteText(event.target.value);
               setNoteState('idle');
@@ -227,11 +232,11 @@ export function BibleVerseContext({
               disabled={!noteText.trim()}
               onClick={persistNote}
             >
-              {noteState === 'saved' ? 'Tersimpan' : note ? 'Perbarui catatan' : 'Simpan catatan'}
+              {noteState === 'saved' ? t('saved') : note ? t('updateNote') : t('saveNote')}
             </button>
             {note && (
               <button type="button" className="btn-text" onClick={removeNote}>
-                <Trash size={18} aria-hidden="true" /> Hapus catatan
+                <Trash size={18} aria-hidden="true" /> {t('deleteNote')}
               </button>
             )}
           </div>
@@ -239,12 +244,12 @@ export function BibleVerseContext({
       )}
 
       {related.length > 0 && (
-        <section className="bible-context-related" aria-label="Referensi terkait">
-          <strong>Referensi terkait</strong>
+        <section className="bible-context-related" aria-label={t('relatedReferences')}>
+          <strong>{t('relatedReferences')}</strong>
           <div className="bible-context-related-list">
             {related.map((item) => (
               <Link key={item.key} to={targetHref(item.id)} className="bible-context-reference">
-                <span>{item.kind === 'parallel' ? 'Paralel' : 'Ref'}</span>
+                <span>{item.kind === 'parallel' ? t('parallelLabel') : t('referenceLabel')}</span>
                 {item.label}
               </Link>
             ))}
