@@ -6,11 +6,7 @@ import { chordCache } from './chord-cache';
 import { updateHymnalPlayerPrefs, useHymnalPlayerState } from './hymnal-player-store';
 import { midiEngine } from './midi-engine';
 import { ViewerModeBar } from './song-viewer-v2-mode-bar';
-import {
-  clampTranspose,
-  clampZoom,
-  type AccidentalMode,
-} from './song-viewer-v2-model';
+import { clampTranspose, clampZoom, type AccidentalMode } from './song-viewer-v2-model';
 import { HymnalPdfViewer } from './song-viewer-v2-pdf';
 import { ViewerSecondaryControls } from './song-viewer-v2-secondary';
 import { HymnalTextViewer } from './song-viewer-v2-text';
