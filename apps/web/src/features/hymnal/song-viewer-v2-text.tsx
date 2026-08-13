@@ -18,10 +18,7 @@ export function HymnalTextViewer({
   transposeStep: number;
 }) {
   const { t } = useT();
-  const fallback = useMemo(
-    () => buildLineFallback(verses, candidates),
-    [candidates, verses],
-  );
+  const fallback = useMemo(() => buildLineFallback(verses, candidates), [candidates, verses]);
   if (!verses.length) {
     return (
       <div className="song-lyrics song-v2-text song-empty">
