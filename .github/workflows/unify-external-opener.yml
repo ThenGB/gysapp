@@ -1,0 +1,188 @@
+name: Unify External Opener
+
+on:
+  push:
+    branches:
+      - feature/bible-mobile-parity
+
+permissions:
+  contents: write
+
+jobs:
+  unify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/bible-mobile-parity
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Route external links through platform opener
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              if old not in text:
+                  raise SystemExit(f'missing anchor for {label}: {old!r}')
+              return text.replace(old, new, 1)
+
+          targets = [
+              Path('apps/web/src/features/home/home-page.tsx'),
+              Path('apps/web/src/features/more/literature-feed.tsx'),
+              Path('apps/web/src/features/more/more-page.tsx'),
+          ]
+
+          home = targets[0]
+          text = home.read_text()
+          text = replace_once(
+              text,
+              "import { assetUrl } from '../../lib/asset-url';\n",
+              "import { assetUrl } from '../../lib/asset-url';\nimport { openExternalUrl } from '../../platform/open-external';\n",
+              'Home opener import',
+          )
+          text = replace_once(
+              text,
+              "function openExternal(url: string) {\n  window.open(url, '_blank', 'noopener,noreferrer');\n}\n\n",
+              '',
+              'Home legacy opener',
+          )
+          text = text.replace('onClick={() => openExternal(today.url)}', 'onClick={() => void openExternalUrl(today.url)}')
+          text = text.replace('onClick={() => openExternal(item.url)}', 'onClick={() => void openExternalUrl(item.url)}')
+          if 'openExternal(' in text or 'window.open(' in text:
+              raise SystemExit('Home still contains direct external opener')
+          home.write_text(text)
+
+          literature = targets[1]
+          text = literature.read_text()
+          text = replace_once(
+              text,
+              "import { useT, type TranslationKey } from '../../i18n';\n",
+              "import { useT, type TranslationKey } from '../../i18n';\nimport { openExternalUrl } from '../../platform/open-external';\n",
+              'Literature opener import',
+          )
+          text = replace_once(
+              text,
+              "function openExternal(url: string) {\n  window.open(url, '_blank', 'noopener,noreferrer');\n}\n\n",
+              '',
+              'Literature legacy opener',
+          )
+          text = text.replace('onClick={() => openExternal(item.url)}', 'onClick={() => void openExternalUrl(item.url)}')
+          if 'openExternal(' in text or 'window.open(' in text:
+              raise SystemExit('Literature still contains direct external opener')
+          literature.write_text(text)
+
+          more = targets[2]
+          text = more.read_text()
+          text = replace_once(
+              text,
+              "import { useT, type TranslationKey } from '../../i18n';\n",
+              "import { useT, type TranslationKey } from '../../i18n';\nimport { openExternalUrl } from '../../platform/open-external';\n",
+              'More opener import',
+          )
+          text = replace_once(
+              text,
+              "function openExternal(url: string) {\n  window.open(url, '_blank', 'noopener,noreferrer');\n}\n\n",
+              '',
+              'More legacy opener',
+          )
+          text = text.replace("onClick={() => openExternal('https://e.gys.or.id')}", "onClick={() => void openExternalUrl('https://e.gys.or.id')}")
+          text = text.replace('onClick={() => openExternal(item.href)}', 'onClick={() => void openExternalUrl(item.href)}')
+          if 'openExternal(' in text or 'window.open(' in text:
+              raise SystemExit('More still contains direct external opener')
+          more.write_text(text)
+
+          test = Path('apps/web/src/platform/open-external.test.ts')
+          test.write_text("""import { afterEach, describe, expect, it, vi } from 'vitest';
+          import { openExternalUrl } from './open-external';
+
+          type TestTauriWindow = Window & {
+            __TAURI__?: {
+              opener?: {
+                openUrl?: (url: string) => Promise<void>;
+              };
+            };
+          };
+
+          describe('openExternalUrl', () => {
+            afterEach(() => {
+              delete (window as TestTauriWindow).__TAURI__;
+              vi.restoreAllMocks();
+            });
+
+            it('uses the browser fallback with noopener and noreferrer', async () => {
+              const popup = { opener: window } as unknown as Window;
+              const browserOpen = vi.spyOn(window, 'open').mockReturnValue(popup);
+
+              await openExternalUrl('https://example.com/article');
+
+              expect(browserOpen).toHaveBeenCalledWith(
+                'https://example.com/article',
+                '_blank',
+                'noopener,noreferrer',
+              );
+              expect(popup.opener).toBeNull();
+            });
+
+            it('uses the Tauri system opener when available', async () => {
+              const systemOpen = vi.fn().mockResolvedValue(undefined);
+              (window as TestTauriWindow).__TAURI__ = { opener: { openUrl: systemOpen } };
+              const browserOpen = vi.spyOn(window, 'open').mockReturnValue(null);
+
+              await openExternalUrl('https://e.gys.or.id/login');
+
+              expect(systemOpen).toHaveBeenCalledWith('https://e.gys.or.id/login');
+              expect(browserOpen).not.toHaveBeenCalled();
+            });
+
+            it('rejects non-http protocols', async () => {
+              await expect(openExternalUrl('javascript:alert(1)')).rejects.toThrow(
+                'Unsupported external URL protocol',
+              );
+            });
+          });
+          """)
+          PY
+
+          pnpm exec prettier --write \
+            apps/web/src/features/home/home-page.tsx \
+            apps/web/src/features/more/literature-feed.tsx \
+            apps/web/src/features/more/more-page.tsx \
+            apps/web/src/platform/open-external.test.ts
+
+          pnpm --filter @gysapp/web typecheck
+          pnpm --filter @gysapp/web test
+          pnpm format:check
+
+          if grep -RniF 'window.open(' apps/web/src --exclude='open-external.ts' --exclude='open-external.test.ts'; then
+            echo 'Direct window.open remains outside the platform adapter'
+            exit 1
+          fi
+          if grep -RniF 'target="_blank"' apps/web/src; then
+            echo 'Direct target=_blank remains; route it through the platform adapter'
+            exit 1
+          fi
+      - name: Commit opener unification
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo 'No opener changes generated'
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/web/src/features/home/home-page.tsx \
+            apps/web/src/features/more/literature-feed.tsx \
+            apps/web/src/features/more/more-page.tsx \
+            apps/web/src/platform/open-external.test.ts
+          git commit -m "refactor: route external links through platform opener"
+          git push origin HEAD:feature/bible-mobile-parity
