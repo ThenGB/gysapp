@@ -208,8 +208,8 @@ export class MidiEngine {
   private onWorkerMessage(msg: {
     type: string;
     id?: number;
-    left?: Float32Array;
-    right?: Float32Array;
+    left?: Float32Array<ArrayBuffer>;
+    right?: Float32Array<ArrayBuffer>;
     sampleRate?: number;
     duration?: number;
     presets?: unknown;
