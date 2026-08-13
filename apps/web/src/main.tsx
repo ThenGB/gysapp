@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { installOptionalWebAnalytics } from './lib/web-analytics';
 import './ui/tokens.css';
 
 const rootEl = document.getElementById('root');
@@ -11,6 +12,12 @@ createRoot(rootEl).render(
     <App />
   </StrictMode>,
 );
+
+if (import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    installOptionalWebAnalytics({ token: import.meta.env.VITE_CLOUDFLARE_WEB_ANALYTICS_TOKEN });
+  });
+}
 
 // PWA: register service worker hanya pada produksi (https).
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
