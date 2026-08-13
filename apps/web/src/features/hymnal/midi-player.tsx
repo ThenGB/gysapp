@@ -13,6 +13,21 @@ import './song-viewer.css';
 type AccidentalMode = 'sharp' | 'flat';
 type TrackChangeHandler = () => boolean | Promise<boolean>;
 
+type WakeLockLike = {
+  request(type: 'screen'): Promise<{ release(): Promise<void> }>;
+};
+
+const MIDI_INSTRUMENT_KEY = 'gysapp.hymnal.midi.instrument.v1';
+const GENERAL_MIDI_INSTRUMENTS = [
+  { value: -1, label: 'Asli lagu' },
+  { value: 0, label: 'Piano' },
+  { value: 19, label: 'Church Organ' },
+  { value: 24, label: 'Nylon Guitar' },
+  { value: 40, label: 'Violin' },
+  { value: 48, label: 'Strings' },
+  { value: 52, label: 'Choir Aahs' },
+] as const;
+
 function formatTime(s: number): string {
   if (!Number.isFinite(s) || s < 0) return '0:00';
   const m = Math.floor(s / 60);
@@ -20,6 +35,156 @@ function formatTime(s: number): string {
     .toString()
     .padStart(2, '0');
   return `${m}:${sec}`;
+}
+
+function readInstrument(): number {
+  try {
+    const raw = localStorage.getItem(MIDI_INSTRUMENT_KEY);
+    if (raw === null) return -1;
+    const value = Number(raw);
+    return GENERAL_MIDI_INSTRUMENTS.some((item) => item.value === value) ? value : -1;
+  } catch {
+    return -1;
+  }
+}
+
+function persistInstrument(value: number): void {
+  try {
+    localStorage.setItem(MIDI_INSTRUMENT_KEY, String(value));
+  } catch {
+    // Instrument preference remains available for the current session.
+  }
+}
+
+function usePlayingWakeLock(playing: boolean) {
+  const sentinelRef = useRef<{ release(): Promise<void> } | null>(null);
+
+  useEffect(() => {
+    const wakeLock = (navigator as Navigator & { wakeLock?: WakeLockLike }).wakeLock;
+    if (!wakeLock || !playing) return;
+    let cancelled = false;
+
+    const acquire = async () => {
+      if (cancelled || document.visibilityState !== 'visible' || sentinelRef.current) return;
+      try {
+        sentinelRef.current = await wakeLock.request('screen');
+      } catch {
+        // Wake Lock is best-effort and can be denied by the browser/OS.
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') void acquire();
+    };
+
+    void acquire();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisibility);
+      const sentinel = sentinelRef.current;
+      sentinelRef.current = null;
+      if (sentinel) void sentinel.release().catch(() => undefined);
+    };
+  }, [playing]);
+}
+
+function useMidiMediaSession({
+  title,
+  status,
+  time,
+  duration,
+  onPlay,
+  onPause,
+  onSeek,
+  onPrevious,
+  onNext,
+}: {
+  title: string;
+  status: MidiStatus;
+  time: number;
+  duration: number;
+  onPlay(): void;
+  onPause(): void;
+  onSeek(value: number): void;
+  onPrevious?: () => void;
+  onNext?: () => void;
+}) {
+  const timeRef = useRef(time);
+  const durationRef = useRef(duration);
+  timeRef.current = time;
+  durationRef.current = duration;
+
+  useEffect(() => {
+    const session = navigator.mediaSession;
+    if (!session) return;
+    if (typeof MediaMetadata !== 'undefined') {
+      session.metadata = new MediaMetadata({
+        title,
+        artist: 'GYS App',
+        album: 'Pujian',
+      });
+    }
+
+    const setHandler = (
+      action: MediaSessionAction,
+      handler: MediaSessionActionHandler | null,
+    ) => {
+      try {
+        session.setActionHandler(action, handler);
+      } catch {
+        // Some browsers expose Media Session but not every action.
+      }
+    };
+
+    setHandler('play', () => onPlay());
+    setHandler('pause', () => onPause());
+    setHandler('previoustrack', onPrevious ? () => onPrevious() : null);
+    setHandler('nexttrack', onNext ? () => onNext() : null);
+    setHandler('seekto', (details) => {
+      if (typeof details.seekTime === 'number') onSeek(details.seekTime);
+    });
+    setHandler('seekbackward', (details) => {
+      onSeek(Math.max(0, timeRef.current - (details.seekOffset ?? 10)));
+    });
+    setHandler('seekforward', (details) => {
+      const next = timeRef.current + (details.seekOffset ?? 10);
+      onSeek(Math.min(durationRef.current || next, next));
+    });
+
+    return () => {
+      setHandler('play', null);
+      setHandler('pause', null);
+      setHandler('previoustrack', null);
+      setHandler('nexttrack', null);
+      setHandler('seekto', null);
+      setHandler('seekbackward', null);
+      setHandler('seekforward', null);
+    };
+  }, [onNext, onPause, onPlay, onPrevious, onSeek, title]);
+
+  useEffect(() => {
+    const session = navigator.mediaSession;
+    if (!session) return;
+    session.playbackState =
+      status === 'playing' ? 'playing' : status === 'paused' ? 'paused' : 'none';
+    if (
+      duration <= 0 ||
+      !Number.isFinite(duration) ||
+      typeof session.setPositionState !== 'function'
+    ) {
+      return;
+    }
+    try {
+      session.setPositionState({
+        duration,
+        playbackRate: 1,
+        position: Math.max(0, Math.min(time, Math.max(0, duration - 0.001))),
+      });
+    } catch {
+      // Invalid/unsupported position state must never interrupt playback.
+    }
+  }, [duration, status, time]);
 }
 
 export function MiniMidiPlayer({
@@ -56,14 +221,17 @@ export function MiniMidiPlayer({
   const [error, setError] = useState<string | null>(null);
   const [transpose, setTranspose] = useState(transposeStep);
   const [tempo, setTempo] = useState(120);
+  const [instrument, setInstrument] = useState(readInstrument);
   const [detailsOpen, setDetailsOpen] = useState(!compact);
   const previousUrl = useRef(url);
   const autoplayAfterTrackChange = useRef(false);
   const endedHandled = useRef(false);
   const transposeRef = useRef(transpose);
+  const instrumentRef = useRef(instrument);
   const onTransposeChangeRef = useRef(onTransposeChange);
 
   transposeRef.current = transpose;
+  instrumentRef.current = instrument;
   onTransposeChangeRef.current = onTransposeChange;
 
   const loadTrack = useCallback((targetUrl: string, autoplay: boolean) => {
@@ -74,6 +242,7 @@ export function MiniMidiPlayer({
         url: targetUrl,
         autoplay,
         transpose: transposeRef.current,
+        instrument: instrumentRef.current,
         onProgress: setLoadingPct,
       })
       .then(({ duration: nextDuration, activated }) => {
@@ -130,13 +299,10 @@ export function MiniMidiPlayer({
     return () => window.clearInterval(id);
   }, [status]);
 
-  const toggle = useCallback(() => {
+  const play = useCallback(() => {
     setError(null);
     if (!url) return;
-    if (midiEngine.getStatus() === 'playing') {
-      midiEngine.pause();
-      return;
-    }
+    if (midiEngine.getStatus() === 'playing') return;
     if (midiEngine.getStatus() === 'paused' && midiEngine.getDuration() > 0) {
       midiEngine.play();
       return;
@@ -144,10 +310,20 @@ export function MiniMidiPlayer({
     void loadTrack(url, true);
   }, [loadTrack, url]);
 
+  const pause = useCallback(() => {
+    if (midiEngine.getStatus() === 'playing') midiEngine.pause();
+  }, []);
+
+  const toggle = useCallback(() => {
+    if (midiEngine.getStatus() === 'playing') pause();
+    else play();
+  }, [pause, play]);
+
   const changeTrack = useCallback(
     async (handler: TrackChangeHandler | undefined, autoplayOverride?: boolean) => {
       if (!handler) return;
-      autoplayAfterTrackChange.current = autoplayOverride ?? midiEngine.getStatus() === 'playing';
+      autoplayAfterTrackChange.current =
+        autoplayOverride ?? midiEngine.getStatus() === 'playing';
       try {
         const changed = await handler();
         if (!changed) autoplayAfterTrackChange.current = false;
@@ -189,14 +365,67 @@ export function MiniMidiPlayer({
     [tempo],
   );
 
+  const changeInstrument = useCallback(
+    (next: number) => {
+      setInstrument(next);
+      instrumentRef.current = next;
+      persistInstrument(next);
+      if (!url || midiEngine.getDuration() <= 0) return;
+      const wasPlaying = midiEngine.getStatus() === 'playing';
+      const position = midiEngine.getTime();
+      const currentTempo = midiEngine.getTempoBpm();
+      setError(null);
+      void midiEngine
+        .loadMidi({
+          url,
+          autoplay: false,
+          transpose: transposeRef.current,
+          instrument: next,
+          tempoBpm: currentTempo,
+        })
+        .then(({ duration: nextDuration, activated }) => {
+          if (activated === false) return;
+          const nextPosition = Math.min(position, nextDuration);
+          setDuration(nextDuration);
+          setTime(nextPosition);
+          midiEngine.seek(nextPosition);
+          if (wasPlaying) midiEngine.play();
+        })
+        .catch((err: unknown) => {
+          setError(err instanceof Error ? err.message : String(err));
+        });
+    },
+    [url],
+  );
+
   const loading = status === 'loading';
   const playing = status === 'playing';
   const hasSong = duration > 0 && url !== null;
   const showDetails = !compact || detailsOpen;
 
+  const mediaPrevious =
+    onPrevious && !previousDisabled && !loading
+      ? () => void changeTrack(onPrevious)
+      : undefined;
+  const mediaNext =
+    onNext && !nextDisabled && !loading ? () => void changeTrack(onNext) : undefined;
+
+  useMidiMediaSession({
+    title,
+    status,
+    time,
+    duration,
+    onPlay: play,
+    onPause: pause,
+    onSeek,
+    onPrevious: mediaPrevious,
+    onNext: mediaNext,
+  });
+  usePlayingWakeLock(playing);
+
   return (
     <div
-      className={`midi-player${compact ? ' midi-player-compact' : ''}${detailsOpen ? ' midi-player-details-open' : ''}`}
+      className={`midi-player midi-v2-player${compact ? ' midi-player-compact' : ''}${detailsOpen ? ' midi-player-details-open' : ''}`}
       aria-label="Pemutar MIDI"
     >
       <button
@@ -206,7 +435,11 @@ export function MiniMidiPlayer({
         aria-label={playing ? 'Jeda' : 'Putar'}
         disabled={loading || !url}
       >
-        {playing ? <Pause size={22} aria-hidden="true" /> : <Play size={22} aria-hidden="true" />}
+        {playing ? (
+          <Pause size={22} aria-hidden="true" />
+        ) : (
+          <Play size={22} aria-hidden="true" />
+        )}
       </button>
       <div className="midi-info">
         <span className="midi-title">
@@ -224,7 +457,9 @@ export function MiniMidiPlayer({
             disabled={!hasSong}
             onChange={(e) => onSeek(Number(e.target.value))}
           />
-          {loading && <span className="midi-loading">memuat… {Math.round(loadingPct)}%</span>}
+          {loading && (
+            <span className="midi-loading">memuat… {Math.round(loadingPct)}%</span>
+          )}
           {error && (
             <span className="midi-error" role="alert">
               {error}
@@ -235,7 +470,7 @@ export function MiniMidiPlayer({
           </span>
         </div>
         {showDetails && (
-          <div className="midi-param-row">
+          <div className="midi-param-row midi-v2-details">
             <div className="midi-param">
               <button
                 type="button"
@@ -276,6 +511,20 @@ export function MiniMidiPlayer({
                 +
               </button>
             </div>
+            <label className="midi-v2-instrument">
+              <span>Instrumen</span>
+              <select
+                aria-label="Instrumen MIDI"
+                value={instrument}
+                onChange={(event) => changeInstrument(Number(event.target.value))}
+              >
+                {GENERAL_MIDI_INSTRUMENTS.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <div
               className="midi-param midi-accidental-toggle"
               role="group"

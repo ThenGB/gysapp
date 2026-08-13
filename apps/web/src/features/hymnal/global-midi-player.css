@@ -10,9 +10,9 @@
   width: min(760px, 100%);
   margin: 0 auto;
   pointer-events: auto;
-  box-shadow: 0 12px 36px rgba(20, 27, 36, 0.16);
-  backdrop-filter: blur(16px);
-  background: color-mix(in srgb, var(--surface-raised) 96%, transparent);
+  border: var(--border-thin);
+  box-shadow: var(--shadow-raised);
+  background: var(--surface-raised);
 }
 
 @media (min-width: 600px) {
@@ -25,7 +25,7 @@
 
 @media (min-width: 960px) {
   .global-midi-dock {
-    inset-inline-start: calc(var(--sidebar-width) + var(--space-5));
-    inset-inline-end: var(--space-5);
+    inset-inline-start: calc(var(--sidebar-width) + var(--space-4));
+    inset-inline-end: var(--space-4);
   }
 }
