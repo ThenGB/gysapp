@@ -35,12 +35,18 @@ export function parseGitHubReleaseDownloadUrl(
   const parts = url.pathname.split('/').filter(Boolean);
   if (parts.length < 6 || parts[2] !== 'releases' || parts[3] !== 'download') return null;
 
+  const owner = parts[0];
+  const repo = parts[1];
+  const tag = parts[4];
+  const fileName = parts.slice(5).join('/');
+  if (!owner || !repo || !tag || !fileName) return null;
+
   try {
     return {
-      owner: decodeURIComponent(parts[0]),
-      repo: decodeURIComponent(parts[1]),
-      tag: decodeURIComponent(parts[4]),
-      fileName: decodeURIComponent(parts.slice(5).join('/')),
+      owner: decodeURIComponent(owner),
+      repo: decodeURIComponent(repo),
+      tag: decodeURIComponent(tag),
+      fileName: decodeURIComponent(fileName),
     };
   } catch {
     return null;
