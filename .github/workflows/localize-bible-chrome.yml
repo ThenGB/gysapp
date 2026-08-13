@@ -1,0 +1,420 @@
+name: Localize Bible Chrome
+
+on:
+  push:
+    branches:
+      - feature/bible-mobile-parity
+
+permissions:
+  contents: write
+
+jobs:
+  localize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/bible-mobile-parity
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Localize Bible chrome
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              if old not in text:
+                  raise SystemExit(f'missing anchor for {label}: {old!r}')
+              return text.replace(old, new, 1)
+
+          i18n = Path('apps/web/src/i18n/index.ts')
+          text = i18n.read_text()
+          inserts = {
+              "    chordLazyHint: 'Chord dimuat otomatis saat lagu dibuka (lazy cache).',\n": """    chordLazyHint: 'Chord dimuat otomatis saat lagu dibuka (lazy cache).',
+              manageBibleLibrary: 'Kelola Alkitab',
+              offlineLibrary: 'Perpustakaan offline',
+              bibleVersions: 'Versi Alkitab',
+              bibleLibraryHint: 'File baru diaktifkan setelah SHA-256 cocok. Unduhan yang dihentikan akan dilanjutkan bila server mendukung resume.',
+              checkingVersions: 'Memeriksa versi…',
+              versionListUnavailable: 'Daftar versi belum dapat diperbarui.',
+              builtInAvailable: 'Tersedia bawaan',
+              installed: 'Terpasang',
+              notInstalled: 'Belum terpasang',
+              shaVerified: 'SHA-256 terverifikasi',
+              resumable: 'dapat dilanjutkan',
+              verifying: 'Memverifikasi…',
+              installing: 'Memasang…',
+              stop: 'Stop',
+              download: 'Unduh',
+              updateBiblePack: 'Perbarui',
+              removeUpdate: 'Hapus update',
+              remove: 'Hapus',
+              close: 'Tutup',
+              versionUnavailable: 'Versi belum tersedia.',
+              listen: 'Dengarkan',
+              loadingChapter: 'Memuat pasal…',
+              bookmarked: 'Ditandai',
+              searchVerse: 'Cari ayat',
+              selectBook: 'Pilih kitab',
+              selectChapter: 'Pilih pasal',
+              primaryVersion: 'Versi utama',
+              readerControls: 'Kontrol pembaca',
+              twoPanels: 'Dua panel',
+              secondPanel: 'Panel 2',
+              syncVerse: 'Sinkron ayat',
+              bibleTextSize: 'Ukuran teks Alkitab',
+              decreaseBibleText: 'Perkecil teks Alkitab',
+              increaseBibleText: 'Perbesar teks Alkitab',
+              chapterNavigation: 'Navigasi pasal',
+              previous: 'Sebelumnya',
+              next: 'Berikutnya',
+              bibleReading: 'Alkitab sedang dibacakan',
+              resume: 'Lanjutkan',
+              pause: 'Jeda',
+              stopReading: 'Stop pembacaan',
+              verseActions: 'Aksi',
+              closeVerseActions: 'Tutup aksi ayat',
+              removeBookmark: 'Hapus tanda',
+              bookmark: 'Tandai',
+              read: 'Baca',
+              copied: 'Tersalin',
+              copy: 'Salin',
+              clipboardManual: 'Clipboard tidak tersedia. Pilih teks ayat untuk menyalin secara manual.',
+              verseNote: 'Catatan',
+              verseNoteBody: 'Isi catatan ayat',
+              verseNotePlaceholder: 'Tulis catatan pribadi untuk ayat ini…',
+              saved: 'Tersimpan',
+              updateNote: 'Perbarui catatan',
+              relatedReferences: 'Referensi terkait',
+              parallelLabel: 'Paralel',
+              referenceLabel: 'Ref',
+              returnToBible: 'Kembali ke Alkitab',
+              searchVerseTitle: 'Cari Ayat',
+              searchWordsPlaceholder: 'Cari kata atau frasa…',
+              bibleSectionFilter: 'Filter bagian kitab',
+              allTestaments: 'Semua',
+              oldTestament: 'Perjanjian Lama',
+              newTestament: 'Perjanjian Baru',
+              bibleSearchScopeHint: 'Pencarian di seluruh 1.189 pasal Alkitab Terjemahan Baru.',
+              preparingSearchIndex: 'Menyiapkan indeks…',
+              bibleIndexUnavailable: 'Indeks Alkitab gagal dimuat.',
+              noMatchingVerses: 'Tidak ditemukan ayat yang cocok.',
+          """,
+              "    chordLazyHint: 'Chords load automatically when the hymn is opened (lazy cache).',\n": """    chordLazyHint: 'Chords load automatically when the hymn is opened (lazy cache).',
+              manageBibleLibrary: 'Manage Bible',
+              offlineLibrary: 'Offline library',
+              bibleVersions: 'Bible versions',
+              bibleLibraryHint: 'New files are activated only after SHA-256 verification succeeds. Stopped downloads resume when the server supports it.',
+              checkingVersions: 'Checking versions…',
+              versionListUnavailable: 'The version list could not be updated.',
+              builtInAvailable: 'Built in',
+              installed: 'Installed',
+              notInstalled: 'Not installed',
+              shaVerified: 'SHA-256 verified',
+              resumable: 'resumable',
+              verifying: 'Verifying…',
+              installing: 'Installing…',
+              stop: 'Stop',
+              download: 'Download',
+              updateBiblePack: 'Update',
+              removeUpdate: 'Remove update',
+              remove: 'Remove',
+              close: 'Close',
+              versionUnavailable: 'This version is not available yet.',
+              listen: 'Listen',
+              loadingChapter: 'Loading chapter…',
+              bookmarked: 'Bookmarked',
+              searchVerse: 'Search verses',
+              selectBook: 'Choose book',
+              selectChapter: 'Choose chapter',
+              primaryVersion: 'Primary version',
+              readerControls: 'Reader controls',
+              twoPanels: 'Two panels',
+              secondPanel: 'Panel 2',
+              syncVerse: 'Sync verses',
+              bibleTextSize: 'Bible text size',
+              decreaseBibleText: 'Decrease Bible text size',
+              increaseBibleText: 'Increase Bible text size',
+              chapterNavigation: 'Chapter navigation',
+              previous: 'Previous',
+              next: 'Next',
+              bibleReading: 'Bible is being read aloud',
+              resume: 'Resume',
+              pause: 'Pause',
+              stopReading: 'Stop reading',
+              verseActions: 'Actions for',
+              closeVerseActions: 'Close verse actions',
+              removeBookmark: 'Remove bookmark',
+              bookmark: 'Bookmark',
+              read: 'Read',
+              copied: 'Copied',
+              copy: 'Copy',
+              clipboardManual: 'Clipboard is unavailable. Select the verse text and copy it manually.',
+              verseNote: 'Note',
+              verseNoteBody: 'Verse note content',
+              verseNotePlaceholder: 'Write a personal note for this verse…',
+              saved: 'Saved',
+              updateNote: 'Update note',
+              relatedReferences: 'Related references',
+              parallelLabel: 'Parallel',
+              referenceLabel: 'Ref',
+              returnToBible: 'Back to Bible',
+              searchVerseTitle: 'Search Verses',
+              searchWordsPlaceholder: 'Search for a word or phrase…',
+              bibleSectionFilter: 'Book section filter',
+              allTestaments: 'All',
+              oldTestament: 'Old Testament',
+              newTestament: 'New Testament',
+              bibleSearchScopeHint: 'Search all 1,189 chapters of the Indonesian Terjemahan Baru (TB).',
+              preparingSearchIndex: 'Preparing index…',
+              bibleIndexUnavailable: 'The Bible index could not be loaded.',
+              noMatchingVerses: 'No matching verses found.',
+          """,
+              "    chordLazyHint: '打开赞美诗时会自动加载和弦（延迟缓存）。',\n": """    chordLazyHint: '打开赞美诗时会自动加载和弦（延迟缓存）。',
+              manageBibleLibrary: '管理圣经',
+              offlineLibrary: '离线书库',
+              bibleVersions: '圣经版本',
+              bibleLibraryHint: '新文件只有在 SHA-256 校验通过后才会启用。若服务器支持续传，已停止的下载可继续。',
+              checkingVersions: '正在检查版本…',
+              versionListUnavailable: '暂时无法更新版本列表。',
+              builtInAvailable: '内置可用',
+              installed: '已安装',
+              notInstalled: '未安装',
+              shaVerified: 'SHA-256 已验证',
+              resumable: '可续传',
+              verifying: '正在验证…',
+              installing: '正在安装…',
+              stop: '停止',
+              download: '下载',
+              updateBiblePack: '更新',
+              removeUpdate: '删除更新',
+              remove: '删除',
+              close: '关闭',
+              versionUnavailable: '该版本暂不可用。',
+              listen: '聆听',
+              loadingChapter: '正在加载章节…',
+              bookmarked: '已标记',
+              searchVerse: '搜索经文',
+              selectBook: '选择书卷',
+              selectChapter: '选择章节',
+              primaryVersion: '主要版本',
+              readerControls: '阅读控制',
+              twoPanels: '双栏',
+              secondPanel: '第 2 栏',
+              syncVerse: '同步经文',
+              bibleTextSize: '圣经文字大小',
+              decreaseBibleText: '缩小圣经文字',
+              increaseBibleText: '放大圣经文字',
+              chapterNavigation: '章节导航',
+              previous: '上一章',
+              next: '下一章',
+              bibleReading: '正在朗读圣经',
+              resume: '继续',
+              pause: '暂停',
+              stopReading: '停止朗读',
+              verseActions: '经文操作',
+              closeVerseActions: '关闭经文操作',
+              removeBookmark: '取消标记',
+              bookmark: '标记',
+              read: '朗读',
+              copied: '已复制',
+              copy: '复制',
+              clipboardManual: '剪贴板不可用。请选择经文文本并手动复制。',
+              verseNote: '笔记',
+              verseNoteBody: '经文笔记内容',
+              verseNotePlaceholder: '为这节经文写下个人笔记…',
+              saved: '已保存',
+              updateNote: '更新笔记',
+              relatedReferences: '相关参考经文',
+              parallelLabel: '平行经文',
+              referenceLabel: '参考',
+              returnToBible: '返回圣经',
+              searchVerseTitle: '搜索经文',
+              searchWordsPlaceholder: '搜索词语或短语…',
+              bibleSectionFilter: '书卷范围筛选',
+              allTestaments: '全部',
+              oldTestament: '旧约',
+              newTestament: '新约',
+              bibleSearchScopeHint: '搜索 TB（Terjemahan Baru）全部 1,189 章。',
+              preparingSearchIndex: '正在准备索引…',
+              bibleIndexUnavailable: '圣经索引加载失败。',
+              noMatchingVerses: '未找到匹配的经文。',
+          """,
+          }
+          for old, new in inserts.items():
+              if old not in text:
+                  raise SystemExit(f'i18n Bible anchor missing: {old!r}')
+              text = text.replace(old, new, 1)
+          i18n.write_text(text)
+
+          page = Path('apps/web/src/features/bible/bible-page.tsx')
+          text = page.read_text()
+          text = replace_once(text, "import { BibleVerseContext } from './bible-verse-context';\n", "import { BibleVerseContext } from './bible-verse-context';\nimport { useT } from '../../i18n';\n", 'BiblePage i18n import')
+          text = replace_once(text, ") {\n  const task = usePackTask(status.code);", ") {\n  const { t } = useT();\n  const task = usePackTask(status.code);", 'PackCard useT')
+          text = replace_once(text, "function BibleLibraryDialog({ onClose }: { onClose: () => void }) {\n  const queryClient", "function BibleLibraryDialog({ onClose }: { onClose: () => void }) {\n  const { t } = useT();\n  const queryClient", 'BibleLibraryDialog useT')
+          text = replace_once(text, "}: ReaderPaneProps) {\n  const port", "}: ReaderPaneProps) {\n  const { t } = useT();\n  const port", 'ReaderPane useT')
+          text = replace_once(text, "export function BiblePage() {\n  const params", "export function BiblePage() {\n  const { t } = useT();\n  const params", 'BiblePage useT')
+
+          replacements = [
+              ("? 'Tersedia bawaan'", "? t('builtInAvailable')"),
+              ("? `Terpasang ${status.installed.version}`", "? `${t('installed')} ${status.installed.version}`"),
+              (": 'Belum terpasang'", ": t('notInstalled')"),
+              ("<small>{formatBytes(status.remote.sizeBytes)} • SHA-256 terverifikasi</small>", "<small>{formatBytes(status.remote.sizeBytes)} • {t('shaVerified')}</small>"),
+              ("? `${progress}%${task.resumable ? ' • dapat dilanjutkan' : ''}`", "? `${progress}%${task.resumable ? ` • ${t('resumable')}` : ''}`"),
+              ("? 'Memverifikasi…'", "? t('verifying')"),
+              (": 'Memasang…'", ": t('installing')"),
+              ("              Stop\n", "              {t('stop')}\n"),
+              ("<DownloadSimple size={19} aria-hidden=\"true\" /> Unduh", "<DownloadSimple size={19} aria-hidden=\"true\" /> {t('download')}"),
+              ("            Perbarui\n", "            {t('updateBiblePack')}\n"),
+              ("            Coba lagi\n", "            {t('retry')}\n"),
+              ("{status.builtIn ? 'Hapus update' : 'Hapus'}", "{status.builtIn ? t('removeUpdate') : t('remove')}"),
+              ('aria-label="Kelola Alkitab"', "aria-label={t('manageBibleLibrary')}"),
+              ('<p className="bible-dialog-kicker">Perpustakaan offline</p>', "<p className=\"bible-dialog-kicker\">{t('offlineLibrary')}</p>"),
+              ('<h2>Versi Alkitab</h2>', "<h2>{t('bibleVersions')}</h2>"),
+              ('aria-label="Tutup"', "aria-label={t('close')}"),
+              ("          File baru baru diaktifkan setelah SHA-256 cocok. Unduhan yang dihentikan akan dilanjutkan\n          bila server mendukung resume.\n", "          {t('bibleLibraryHint')}\n"),
+              ("{statuses.isLoading && <p>Memeriksa versi…</p>}", "{statuses.isLoading && <p>{t('checkingVersions')}</p>}"),
+              ('<p>Daftar versi belum dapat diperbarui.</p>', "<p>{t('versionListUnavailable')}</p>"),
+              ("            Coba lagi\n", "            {t('retry')}\n"),
+              (": 'Versi belum tersedia.'", ": t('versionUnavailable')"),
+              ("{book?.bl ?? 'Alkitab'}", "{book?.bl ?? t('bible')}"),
+              ('<SpeakerHigh size={20} aria-hidden="true" /> Dengarkan', "<SpeakerHigh size={20} aria-hidden=\"true\" /> {t('listen')}"),
+              ('{chapterQuery.isLoading && <p className="bible-empty">Memuat pasal…</p>}', "{chapterQuery.isLoading && <p className=\"bible-empty\">{t('loadingChapter')}</p>}"),
+              ('aria-label="Ditandai"', "aria-label={t('bookmarked')}"),
+              ("bookLabel={book?.bl ?? 'Alkitab'}", "bookLabel={book?.bl ?? t('bible')}"),
+              ("label: `${book?.bl ?? 'Alkitab'} ${chapterId}:${selected.v}`", "label: `${book?.bl ?? t('bible')} ${chapterId}:${selected.v}`"),
+              ('          <span>Alkitab</span>', "          <span>{t('bible')}</span>"),
+              ("{book?.bl ?? 'Memuat…'}", "{book?.bl ?? t('loading')}"),
+              ('aria-label="Cari ayat"', "aria-label={t('searchVerse')}"),
+              ('aria-label="Kelola versi Alkitab"', "aria-label={t('manageBibleVersions')}"),
+              ('<span className="visually-hidden">Pilih kitab</span>', "<span className=\"visually-hidden\">{t('selectBook')}</span>"),
+              ('<span className="visually-hidden">Pilih pasal</span>', "<span className=\"visually-hidden\">{t('selectChapter')}</span>"),
+              ('                Pasal {chapter}\n', "                {t('chapter')} {chapter}\n"),
+              ('<span className="visually-hidden">Versi utama</span>', "<span className=\"visually-hidden\">{t('primaryVersion')}</span>"),
+              ('aria-label="Kontrol pembaca"', "aria-label={t('readerControls')}"),
+              ('<ArrowsOutLineHorizontal size={19} aria-hidden="true" /> Dua panel', "<ArrowsOutLineHorizontal size={19} aria-hidden=\"true\" /> {t('twoPanels')}"),
+              ('            <span>Panel 2</span>', "            <span>{t('secondPanel')}</span>"),
+              ('            Sinkron ayat\n', "            {t('syncVerse')}\n"),
+              ('aria-label="Ukuran teks Alkitab"', "aria-label={t('bibleTextSize')}"),
+              ('aria-label="Perkecil teks Alkitab"', "aria-label={t('decreaseBibleText')}"),
+              ('aria-label="Perbesar teks Alkitab"', "aria-label={t('increaseBibleText')}"),
+              ('aria-label="Navigasi pasal"', "aria-label={t('chapterNavigation')}"),
+              ('<CaretLeft size={20} aria-hidden="true" /> Sebelumnya', "<CaretLeft size={20} aria-hidden=\"true\" /> {t('previous')}"),
+              ('          Berikutnya <CaretRight size={20} aria-hidden="true" />', "          {t('next')} <CaretRight size={20} aria-hidden=\"true\" />"),
+              ('          <span>Alkitab sedang dibacakan</span>', "          <span>{t('bibleReading')}</span>"),
+              ("aria-label={tts.paused ? 'Lanjutkan' : 'Jeda'}", "aria-label={tts.paused ? t('resume') : t('pause')}"),
+              ('aria-label="Stop pembacaan"', "aria-label={t('stopReading')}"),
+          ]
+          for old, new in replacements:
+              text = replace_once(text, old, new, f'BiblePage {old[:40]}')
+          page.write_text(text)
+
+          context = Path('apps/web/src/features/bible/bible-verse-context.tsx')
+          text = context.read_text()
+          text = replace_once(text, "import { deleteNote, findContextNote, saveContextNote, type AppNote } from '../notes/notes-store';\n", "import { deleteNote, findContextNote, saveContextNote, type AppNote } from '../notes/notes-store';\nimport { useT } from '../../i18n';\n", 'VerseContext i18n import')
+          text = replace_once(text, "}: BibleVerseContextProps) {\n  const target", "}: BibleVerseContextProps) {\n  const { t } = useT();\n  const target", 'VerseContext useT')
+          replacements = [
+              ('aria-label={`Aksi ${target}`}', "aria-label={`${t('verseActions')} ${target}`}"),
+              ('aria-label="Tutup aksi ayat"', "aria-label={t('closeVerseActions')}"),
+              ("{bookmarked ? 'Hapus tanda' : 'Tandai'}", "{bookmarked ? t('removeBookmark') : t('bookmark')}"),
+              ('<SpeakerHigh size={19} aria-hidden="true" /> Baca', "<SpeakerHigh size={19} aria-hidden=\"true\" /> {t('read')}"),
+              ("{copyState === 'done' ? 'Tersalin' : 'Salin'}", "{copyState === 'done' ? t('copied') : t('copy')}"),
+              ('<NotePencil size={19} aria-hidden="true" /> Catatan', "<NotePencil size={19} aria-hidden=\"true\" /> {t('verseNote')}"),
+              ('          Clipboard tidak tersedia. Pilih teks ayat untuk menyalin secara manual.\n', "          {t('clipboardManual')}\n"),
+              ('aria-label={`Catatan ${target}`}', "aria-label={`${t('verseNote')} ${target}`}"),
+              ('aria-label="Isi catatan ayat"', "aria-label={t('verseNoteBody')}"),
+              ('placeholder="Tulis catatan pribadi untuk ayat ini…"', "placeholder={t('verseNotePlaceholder')}"),
+              ("{noteState === 'saved' ? 'Tersimpan' : note ? 'Perbarui catatan' : 'Simpan catatan'}", "{noteState === 'saved' ? t('saved') : note ? t('updateNote') : t('saveNote')}"),
+              ('<Trash size={18} aria-hidden="true" /> Hapus catatan', "<Trash size={18} aria-hidden=\"true\" /> {t('deleteNote')}"),
+              ('aria-label="Referensi terkait"', "aria-label={t('relatedReferences')}"),
+              ('          <strong>Referensi terkait</strong>', "          <strong>{t('relatedReferences')}</strong>"),
+              ("<span>{item.kind === 'parallel' ? 'Paralel' : 'Ref'}</span>", "<span>{item.kind === 'parallel' ? t('parallelLabel') : t('referenceLabel')}</span>"),
+          ]
+          for old, new in replacements:
+              text = replace_once(text, old, new, f'VerseContext {old[:40]}')
+          context.write_text(text)
+
+          search = Path('apps/web/src/features/bible/bible-search.tsx')
+          text = search.read_text()
+          text = replace_once(text, "import { getBiblePort } from '../../data/bible/sqlite-bible-port';\n", "import { getBiblePort } from '../../data/bible/sqlite-bible-port';\nimport { useT } from '../../i18n';\n", 'BibleSearch i18n import')
+          old_testaments = """const TESTAMENTS = [
+            { value: 'all', label: 'Semua' },
+            { value: 'ot', label: 'Perjanjian Lama' },
+            { value: 'nt', label: 'Perjanjian Baru' },
+          ] as const;"""
+          new_testaments = """const TESTAMENTS = [
+            { value: 'all', labelKey: 'allTestaments' },
+            { value: 'ot', labelKey: 'oldTestament' },
+            { value: 'nt', labelKey: 'newTestament' },
+          ] as const;"""
+          text = replace_once(text, old_testaments, new_testaments, 'BibleSearch testament definitions')
+          text = replace_once(text, "export function BibleSearchPage() {\n  const [term", "export function BibleSearchPage() {\n  const { t } = useT();\n  const [term", 'BibleSearch useT')
+          replacements = [
+              ('aria-label="Kembali ke Alkitab"', "aria-label={t('returnToBible')}"),
+              ('<h1 className="bible-search-title">Cari Ayat</h1>', "<h1 className=\"bible-search-title\">{t('searchVerseTitle')}</h1>"),
+              ('placeholder="Cari kata atau frasaÃ¢â‚¬Â¦"', "placeholder={t('searchWordsPlaceholder')}"),
+              ('aria-label="Filter bagian kitab"', "aria-label={t('bibleSectionFilter')}"),
+              ('{TESTAMENTS.map((t) => (', '{TESTAMENTS.map((option) => ('),
+              ('key={t.value}', 'key={option.value}'),
+              ('testament === t.value', 'testament === option.value'),
+              ('setTestament(t.value)', 'setTestament(option.value)'),
+              ('            {t.label}\n', "            {t(option.labelKey)}\n"),
+              ('<p className="bible-search-hint">Pencarian di seluruh 1.189 pasal Alkitab Terjemahan Baru.</p>', "<p className=\"bible-search-hint\">{t('bibleSearchScopeHint')}</p>"),
+              ('{searching && <p aria-busy="true">Menyiapkan indexÃ¢â‚¬Â¦</p>}', "{searching && <p aria-busy=\"true\">{t('preparingSearchIndex')}</p>}"),
+              ('<p>Index Alkitab gagal dimuat.</p>', "<p>{t('bibleIndexUnavailable')}</p>"),
+              ('<p className="bible-empty">Tidak ditemukan ayat yang cocok.</p>', "<p className=\"bible-empty\">{t('noMatchingVerses')}</p>"),
+          ]
+          for old, new in replacements:
+              text = replace_once(text, old, new, f'BibleSearch {old[:40]}')
+          search.write_text(text)
+
+          test = Path('apps/web/src/i18n/index.test.ts')
+          text = test.read_text()
+          anchor = "    expect(t('searchHymn', 'zh')).toBe('搜索赞美诗');\n"
+          addition = """
+
+              expect(t('manageBibleLibrary', 'id')).toBe('Kelola Alkitab');
+              expect(t('manageBibleLibrary', 'en')).toBe('Manage Bible');
+              expect(t('manageBibleLibrary', 'zh')).toBe('管理圣经');
+
+              expect(t('searchVerseTitle', 'id')).toBe('Cari Ayat');
+              expect(t('searchVerseTitle', 'en')).toBe('Search Verses');
+              expect(t('searchVerseTitle', 'zh')).toBe('搜索经文');
+          """
+          text = replace_once(text, anchor, anchor + addition, 'i18n Bible regression')
+          test.write_text(text)
+          PY
+
+          pnpm exec prettier --write \
+            apps/web/src/i18n/index.ts \
+            apps/web/src/i18n/index.test.ts \
+            apps/web/src/features/bible/bible-page.tsx \
+            apps/web/src/features/bible/bible-search.tsx \
+            apps/web/src/features/bible/bible-verse-context.tsx
+          pnpm --filter @gysapp/web typecheck
+          pnpm --filter @gysapp/web test
+          pnpm format:check
+      - name: Commit localization
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/web/src/i18n/index.ts \
+            apps/web/src/i18n/index.test.ts \
+            apps/web/src/features/bible/bible-page.tsx \
+            apps/web/src/features/bible/bible-search.tsx \
+            apps/web/src/features/bible/bible-verse-context.tsx
+          git commit -m "feat: localize Bible reader chrome"
+          git push origin HEAD:feature/bible-mobile-parity
