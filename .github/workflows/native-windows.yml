@@ -66,10 +66,11 @@ jobs:
           Copy-Item $source 'dist/windows-ci/GYSApp-windows-x64-portable.exe'
           $hash = (Get-FileHash 'dist/windows-ci/GYSApp-windows-x64-portable.exe' -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  GYSApp-windows-x64-portable.exe" | Set-Content -NoNewline 'dist/windows-ci/SHA256SUMS.txt'
+          '${{ github.event.pull_request.head.sha || github.sha }}' | Set-Content -NoNewline 'dist/windows-ci/SOURCE_SHA.txt'
 
       - uses: actions/upload-artifact@v4
         with:
-          name: gysapp-windows-ci-${{ github.sha }}
+          name: gysapp-windows-ci-${{ github.event.pull_request.head.sha || github.sha }}
           path: dist/windows-ci/*
           if-no-files-found: error
           retention-days: 14

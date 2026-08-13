@@ -77,10 +77,11 @@ jobs:
           mkdir -p dist/android-ci
           cp "$APK" dist/android-ci/GYSApp-android-debug-arm64.apk
           sha256sum dist/android-ci/GYSApp-android-debug-arm64.apk > dist/android-ci/SHA256SUMS.txt
+          printf '%s\n' '${{ github.event.pull_request.head.sha || github.sha }}' > dist/android-ci/SOURCE_SHA.txt
 
       - uses: actions/upload-artifact@v4
         with:
-          name: gysapp-android-ci-${{ github.sha }}
+          name: gysapp-android-ci-${{ github.event.pull_request.head.sha || github.sha }}
           path: dist/android-ci/*
           if-no-files-found: error
           retention-days: 14
