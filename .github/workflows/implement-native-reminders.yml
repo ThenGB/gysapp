@@ -25,7 +25,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Apply reminder parity patch
-        run: bash scripts/implement-native-reminders.sh
+        run: |
+          bash scripts/implement-native-reminders.sh
+          bash scripts/fix-native-reminder-test.sh
       - name: Format and verify
         run: |
           pnpm exec prettier --write apps/web/src/lib/reminder-schedule.ts apps/web/src/platform/scheduled-notifications.ts apps/web/src/platform/scheduled-notifications.test.ts apps/web/src/features/settings/settings-store.ts apps/web/src/features/settings/settings-store.test.ts apps/web/src/features/settings/settings-page.tsx apps/web/src/features/settings/settings-page.test.tsx apps/web/src/features/settings/settings.css apps/web/src/i18n/index.ts apps/web/src/i18n/index.test.ts
