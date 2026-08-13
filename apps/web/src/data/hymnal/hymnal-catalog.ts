@@ -1,5 +1,6 @@
 import type { SongRef } from '@gysapp/core';
 import { assetUrl } from '../../lib/asset-url';
+import { hymnalPackManager } from './hymnal-pack-manager';
 
 export interface HymnalBookMeta {
   code: string;
@@ -23,19 +24,34 @@ export interface SongEntry {
 
 export interface ResolvedSong {
   entry: SongEntry;
-  pdfUrl: string;
+  pdfUrl: string | null;
+  pdfFallbackUrl: string | null;
+  pdfBytes: Uint8Array | null;
+  sourcePageStart: number;
+  sourcePageCount: number;
   midiUrl: string | null;
 }
 
 const MASTER = '/data/hymnal/index/master_index.json';
+const RAW_HYMNAL_BASE =
+  'https://raw.githubusercontent.com/ThenGB/gysapp/main/apps/web/public/data/hymnal';
 
 function indexFileFor(code: string): string {
   return `/data/hymnal/index/${code.replace('-', '_').toLowerCase()}_index.json`;
 }
 
+function rawHymnalUrl(path: string): string {
+  return `${RAW_HYMNAL_BASE}/${path
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/')}`;
+}
+
 /**
- * Katalog Pujian penuh: 6 buku, 533+ lagu (PDF + MIDI + lirik) dari
- * index JSON Flutter; aset disajikan statis di public/data/hymnal.
+ * Katalog Pujian penuh: enam buku dari index JSON Flutter. KR mempunyai
+ * partitur per-lagu bawaan; semua buku dapat memakai master PDF yang dipasang
+ * lewat GYSApp-Data. URL raw GitHub menjadi fallback KR ketika hosting static
+ * Pages gagal menyajikan aset besar/per-lagu.
  */
 export class HymnalCatalogPort {
   private booksPromise: Promise<HymnalBookMeta[]> | null = null;
@@ -99,9 +115,23 @@ export class HymnalCatalogPort {
       songs.find((s) => s.number === number.padStart(3, '0')) ??
       null;
     if (!entry) return null;
+
+    const normalizedCode = code.toUpperCase();
+    const installedPdf = await hymnalPackManager.pdfBytes(normalizedCode).catch(() => null);
+    const splitPdfAvailable = normalizedCode === 'KR';
+
     return {
       entry,
-      pdfUrl: assetUrl(`/data/hymnal/${entry.pdfFile}`),
+      pdfUrl: installedPdf
+        ? null
+        : splitPdfAvailable
+          ? assetUrl(`/data/hymnal/${entry.pdfFile}`)
+          : null,
+      pdfFallbackUrl:
+        !installedPdf && splitPdfAvailable ? rawHymnalUrl(entry.pdfFile) : null,
+      pdfBytes: installedPdf,
+      sourcePageStart: installedPdf ? Math.max(1, entry.page ?? 1) : 1,
+      sourcePageCount: Math.max(1, entry.pages ?? 1),
       midiUrl: entry.midiFile ? assetUrl(`/data/hymnal/${entry.midiFile}`) : null,
     };
   }
