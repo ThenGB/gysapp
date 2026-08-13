@@ -25,10 +25,6 @@ export interface SongEntry {
 export interface ResolvedSong {
   entry: SongEntry;
   pdfUrl: string | null;
-  pdfFallbackUrl: string | null;
-  pdfBytes: Uint8Array | null;
-  sourcePageStart: number;
-  sourcePageCount: number;
   midiUrl: string | null;
 }
 
@@ -47,11 +43,19 @@ function rawHymnalUrl(path: string): string {
     .join('/')}`;
 }
 
+function installedHymnalUrl(code: string, entry: SongEntry): string {
+  const params = new URLSearchParams({
+    page: String(Math.max(1, entry.page ?? 1)),
+    pages: String(Math.max(1, entry.pages ?? 1)),
+  });
+  return `gysapp-hymnal-pack://${encodeURIComponent(code.toUpperCase())}?${params}`;
+}
+
 /**
- * Katalog Pujian penuh: enam buku dari index JSON Flutter. KR mempunyai
- * partitur per-lagu bawaan; semua buku dapat memakai master PDF yang dipasang
- * lewat GYSApp-Data. URL raw GitHub menjadi fallback KR ketika hosting static
- * Pages gagal menyajikan aset besar/per-lagu.
+ * Katalog Pujian penuh dari index JSON Flutter. KR mempunyai partitur
+ * per-lagu yang bisa dibaca langsung dari raw GitHub bila static hosting
+ * bermasalah. Semua buku dapat memakai master PDF yang dipasang lewat
+ * GYSApp-Data; URL internal membawa page range tanpa mengekspos Blob URL.
  */
 export class HymnalCatalogPort {
   private booksPromise: Promise<HymnalBookMeta[]> | null = null;
@@ -118,20 +122,15 @@ export class HymnalCatalogPort {
 
     const normalizedCode = code.toUpperCase();
     const installedPdf = await hymnalPackManager.pdfBytes(normalizedCode).catch(() => null);
-    const splitPdfAvailable = normalizedCode === 'KR';
+    const pdfUrl = installedPdf
+      ? installedHymnalUrl(normalizedCode, entry)
+      : normalizedCode === 'KR'
+        ? rawHymnalUrl(entry.pdfFile)
+        : null;
 
     return {
       entry,
-      pdfUrl: installedPdf
-        ? null
-        : splitPdfAvailable
-          ? assetUrl(`/data/hymnal/${entry.pdfFile}`)
-          : null,
-      pdfFallbackUrl:
-        !installedPdf && splitPdfAvailable ? rawHymnalUrl(entry.pdfFile) : null,
-      pdfBytes: installedPdf,
-      sourcePageStart: installedPdf ? Math.max(1, entry.page ?? 1) : 1,
-      sourcePageCount: Math.max(1, entry.pages ?? 1),
+      pdfUrl,
       midiUrl: entry.midiFile ? assetUrl(`/data/hymnal/${entry.midiFile}`) : null,
     };
   }
