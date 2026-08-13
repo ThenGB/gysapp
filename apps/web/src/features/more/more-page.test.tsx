@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { MorePage } from './more-page';
 
 describe('MorePage', () => {
-  it('renders literature, notes, and storage/settings navigation', () => {
+  it('renders literature, notes, Bible management and settings navigation', () => {
     render(
       <MemoryRouter>
         <MorePage />
@@ -16,9 +16,10 @@ describe('MorePage', () => {
     expect(screen.getByRole('link', { name: /Kesaksian/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Manna \/ Warta Sejati/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Kumpulan Renungan/ })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Unduhan & Penyimpanan' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Kelola Versi Alkitab' })).toHaveAttribute(
       'href',
-      '/settings',
+      '/bible?library=1',
     );
+    expect(screen.getByRole('link', { name: 'Pengaturan' })).toHaveAttribute('href', '/settings');
   });
 });
