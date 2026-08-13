@@ -1,0 +1,74 @@
+name: Localize Bible Chrome
+
+on:
+  push:
+    branches:
+      - feature/bible-mobile-parity
+
+permissions:
+  contents: write
+
+jobs:
+  localize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/bible-mobile-parity
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run corrected Bible localization fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin a0e707c25a4708184b38c74eda4b380b1700601d --depth=1
+          git show a0e707c25a4708184b38c74eda4b380b1700601d:.github/workflows/localize-bible-chrome.yml > /tmp/bible-localize-source.yml
+          python3 - <<'PY'
+          from pathlib import Path
+
+          lines = Path('/tmp/bible-localize-source.yml').read_text().splitlines()
+          start = next(i for i, line in enumerate(lines) if line == '      - name: Localize Bible chrome')
+          run_line = next(i for i in range(start, len(lines)) if lines[i] == '        run: |')
+          end = next(i for i in range(run_line + 1, len(lines)) if lines[i] == '      - name: Commit localization')
+          script_lines = []
+          for line in lines[run_line + 1:end]:
+              script_lines.append(line[10:] if line.startswith('          ') else line)
+          script = '\n'.join(script_lines) + '\n'
+          old = "text = replace_once(text, 'testament === t.value', 'testament === option.value', f'BibleSearch {old[:40]}')"
+          # The prior fixture wraps replacements in a loop, so replace the specific tuple instead.
+          tuple_old = "('testament === t.value', 'testament === option.value'),"
+          if tuple_old not in script:
+              raise SystemExit('expected BibleSearch shadowing tuple not found')
+          script = script.replace(tuple_old, "('__BIBLE_TESTAMENT_COMPARE__', '__BIBLE_TESTAMENT_COMPARE__'),", 1)
+          loop_old = "for old, new in replacements:\n    text = replace_once(text, old, new, f'BibleSearch {old[:40]}')\nsearch.write_text(text)"
+          loop_new = "for old, new in replacements:\n    if old == '__BIBLE_TESTAMENT_COMPARE__':\n        text = text.replace('testament === t.value', 'testament === option.value')\n    else:\n        text = replace_once(text, old, new, f'BibleSearch {old[:40]}')\nsearch.write_text(text)"
+          if loop_old not in script:
+              raise SystemExit('expected BibleSearch replacement loop not found')
+          script = script.replace(loop_old, loop_new, 1)
+          Path('/tmp/localize-bible.sh').write_text(script)
+          PY
+          bash /tmp/localize-bible.sh
+      - name: Commit localization
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No localization changes generated"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/web/src/i18n/index.ts \
+            apps/web/src/i18n/index.test.ts \
+            apps/web/src/features/bible/bible-page.tsx \
+            apps/web/src/features/bible/bible-search.tsx \
+            apps/web/src/features/bible/bible-verse-context.tsx
+          git commit -m "feat: localize Bible reader chrome"
+          git push origin HEAD:feature/bible-mobile-parity
