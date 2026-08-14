@@ -5,7 +5,7 @@ import '@testing-library/jest-dom/vitest';
 afterEach(() => cleanup());
 
 // matchMedia untuk jsdom (dipakai applySettings mode 'system').
-if (typeof window.matchMedia !== 'function') {
+if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
   window.matchMedia = (query: string) =>
     ({
       matches: false,
