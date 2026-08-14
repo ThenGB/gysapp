@@ -11,19 +11,15 @@ export function ViewerTitle({
 }) {
   return (
     <div className="song-v2-title">
-      <span>{book} {number}</span>
+      <span>
+        {book} {number}
+      </span>
       <h1>{title}</h1>
     </div>
   );
 }
 
-export function FullscreenButton({
-  active,
-  onClick,
-}: {
-  active: boolean;
-  onClick(): void;
-}) {
+export function FullscreenButton({ active, onClick }: { active: boolean; onClick(): void }) {
   const label = active ? 'Keluar layar penuh' : 'Layar penuh';
   return (
     <button type="button" className="song-v2-fullscreen" aria-label={label} onClick={onClick}>
