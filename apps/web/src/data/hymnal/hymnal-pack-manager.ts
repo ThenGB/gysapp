@@ -46,12 +46,7 @@ export interface HymnalPackStatus {
 }
 
 export type HymnalDownloadPhase =
-  | 'downloading'
-  | 'verifying'
-  | 'installing'
-  | 'complete'
-  | 'cancelled'
-  | 'error';
+  'downloading' | 'verifying' | 'installing' | 'complete' | 'cancelled' | 'error';
 
 export interface HymnalDownloadTask {
   code: HymnalPackCode;
@@ -176,8 +171,7 @@ export class HymnalPackManager {
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.now = options.now ?? Date.now;
     this.manifestUrl = options.manifestUrl ?? DEFAULT_MANIFEST_URL;
-    this.resolveDownloadSource =
-      options.resolveDownloadSource ?? resolveBiblePackageDownloadSource;
+    this.resolveDownloadSource = options.resolveDownloadSource ?? resolveBiblePackageDownloadSource;
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -369,10 +363,7 @@ export class HymnalPackManager {
         pdfSizeBytes: pdf.byteLength,
         installedAt: this.now(),
       };
-      await this.store.write(
-        metaPath(code),
-        new TextEncoder().encode(JSON.stringify(installed)),
-      );
+      await this.store.write(metaPath(code), new TextEncoder().encode(JSON.stringify(installed)));
       if (previous && previous.checksumSha256 !== installed.checksumSha256) {
         await this.store.remove(pdfPath(previous.checksumSha256)).catch(() => undefined);
       }

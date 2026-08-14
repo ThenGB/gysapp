@@ -108,9 +108,7 @@ export function useHymnalPdfReader({
         const pdfjs = await import('pdfjs-dist');
         const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
         pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
-        let bytes: Uint8Array<ArrayBufferLike> | null = pdfBytes
-          ? new Uint8Array(pdfBytes)
-          : null;
+        let bytes: Uint8Array<ArrayBufferLike> | null = pdfBytes ? new Uint8Array(pdfBytes) : null;
         if (!bytes && installedSource) {
           bytes = await hymnalPackManager.pdfBytes(installedSource.code);
           if (!bytes) throw new Error('Partitur Pujian yang terpasang tidak dapat dibaca.');
@@ -232,8 +230,7 @@ export function useHymnalPdfReader({
       setViewportHeight(window.innerHeight);
     };
     update();
-    const observer =
-      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
     observer?.observe(node);
     window.addEventListener('resize', update, { passive: true });
     return () => {

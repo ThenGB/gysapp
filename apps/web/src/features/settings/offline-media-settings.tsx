@@ -48,10 +48,7 @@ export function OfflineMediaSettings() {
     void refreshPacks();
   }, [refresh, refreshPacks]);
 
-  useEffect(
-    () => hymnalPackManager.subscribe(() => setTaskVersion((value) => value + 1)),
-    [],
-  );
+  useEffect(() => hymnalPackManager.subscribe(() => setTaskVersion((value) => value + 1)), []);
 
   const installPack = async (code: HymnalPackCode) => {
     try {

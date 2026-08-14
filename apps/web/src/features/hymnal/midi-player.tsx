@@ -126,10 +126,7 @@ function useMidiMediaSession({
       });
     }
 
-    const setHandler = (
-      action: MediaSessionAction,
-      handler: MediaSessionActionHandler | null,
-    ) => {
+    const setHandler = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
       try {
         session.setActionHandler(action, handler);
       } catch {
@@ -322,8 +319,7 @@ export function MiniMidiPlayer({
   const changeTrack = useCallback(
     async (handler: TrackChangeHandler | undefined, autoplayOverride?: boolean) => {
       if (!handler) return;
-      autoplayAfterTrackChange.current =
-        autoplayOverride ?? midiEngine.getStatus() === 'playing';
+      autoplayAfterTrackChange.current = autoplayOverride ?? midiEngine.getStatus() === 'playing';
       try {
         const changed = await handler();
         if (!changed) autoplayAfterTrackChange.current = false;
@@ -404,9 +400,7 @@ export function MiniMidiPlayer({
   const showDetails = !compact || detailsOpen;
 
   const mediaPrevious =
-    onPrevious && !previousDisabled && !loading
-      ? () => void changeTrack(onPrevious)
-      : undefined;
+    onPrevious && !previousDisabled && !loading ? () => void changeTrack(onPrevious) : undefined;
   const mediaNext =
     onNext && !nextDisabled && !loading ? () => void changeTrack(onNext) : undefined;
 
@@ -435,11 +429,7 @@ export function MiniMidiPlayer({
         aria-label={playing ? 'Jeda' : 'Putar'}
         disabled={loading || !url}
       >
-        {playing ? (
-          <Pause size={22} aria-hidden="true" />
-        ) : (
-          <Play size={22} aria-hidden="true" />
-        )}
+        {playing ? <Pause size={22} aria-hidden="true" /> : <Play size={22} aria-hidden="true" />}
       </button>
       <div className="midi-info">
         <span className="midi-title">
@@ -457,9 +447,7 @@ export function MiniMidiPlayer({
             disabled={!hasSong}
             onChange={(e) => onSeek(Number(e.target.value))}
           />
-          {loading && (
-            <span className="midi-loading">memuat… {Math.round(loadingPct)}%</span>
-          )}
+          {loading && <span className="midi-loading">memuat… {Math.round(loadingPct)}%</span>}
           {error && (
             <span className="midi-error" role="alert">
               {error}

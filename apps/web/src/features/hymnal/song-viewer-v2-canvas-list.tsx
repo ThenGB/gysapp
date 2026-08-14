@@ -1,9 +1,5 @@
 import type { MutableRefObject } from 'react';
-import type {
-  AccidentalMode,
-  PageMode,
-  PdfChordPoint,
-} from './song-viewer-v2-model';
+import type { AccidentalMode, PageMode, PdfChordPoint } from './song-viewer-v2-model';
 import { PdfScoreSheet } from './song-viewer-v2-score-sheet';
 
 export function PdfCanvasList({
