@@ -1,0 +1,44 @@
+name: format-probe
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    if: github.event.pull_request.number == 8
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Print exact Prettier output
+        shell: bash
+        run: |
+          files=(
+            apps/web/src/data/hymnal/hymnal-pack-manager.test.ts
+            apps/web/src/data/hymnal/hymnal-pack-manager.ts
+            apps/web/src/features/hymnal/midi-player.tsx
+            apps/web/src/features/hymnal/song-viewer-v2-canvas-list.tsx
+            apps/web/src/features/hymnal/song-viewer-v2-model.ts
+            apps/web/src/features/hymnal/song-viewer-v2-title.tsx
+            apps/web/src/features/hymnal/song-viewer-v2-verse.tsx
+            apps/web/src/features/hymnal/use-hymnal-pdf-reader-asset.ts
+            apps/web/src/features/settings/offline-media-settings.tsx
+          )
+          pnpm exec prettier --write "${files[@]}"
+          for file in "${files[@]}"; do
+            marker=$(printf '%s' "$file" | tr '/.' '__')
+            echo "===${marker}_BASE64_BEGIN==="
+            base64 -w0 "$file"
+            echo
+            echo "===${marker}_BASE64_END==="
+          done
