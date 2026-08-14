@@ -47,7 +47,8 @@ describe('HymnalPackManager', () => {
     };
     const fetchImpl = vi.fn(async (url: string | URL | Request) => {
       const value = String(url);
-      if (value.includes('manifest')) return new Response(JSON.stringify(manifest), { status: 200 });
+      if (value.includes('manifest'))
+        return new Response(JSON.stringify(manifest), { status: 200 });
       if (value.includes('asset')) return responseBytes(PDF);
       throw new Error(`unexpected url ${value}`);
     });
