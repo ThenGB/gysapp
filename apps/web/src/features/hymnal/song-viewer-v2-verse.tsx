@@ -19,7 +19,10 @@ export function HymnalVerse({
   accidentalMode: AccidentalMode;
   transposeStep: number;
 }) {
-  const lines = verse.split('\n').map((line) => line.trim()).filter(Boolean);
+  const lines = verse
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
   const marker = String(index + 1).padStart(2, '0');
   return (
     <section className="song-v2-verse">
@@ -31,9 +34,7 @@ export function HymnalVerse({
           key={lineIndex}
           line={line}
           chordLine={
-            showChords
-              ? findBestChordLine(line, candidates) ?? fallback[lineIndex] ?? null
-              : null
+            showChords ? (findBestChordLine(line, candidates) ?? fallback[lineIndex] ?? null) : null
           }
           accidentalMode={accidentalMode}
           transposeStep={transposeStep}

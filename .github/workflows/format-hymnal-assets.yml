@@ -1,0 +1,54 @@
+name: Format Hymnal Assets
+
+on:
+  push:
+    branches:
+      - agent/fix-hymnal-assets
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/fix-hymnal-assets
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format hymnal asset changes
+        run: |
+          pnpm exec prettier --write \
+            apps/web/src/data/hymnal/hymnal-pack-manager.ts \
+            apps/web/src/features/hymnal/midi-player.tsx \
+            apps/web/src/features/hymnal/song-viewer-v2-canvas-list.tsx \
+            apps/web/src/features/hymnal/song-viewer-v2-title.tsx \
+            apps/web/src/features/hymnal/song-viewer-v2-verse.tsx \
+            apps/web/src/features/hymnal/use-hymnal-pdf-reader-asset.ts \
+            apps/web/src/features/settings/offline-media-settings.tsx
+      - name: Commit formatting
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/web/src/data/hymnal/hymnal-pack-manager.ts \
+            apps/web/src/features/hymnal/midi-player.tsx \
+            apps/web/src/features/hymnal/song-viewer-v2-canvas-list.tsx \
+            apps/web/src/features/hymnal/song-viewer-v2-title.tsx \
+            apps/web/src/features/hymnal/song-viewer-v2-verse.tsx \
+            apps/web/src/features/hymnal/use-hymnal-pdf-reader-asset.ts \
+            apps/web/src/features/settings/offline-media-settings.tsx
+          git commit -m "style: format hymnal asset changes"
+          git push origin HEAD:agent/fix-hymnal-assets

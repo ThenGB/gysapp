@@ -1,5 +1,6 @@
 import type { SongRef } from '@gysapp/core';
 import { assetUrl } from '../../lib/asset-url';
+import { hymnalPackManager } from './hymnal-pack-manager';
 
 export interface HymnalBookMeta {
   code: string;
@@ -23,19 +24,38 @@ export interface SongEntry {
 
 export interface ResolvedSong {
   entry: SongEntry;
-  pdfUrl: string;
+  pdfUrl: string | null;
   midiUrl: string | null;
 }
 
 const MASTER = '/data/hymnal/index/master_index.json';
+const RAW_HYMNAL_BASE =
+  'https://raw.githubusercontent.com/ThenGB/gysapp/main/apps/web/public/data/hymnal';
 
 function indexFileFor(code: string): string {
   return `/data/hymnal/index/${code.replace('-', '_').toLowerCase()}_index.json`;
 }
 
+function rawHymnalUrl(path: string): string {
+  return `${RAW_HYMNAL_BASE}/${path
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/')}`;
+}
+
+function installedHymnalUrl(code: string, entry: SongEntry): string {
+  const params = new URLSearchParams({
+    page: String(Math.max(1, entry.page ?? 1)),
+    pages: String(Math.max(1, entry.pages ?? 1)),
+  });
+  return `gysapp-hymnal-pack://${encodeURIComponent(code.toUpperCase())}?${params}`;
+}
+
 /**
- * Katalog Pujian penuh: 6 buku, 533+ lagu (PDF + MIDI + lirik) dari
- * index JSON Flutter; aset disajikan statis di public/data/hymnal.
+ * Katalog Pujian penuh dari index JSON Flutter. KR mempunyai partitur
+ * per-lagu yang bisa dibaca langsung dari raw GitHub bila static hosting
+ * bermasalah. Semua buku dapat memakai master PDF yang dipasang lewat
+ * GYSApp-Data; URL internal membawa page range tanpa mengekspos Blob URL.
  */
 export class HymnalCatalogPort {
   private booksPromise: Promise<HymnalBookMeta[]> | null = null;
@@ -99,9 +119,18 @@ export class HymnalCatalogPort {
       songs.find((s) => s.number === number.padStart(3, '0')) ??
       null;
     if (!entry) return null;
+
+    const normalizedCode = code.toUpperCase();
+    const installedPdf = await hymnalPackManager.pdfBytes(normalizedCode).catch(() => null);
+    const pdfUrl = installedPdf
+      ? installedHymnalUrl(normalizedCode, entry)
+      : normalizedCode === 'KR'
+        ? rawHymnalUrl(entry.pdfFile)
+        : null;
+
     return {
       entry,
-      pdfUrl: assetUrl(`/data/hymnal/${entry.pdfFile}`),
+      pdfUrl,
       midiUrl: entry.midiFile ? assetUrl(`/data/hymnal/${entry.midiFile}`) : null,
     };
   }

@@ -1,10 +1,6 @@
 import type { ChordDocument } from '@gysapp/contracts';
 import type { ChordedLine } from '@gysapp/core';
-import {
-  buildChordedLines,
-  extractLyricLines,
-  extractPageNotes,
-} from '@gysapp/core';
+import { buildChordedLines, extractLyricLines, extractPageNotes } from '@gysapp/core';
 
 type PdfDocumentProxy = import('pdfjs-dist').PDFDocumentProxy;
 export type ViewerMode = 'pdf' | 'text';
@@ -40,10 +36,7 @@ export function clampTranspose(value: unknown): number {
 
 export function readSavedView(book: string, song: string): SavedView {
   try {
-    const all = JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}') as Record<
-      string,
-      SavedView
-    >;
+    const all = JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}') as Record<string, SavedView>;
     return all[`${book}:${song}`] ?? {};
   } catch {
     return {};
@@ -52,10 +45,7 @@ export function readSavedView(book: string, song: string): SavedView {
 
 export function writeSavedView(book: string, song: string, value: SavedView): void {
   try {
-    const all = JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}') as Record<
-      string,
-      SavedView
-    >;
+    const all = JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}') as Record<string, SavedView>;
     delete all[`${book}:${song}`];
     all[`${book}:${song}`] = value;
     const entries = Object.entries(all).slice(-80);
@@ -86,10 +76,7 @@ function commonPrefix(a: string, b: string): number {
   return index;
 }
 
-export function findBestChordLine(
-  text: string,
-  candidates: ChordedLine[],
-): ChordedLine | null {
+export function findBestChordLine(text: string, candidates: ChordedLine[]): ChordedLine | null {
   const target = normalizeLine(text);
   if (!target) return null;
   let best: ChordedLine | null = null;
@@ -127,12 +114,19 @@ export function buildLineFallback(
   return result;
 }
 
+/**
+ * Extract lyrics/notes from one physical PDF page while optionally reading
+ * chord entries from a different logical page. Installed master PDFs use
+ * physical book pages (for example KR 001 starts at page 5), while chord files
+ * from gyschordweb remain scoped to the per-song PDF and therefore start at 1.
+ */
 export async function extractPageChordData(
   doc: PdfDocumentProxy,
-  pageNo: number,
+  pdfPageNo: number,
   chordDoc: ChordDocument | null,
+  chordPageNo = pdfPageNo,
 ): Promise<{ lines: ChordedLine[]; points: PdfChordPoint[] }> {
-  const page = await doc.getPage(pageNo);
+  const page = await doc.getPage(pdfPageNo);
   const viewport = page.getViewport({ scale: 1 });
   const content = await page.getTextContent();
   const items: Array<{ str: string; transform: number[]; width: number }> = [];
@@ -149,7 +143,7 @@ export async function extractPageChordData(
     width: viewport.width,
     height: viewport.height,
   });
-  const entries = (chordDoc?.pages[String(pageNo)] ?? []) as Array<{
+  const entries = (chordDoc?.pages[String(chordPageNo)] ?? []) as Array<{
     noteIdx: number;
     chord: string;
   }>;
